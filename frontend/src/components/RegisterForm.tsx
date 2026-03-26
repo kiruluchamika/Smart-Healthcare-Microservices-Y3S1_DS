@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Check } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { register } from '../services/authApi';
+import { setAuthSession } from '../services/authSession';
 
 interface RegisterFormProps {
   onSwitch: () => void;
@@ -14,6 +17,7 @@ interface FormErrors {
 }
 
 export function RegisterForm({ onSwitch }: RegisterFormProps) {
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,13 +25,13 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [serverError, setServerError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
 
   const getPasswordStrength = (pwd: string) => {
     if (!pwd) return 0;
     let strength = 0;
-    if (pwd.length >= 6) strength++;
+    if (pwd.length >= 8) strength++;
     if (pwd.length >= 12) strength++;
     if (/[A-Z]/.test(pwd)) strength++;
     if (/[0-9]/.test(pwd)) strength++;
@@ -50,8 +54,8 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
 
     if (!password) {
       newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
     }
 
     if (!confirmPassword) {
@@ -64,22 +68,33 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setTimeout(() => {
+    setServerError('');
+
+    const [firstName, ...rest] = name.trim().split(/\s+/);
+    const lastName = rest.length > 0 ? rest.join(' ') : firstName;
+
+    try {
+      const response = await register({
+        email,
+        password,
+        firstName,
+        lastName,
+        role: 'PATIENT',
+      });
+
+      setAuthSession(response);
+
       setIsLoading(false);
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        setName('');
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-      }, 1500);
-    }, 1500);
+      navigate('/dashboard');
+    } catch (error) {
+      setIsLoading(false);
+      setServerError(error instanceof Error ? error.message : 'Registration failed');
+    }
   };
 
   const containerVariants = {
@@ -109,34 +124,6 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
   const strength = getPasswordStrength(password);
   const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
 
-  if (success) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full flex flex-col items-center justify-center py-12"
-      >
-        <motion.div
-          animate={{ scale: [1, 1.2, 1] }}
-          transition={{ duration: 0.6 }}
-          className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-6"
-        >
-          <Check className="w-8 h-8 text-green-400" />
-        </motion.div>
-        <h3 className="text-2xl font-bold text-white mb-2">Account Created!</h3>
-        <p className="text-gray-400 text-center mb-8">
-          Your account has been successfully created. Welcome aboard!
-        </p>
-        <button
-          onClick={onSwitch}
-          className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
-        >
-          Back to Login
-        </button>
-      </motion.div>
-    );
-  }
-
   return (
     <motion.div
       variants={containerVariants}
@@ -152,6 +139,16 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
       </motion.p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {serverError && (
+          <motion.p
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-red-400 text-sm"
+          >
+            {serverError}
+          </motion.p>
+        )}
+
         <motion.div variants={itemVariants} className="relative">
           <input
             type="text"

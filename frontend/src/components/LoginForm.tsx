@@ -1,16 +1,21 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { login } from '../services/authApi';
+import { setAuthSession } from '../services/authSession';
 
 interface LoginFormProps {
   onSwitch: () => void;
 }
 
 export function LoginForm({ onSwitch }: LoginFormProps) {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [serverError, setServerError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const validateForm = () => {
@@ -32,16 +37,25 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     setIsLoading(true);
-    setTimeout(() => {
+    setServerError('');
+
+    try {
+      const response = await login(email, password);
+      setAuthSession(response);
+
       setIsLoading(false);
       setEmail('');
       setPassword('');
-    }, 1500);
+      navigate('/dashboard');
+    } catch (error) {
+      setIsLoading(false);
+      setServerError(error instanceof Error ? error.message : 'Login failed');
+    }
   };
 
   const containerVariants = {
@@ -75,6 +89,16 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
       </motion.p>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {serverError && (
+          <motion.p
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-red-400 text-sm"
+          >
+            {serverError}
+          </motion.p>
+        )}
+
         <motion.div variants={itemVariants} className="relative">
           <input
             type="email"

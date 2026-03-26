@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './layouts/Layout';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
@@ -10,6 +10,15 @@ import Profile from './pages/Profile';
 import AIChat from './components/AIChat';
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
+import { isUserAuthenticated } from './services/authSession';
+
+function ProtectedRoute({ children }: { children: JSX.Element }) {
+  return isUserAuthenticated() ? children : <Navigate to="/login" replace />;
+}
+
+function PublicOnlyRoute({ children }: { children: JSX.Element }) {
+  return isUserAuthenticated() ? <Navigate to="/dashboard" replace /> : children;
+}
 
 function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -18,13 +27,13 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Layout><Landing /></Layout>} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/login" element={<Auth />} />
-        <Route path="/register" element={<Auth />} />
-        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
-        <Route path="/appointments" element={<Layout><AppointmentBooking /></Layout>} />
-        <Route path="/consultation/:id" element={<Layout><Telemedicine /></Layout>} />
-        <Route path="/profile" element={<Layout><Profile /></Layout>} />
+        <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
+        <Route path="/login" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
+        <Route path="/register" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+        <Route path="/appointments" element={<ProtectedRoute><Layout><AppointmentBooking /></Layout></ProtectedRoute>} />
+        <Route path="/consultation/:id" element={<ProtectedRoute><Layout><Telemedicine /></Layout></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
       </Routes>
 
       <AIChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
