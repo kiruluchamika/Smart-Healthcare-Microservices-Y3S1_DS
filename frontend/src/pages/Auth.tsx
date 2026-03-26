@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useLocation } from 'react-router-dom';
 import { AnimatedBackground } from '../components/AnimatedBackground';
 import { LoginForm } from '../components/LoginForm';
 import { RegisterForm } from '../components/RegisterForm';
@@ -7,8 +8,14 @@ import { RegisterForm } from '../components/RegisterForm';
 type AuthMode = 'login' | 'register';
 
 export default function Auth() {
-  const [mode, setMode] = useState<AuthMode>('login');
+  const location = useLocation();
+  const [mode, setMode] = useState<AuthMode>(location.pathname === '/register' ? 'register' : 'login');
   const [rotateDirection, setRotateDirection] = useState(1);
+
+  useEffect(() => {
+    const requestedMode = location.pathname === '/register' ? 'register' : 'login';
+    setMode(requestedMode);
+  }, [location.pathname]);
 
   const handleSwitch = (newMode: AuthMode) => {
     setRotateDirection(newMode === 'register' ? 1 : -1);

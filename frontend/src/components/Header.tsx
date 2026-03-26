@@ -1,21 +1,42 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Menu, X, Heart } from 'lucide-react';
+import { AUTH_CHANGED_EVENT, clearAuthSession, isUserAuthenticated } from '../services/authSession';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(isUserAuthenticated());
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const isLandingPage = location.pathname === '/';
 
-  window.addEventListener('scroll', () => {
-    setScrolled(window.scrollY > 50);
-  });
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-  const navItems = [
+  useEffect(() => {
+    const syncAuthState = () => setIsAuthenticated(isUserAuthenticated());
+    window.addEventListener('storage', syncAuthState);
+    window.addEventListener(AUTH_CHANGED_EVENT, syncAuthState);
+
+    return () => {
+      window.removeEventListener('storage', syncAuthState);
+      window.removeEventListener(AUTH_CHANGED_EVENT, syncAuthState);
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsOpen(false);
+    setIsAuthenticated(isUserAuthenticated());
+  }, [location.pathname]);
+
+  const guestNavItems = [
     { label: 'Home', href: '/' },
     { label: 'Services', href: '/#services' },
     { label: 'About', href: '/#about' },
@@ -28,7 +49,12 @@ export default function Header() {
     { label: 'Profile', href: '/profile' },
   ];
 
-  const displayItems = isAuthPage ? [] : navItems;
+  const displayItems = isAuthPage ? [] : isAuthenticated ? authNavItems : guestNavItems;
+
+  const handleLogout = () => {
+    clearAuthSession();
+    navigate('/login');
+  };
 
   return (
     <motion.header
@@ -83,8 +109,8 @@ export default function Header() {
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
-            {isAuthPage ? (
-              displayItems.length === 0 && (
+            {!isAuthenticated ? (
+              !isAuthPage && (
                 <>
                   <Link
                     to="/login"
@@ -103,21 +129,22 @@ export default function Header() {
             ) : (
               <>
                 <Link
-                  to="/login"
+                  to="/dashboard"
                   className={`px-4 py-2 font-medium transition-colors ${
                     isLandingPage && !scrolled
                       ? 'text-white hover:text-cyan-400'
                       : 'text-gray-700 hover:text-blue-600'
                   }`}
                 >
-                  Sign In
+                  Dashboard
                 </Link>
-                <Link
-                  to="/register"
+                <button
+                  type="button"
+                  onClick={handleLogout}
                   className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-blue-500/30 transition-all"
                 >
-                  Sign Up
-                </Link>
+                  Logout
+                </button>
               </>
             )}
           </div>
@@ -156,22 +183,37 @@ export default function Header() {
                 {item.label}
               </Link>
             ))}
-            <div className="pt-4 border-t border-gray-200/20 space-y-2">
-              <Link
-                to="/login"
-                className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                onClick={() => setIsOpen(false)}
-              >
-                Sign In
-              </Link>
-              <Link
-                to="/register"
-                className="block px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg text-center font-medium"
-                onClick={() => setIsOpen(false)}
-              >
-                Sign Up
-              </Link>
-            </div>
+            {!isAuthenticated ? (
+              <div className="pt-4 border-t border-gray-200/20 space-y-2">
+                <Link
+                  to="/login"
+                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="block px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg text-center font-medium"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Sign Up
+                </Link>
+              </div>
+            ) : (
+              <div className="pt-4 border-t border-gray-200/20 space-y-2">
+                <button
+                  type="button"
+                  className="block w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg text-center font-medium"
+                  onClick={() => {
+                    setIsOpen(false);
+                    handleLogout();
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </motion.nav>
       </div>
