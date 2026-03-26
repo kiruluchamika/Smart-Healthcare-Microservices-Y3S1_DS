@@ -1,3 +1,40 @@
 spring:
   application:
     name: auth-service
+  datasource:
+    url: jdbc:mysql://localhost:3306/auth_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+app:
+  jwt:
+    secret: "your-secret-key-change-this-in-production-must-be-at-least-256-bits-long-for-HS256-algorithm-security"
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
+  security:
+    login:
+      max-failed-attempts: 5
+      lock-duration-minutes: 30
+
+logging:
+  level:
+    root: INFO
+    com.smarthealthcare.auth_service: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
