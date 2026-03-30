@@ -1,355 +1,260 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { User, Mail, Phone, MapPin, Calendar, Award, Save, CreditCard as Edit2, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Save, AlertCircle, CheckCircle, User as UserIcon, Activity, Heart, Shield, Phone, MapPin } from 'lucide-react';
+import { patientApi } from '../services/patientApi';
+import { CreateOrUpdateProfileRequest, Gender, PatientProfile } from '../types/patient';
 
 export default function Profile() {
-  const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState({
-    fullName: 'John Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    dateOfBirth: '1990-05-15',
-    location: 'San Francisco, CA',
-    bio: 'Health-conscious individual focused on preventive care',
+  const [profile, setProfile] = useState<PatientProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  
+  const [formData, setFormData] = useState<CreateOrUpdateProfileRequest>({
+    dateOfBirth: '',
+    gender: 'OTHER',
+    bloodGroup: '',
+    address: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
+    allergies: '',
+    chronicConditions: '',
+    bio: ''
   });
 
-  const [formData, setFormData] = useState(profile);
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const res = await patientApi.getProfile();
+        if (res.success) {
+          setProfile(res.data);
+          setFormData({
+            dateOfBirth: res.data.dateOfBirth || '',
+            gender: res.data.gender || 'OTHER',
+            bloodGroup: res.data.bloodGroup || '',
+            address: res.data.address || '',
+            emergencyContactName: res.data.emergencyContactName || '',
+            emergencyContactPhone: res.data.emergencyContactPhone || '',
+            allergies: res.data.allergies || '',
+            chronicConditions: res.data.chronicConditions || '',
+            bio: res.data.bio || ''
+          });
+        }
+      } catch (err) {
+        setError('Failed to load profile. Please try refreshing.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Clear alerts on edit
+    if (error) setError('');
+    if (successMsg) setSuccessMsg('');
   };
 
-  const handleSave = () => {
-    setProfile(formData);
-    setIsEditing(false);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    setSuccessMsg('');
+    try {
+      const res = await patientApi.updateProfile(formData);
+      if (res.success) {
+        setProfile(res.data);
+        setSuccessMsg('Profile updated successfully!');
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => setSuccessMsg(''), 5000);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to update profile. Server error.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const sections = [
-    {
-      title: 'Health Records',
-      items: [
-        { label: 'Last Checkup', value: '2 months ago' },
-        { label: 'Blood Type', value: 'O+' },
-        { label: 'Allergies', value: 'Penicillin' },
-      ],
-    },
-    {
-      title: 'Preferences',
-      items: [
-        { label: 'Preferred Language', value: 'English' },
-        { label: 'Notification', value: 'Enabled' },
-        { label: 'Data Sharing', value: 'Restricted' },
-      ],
-    },
-  ];
-
-  const achievements = [
-    { icon: '💪', label: 'Workout Streak', value: '15 days' },
-    { icon: '🥗', label: 'Healthy Meals', value: '42 logged' },
-    { icon: '😴', label: 'Sleep Goals', value: '8/10 nights' },
-    { icon: '🚶', label: 'Steps Average', value: '8,234/day' },
-  ];
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5 },
-    },
-  };
+  if (loading) return (
+    <div className="min-h-[80vh] flex items-center justify-center bg-gray-50">
+       <div className="flex flex-col items-center gap-4">
+         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+         <p className="text-gray-500 font-medium">Loading your profile...</p>
+       </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-blue-50 to-white">
-      <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-12"
-        >
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">My Profile</h1>
-          <p className="text-gray-600">Manage your personal information and preferences</p>
-        </motion.div>
+    <div className="min-h-screen bg-gray-50/50 py-12 pt-24">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        
+        {/* Alerts */}
+        <AnimatePresence>
+          {error && (
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="mb-6 p-4 bg-red-50 text-red-700 rounded-xl flex items-center gap-3 font-medium border border-red-100 shadow-sm">
+              <AlertCircle className="w-6 h-6 shrink-0" />
+              <p>{error}</p>
+            </motion.div>
+          )}
+          {successMsg && (
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="mb-6 p-4 bg-emerald-50 text-emerald-800 rounded-xl flex items-center gap-3 font-medium border border-emerald-100 shadow-sm">
+              <CheckCircle className="w-6 h-6 shrink-0 text-emerald-600" />
+              <p>{successMsg}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="bg-white rounded-2xl border border-gray-200/30 shadow-lg overflow-hidden mb-8"
-        >
-          <div className="h-32 bg-gradient-to-r from-blue-600 to-cyan-500" />
-
-          <div className="px-8 pb-8">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 -mt-16 mb-8">
-              <div className="flex items-end gap-4">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className="w-32 h-32 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-5xl border-4 border-white shadow-xl"
-                >
-                  👤
-                </motion.div>
-                <div>
-                  <h2 className="text-3xl font-bold text-gray-900">{profile.fullName}</h2>
-                  <p className="text-gray-600">{profile.bio}</p>
-                </div>
+        <div className="flex flex-col lg:flex-row gap-8">
+          
+          {/* Left Column: Fixed summary card */}
+          <div className="lg:w-1/3 space-y-6">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }} className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 overflow-hidden border border-gray-100 sticky top-28">
+              
+              <div className="h-32 bg-gradient-to-br from-blue-600 to-indigo-700 relative">
+                <div className="absolute inset-0 bg-white/10 backdrop-blur-sm shadow-[inset_0_-1px_0_rgba(255,255,255,0.2)]"></div>
               </div>
+              
+              <div className="px-6 pb-6 relative">
+                 <div className="w-24 h-24 rounded-full border-4 border-white bg-indigo-50 shadow-lg flex items-center justify-center absolute -top-12 left-6">
+                    <UserIcon className="w-12 h-12 text-indigo-400" />
+                 </div>
+                 <div className="pt-16">
+                   <h1 className="text-2xl font-bold text-gray-900">{profile?.firstName} {profile?.lastName}</h1>
+                   <p className="text-gray-500 mt-1">{profile?.email}</p>
+                 </div>
 
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  setIsEditing(!isEditing);
-                  if (isEditing) setFormData(profile);
-                }}
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg hover:shadow-blue-500/30 transition-all"
-              >
-                {isEditing ? (
-                  <>
-                    <span>Cancel</span>
-                  </>
-                ) : (
-                  <>
-                    <Edit2 className="w-4 h-4" />
-                    <span>Edit Profile</span>
-                  </>
-                )}
-              </motion.button>
-            </div>
-
-            {!isEditing ? (
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                className="grid grid-cols-1 md:grid-cols-2 gap-6"
-              >
-                <motion.div variants={itemVariants} className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 flex items-center gap-2 mb-2">
-                      <Mail className="w-4 h-4" />
-                      Email
-                    </label>
-                    <p className="text-gray-900 font-medium">{profile.email}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 flex items-center gap-2 mb-2">
-                      <Phone className="w-4 h-4" />
-                      Phone
-                    </label>
-                    <p className="text-gray-900 font-medium">{profile.phone}</p>
-                  </div>
-                </motion.div>
-
-                <motion.div variants={itemVariants} className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 flex items-center gap-2 mb-2">
-                      <Calendar className="w-4 h-4" />
-                      Date of Birth
-                    </label>
-                    <p className="text-gray-900 font-medium">{profile.dateOfBirth}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 flex items-center gap-2 mb-2">
-                      <MapPin className="w-4 h-4" />
-                      Location
-                    </label>
-                    <p className="text-gray-900 font-medium">{profile.location}</p>
-                  </div>
-                </motion.div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-6 space-y-4"
-              >
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth
-                  </label>
-                  <input
-                    type="date"
-                    name="dateOfBirth"
-                    value={formData.dateOfBirth}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
-                  <input
-                    type="text"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 border border-gray-200/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-                  <textarea
-                    name="bio"
-                    value={formData.bio}
-                    onChange={handleChange}
-                    rows={3}
-                    className="w-full px-4 py-3 border border-gray-200/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleSave}
-                  className="md:col-span-2 flex items-center justify-center gap-2 w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg hover:shadow-blue-500/30 transition-all"
-                >
-                  <Save className="w-4 h-4" />
-                  Save Changes
-                </motion.button>
-              </motion.div>
-            )}
-          </div>
-        </motion.div>
-
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8"
-        >
-          {sections.map((section, idx) => (
-            <motion.div
-              key={section.title}
-              variants={itemVariants}
-              className="bg-white rounded-xl border border-gray-200/30 shadow-lg p-6 hover:shadow-xl transition-shadow"
-            >
-              <h3 className="text-xl font-bold text-gray-900 mb-4">{section.title}</h3>
-              <div className="space-y-3">
-                {section.items.map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-                  >
-                    <span className="text-gray-600 font-medium">{item.label}</span>
-                    <span className="text-gray-900 font-semibold">{item.value}</span>
-                  </div>
-                ))}
+                 <div className="mt-8 space-y-4">
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <Shield className="w-5 h-5 text-emerald-500" />
+                      <span>Account Status: <span className="text-emerald-600 font-bold ml-1">Verified Patient</span></span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <Heart className="w-5 h-5 text-rose-500" />
+                      <span>Blood Group: <span className="font-bold ml-1 text-gray-900">{profile?.bloodGroup || 'Not set'}</span></span>
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-gray-600">
+                      <Activity className="w-5 h-5 text-amber-500" />
+                      <span>Platform Usage: <span className="font-bold ml-1 text-gray-900">{profile?.totalReports} Reports stored</span></span>
+                    </div>
+                 </div>
               </div>
             </motion.div>
-          ))}
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-white rounded-2xl border border-gray-200/30 shadow-lg p-8"
-        >
-          <div className="flex items-center gap-2 mb-6">
-            <Award className="w-6 h-6 text-blue-600" />
-            <h3 className="text-2xl font-bold text-gray-900">Health Achievements</h3>
           </div>
 
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            className="grid grid-cols-2 md:grid-cols-4 gap-6"
-          >
-            {achievements.map((achievement, idx) => (
-              <motion.div
-                key={idx}
-                variants={itemVariants}
-                whileHover={{ scale: 1.05 }}
-                className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-6 text-center hover:shadow-lg transition-all"
-              >
-                <div className="text-4xl mb-3">{achievement.icon}</div>
-                <h4 className="font-semibold text-gray-900 text-sm mb-2">{achievement.label}</h4>
-                <p className="text-lg font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
-                  {achievement.value}
-                </p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </motion.div>
+          {/* Right Column: Editing Form */}
+          <div className="lg:w-2/3">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 p-8">
+              <div className="mb-8 border-b border-gray-100 pb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Edit Personal Details</h2>
+                <p className="text-gray-500 mt-2">Update your medical information to help our clinicians serve you better.</p>
+              </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4"
-        >
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200/30 hover:border-blue-200 hover:shadow-lg transition-all group"
-          >
-            <span className="font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
-              Download Health Records
-            </span>
-            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200/30 hover:border-blue-200 hover:shadow-lg transition-all group"
-          >
-            <span className="font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
-              Privacy Settings
-            </span>
-            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600 transition-colors" />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200/30 hover:border-red-200 hover:shadow-lg transition-all group"
-          >
-            <span className="font-medium text-gray-700 group-hover:text-red-600 transition-colors">
-              Sign Out
-            </span>
-            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-red-600 transition-colors" />
-          </motion.button>
-        </motion.div>
+              <form onSubmit={handleSubmit} className="space-y-8">
+                
+                {/* General Info */}
+                <section>
+                  <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-6">
+                    <span className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">1</span>
+                    General Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-10">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Date of Birth</label>
+                      <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Biological Gender</label>
+                      <select name="gender" value={formData.gender} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-sm">
+                        <option value="MALE">Male</option>
+                        <option value="FEMALE">Female</option>
+                        <option value="OTHER">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Blood Group</label>
+                      <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all shadow-sm">
+                        <option value="">Select Blood Group...</option>
+                        <option value="A+">A Positive (A+)</option><option value="A-">A Negative (A-)</option>
+                        <option value="B+">B Positive (B+)</option><option value="B-">B Negative (B-)</option>
+                        <option value="AB+">AB Positive (AB+)</option><option value="AB-">AB Negative (AB-)</option>
+                        <option value="O+">O Positive (O+)</option><option value="O-">O Negative (O-)</option>
+                      </select>
+                    </div>
+                  </div>
+                </section>
+
+                <hr className="border-gray-100" />
+
+                {/* Contact Data */}
+                <section>
+                  <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-6">
+                    <span className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center"><MapPin className="w-4 h-4"/></span>
+                    Contact & Emergency
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-10">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Registered Address</label>
+                      <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="Unit, Street Name, City, Zip Code" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all shadow-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Emergency Contact Name</label>
+                      <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} placeholder="E.g. Jane Doe" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all shadow-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Emergency Phone</label>
+                      <input type="tel" name="emergencyContactPhone" value={formData.emergencyContactPhone} onChange={handleChange} placeholder="+1 234 567 890" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all shadow-sm" />
+                    </div>
+                  </div>
+                </section>
+
+                <hr className="border-gray-100" />
+
+                {/* Medical Specifics */}
+                <section>
+                  <h3 className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-6">
+                    <span className="w-8 h-8 rounded-lg bg-rose-100 text-rose-600 flex items-center justify-center"><Heart className="w-4 h-4"/></span>
+                    Medical Profile Details
+                  </h3>
+                  <div className="grid grid-cols-1 gap-6 pl-10">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Known Allergies</label>
+                      <textarea name="allergies" value={formData.allergies} onChange={handleChange} rows={2} placeholder="Penicillin, Peanuts, Latex..." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:bg-white outline-none transition-all shadow-sm resize-none"></textarea>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Chronic Conditions</label>
+                      <textarea name="chronicConditions" value={formData.chronicConditions} onChange={handleChange} rows={2} placeholder="Asthma, Type 2 Diabetes..." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:bg-white outline-none transition-all shadow-sm resize-none"></textarea>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">Personal Medical Bio / Notes</label>
+                      <textarea name="bio" value={formData.bio} onChange={handleChange} rows={3} placeholder="Any other health-related notes you want to present to your clinical team." className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:bg-white outline-none transition-all shadow-sm resize-none"></textarea>
+                    </div>
+                  </div>
+                </section>
+
+                <div className="pt-8 flex justify-end">
+                  <motion.button 
+                    whileHover={{ scale: 1.02 }} 
+                    whileTap={{ scale: 0.98 }}
+                    disabled={saving} 
+                    type="submit" 
+                    className="flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:shadow-xl transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    {saving ? (
+                       <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Saving...</span>
+                    ) : (
+                       <span className="flex items-center gap-2"><Save className="w-5 h-5" /> Save Changes</span>
+                    )}
+                  </motion.button>
+                </div>
+              </form>
+
+            </motion.div>
+          </div>
+
+        </div>
       </div>
     </div>
   );

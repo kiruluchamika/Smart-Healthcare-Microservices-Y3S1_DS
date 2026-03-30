@@ -55,8 +55,10 @@ export default function Header() {
 
   const baseAuthNavItems = [
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Appointments', href: '/appointments' },
     { label: 'Profile', href: '/profile' },
+    { label: 'Appointments', href: '/appointments' },
+    { label: 'Reports', href: '/reports' },
+    { label: 'History', href: '/history' },
   ];
 
   const patientDoctorDiscoveryItems = [

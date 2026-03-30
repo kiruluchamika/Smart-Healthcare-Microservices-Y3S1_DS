@@ -11,6 +11,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/auth/, '/auth'),
       },
+      '/api/patients': {
+        target: 'http://localhost:8085',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/patients/, '/patients'),
+      },
       '/api/doctors': {
         target: 'http://localhost:8083',
         changeOrigin: true,

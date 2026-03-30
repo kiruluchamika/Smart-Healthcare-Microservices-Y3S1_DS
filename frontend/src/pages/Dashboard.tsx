@@ -1,3 +1,4 @@
+import PatientDashboardPage from './patient/PatientDashboard';
 import { motion } from 'framer-motion';
 import {
   Activity,
@@ -306,7 +307,9 @@ function DoctorDashboardView() {
         className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-5"
       >
         <p className="text-sm font-semibold text-amber-800">Doctor id routes</p>
-        <p className="mt-2 text-sm text-amber-700">For id-based pages, use paths like /doctors/123/availability and /doctors/123/dashboard with your profile id.</p>
+        <p className="mt-2 text-sm text-amber-700">
+          For id-based pages, use paths like /doctors/123/availability and /doctors/123/dashboard with your profile id.
+        </p>
       </motion.div>
     </>
   );
@@ -377,7 +380,18 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen pt-24 sm:pt-28 lg:pt-32 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-7xl mx-auto">
-        {role === 'DOCTOR' ? <DoctorDashboardView /> : role === 'ADMIN' ? <AdminDashboardView /> : <PatientDashboard />}
+        {role === 'DOCTOR' ? (
+          <DoctorDashboardView />
+        ) : role === 'ADMIN' ? (
+          <AdminDashboardView />
+        ) : (
+          <>
+            <PatientDashboardPage />
+            <div className="mt-8">
+              <PatientDashboard />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
