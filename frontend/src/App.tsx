@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './layouts/Layout';
+import { AdminLayout } from './layouts/AdminLayout';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
@@ -16,6 +17,11 @@ import DoctorProfileManager from './pages/doctor/DoctorProfileManager';
 import DoctorAvailabilityManager from './pages/doctor/DoctorAvailabilityManager';
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
 import DoctorVerificationAdmin from './pages/doctor/DoctorVerificationAdmin';
+import AdminLogin from './pages/admin/AdminLogin';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
+import AdminSettings from './pages/admin/AdminSettings';
 import AIChat from './components/AIChat';
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
@@ -27,6 +33,32 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 
 function PublicOnlyRoute({ children }: { children: JSX.Element }) {
   return isUserAuthenticated() ? <Navigate to="/dashboard" replace /> : children;
+}
+
+function AdminPublicRoute({ children }: { children: JSX.Element }) {
+  if (!isUserAuthenticated()) {
+    return children;
+  }
+
+  const role = getAuthUserRole();
+  if (role === 'ADMIN') {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  return <Navigate to="/dashboard" replace />;
+}
+
+function AdminProtectedRoute({ children }: { children: JSX.Element }) {
+  if (!isUserAuthenticated()) {
+    return <Navigate to="/admin/login" replace />;
+  }
+
+  const role = getAuthUserRole();
+  if (role !== 'ADMIN') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
 }
 
 type Role = 'PATIENT' | 'DOCTOR' | 'ADMIN';
@@ -60,6 +92,49 @@ function App() {
         <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
         <Route path="/login" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
+        <Route path="/admin" element={<AdminPublicRoute><Navigate to="/admin/login" replace /></AdminPublicRoute>} />
+        <Route path="/admin/login" element={<AdminPublicRoute><AdminLogin /></AdminPublicRoute>} />
+
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout><AdminDashboard /></AdminLayout>
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout><AdminUsers /></AdminLayout>
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout><AdminAnalytics /></AdminLayout>
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout><AdminSettings /></AdminLayout>
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/verification"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout><DoctorVerificationAdmin /></AdminLayout>
+            </AdminProtectedRoute>
+          }
+        />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
         <Route path="/appointments" element={<ProtectedRoute><Layout><AppointmentBooking /></Layout></ProtectedRoute>} />
         <Route path="/consultation/:id" element={<ProtectedRoute><Layout><Telemedicine /></Layout></ProtectedRoute>} />

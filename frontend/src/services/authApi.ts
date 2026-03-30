@@ -61,3 +61,10 @@ export function login(email: string, password: string) {
     body: JSON.stringify({ email, password }),
   });
 }
+
+export function adminLogin(email: string, password: string) {
+  return request<AuthResponse>('/admin/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}

@@ -17,7 +17,10 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const isAuthPage =
+    location.pathname === '/login' ||
+    location.pathname === '/register' ||
+    location.pathname === '/admin/login';
   const isLandingPage = location.pathname === '/';
 
   useEffect(() => {
@@ -70,7 +73,8 @@ export default function Header() {
   ];
 
   const adminNavItems = [
-    { label: 'Doctor Verification', href: '/doctors/admin/verification' },
+    { label: 'Admin Panel', href: '/admin/dashboard' },
+    { label: 'Doctor Verification', href: '/admin/verification' },
   ];
 
   const authNavItems = [
@@ -160,7 +164,7 @@ export default function Header() {
             ) : (
               <>
                 <Link
-                  to="/dashboard"
+                  to={role === 'ADMIN' ? '/admin/dashboard' : '/dashboard'}
                   className={`px-4 py-2 font-medium transition-colors ${
                     isLandingPage && !scrolled
                       ? 'text-white hover:text-cyan-400'
