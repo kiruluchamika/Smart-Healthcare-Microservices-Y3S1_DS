@@ -9,6 +9,12 @@ export const ROUTES = {
   APPOINTMENTS: '/appointments',
   CONSULTATION: '/consultation/:id',
   PROFILE: '/profile',
+  DOCTORS: '/doctors',
+  DOCTOR_DETAIL: '/doctors/:id',
+  DOCTOR_PROFILE: '/doctors/profile',
+  DOCTOR_AVAILABILITY: '/doctors/:id/availability',
+  DOCTOR_DASHBOARD: '/doctors/:id/dashboard',
+  DOCTOR_VERIFICATION_ADMIN: '/doctors/admin/verification',
 };
 
 export const TIME_SLOTS = [
@@ -48,3 +54,9 @@ export const HEALTH_METRICS = [
   { label: 'Weight', unit: 'lbs', icon: 'weight' },
   { label: 'Steps', unit: 'steps', icon: 'activity' },
 ];
+
+export {
+  DOCTOR_DAYS,
+  DOCTOR_SORT_FIELDS,
+  DOCTOR_VERIFICATION_STATUSES,
+} from './doctor';

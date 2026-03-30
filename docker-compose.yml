@@ -15,6 +15,24 @@ services:
 			timeout: 5s
 			retries: 10
 
+	mysql-doctor:
+		image: mysql:8.0
+		container_name: mysql-doctor
+		environment:
+			MYSQL_ROOT_PASSWORD: 123456
+			MYSQL_DATABASE: doctor_service_db
+			MYSQL_USER: doctor_user
+			MYSQL_PASSWORD: doctor_pass
+		ports:
+			- "3308:3306"
+		volumes:
+			- mysql-doctor-data:/var/lib/mysql
+		healthcheck:
+			test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+			interval: 10s
+			timeout: 5s
+			retries: 10
+
 	auth-service:
 		build:
 			context: ./services/auth-service
@@ -43,3 +61,4 @@ services:
 
 volumes:
 	mysql-auth-data:
+	mysql-doctor-data:

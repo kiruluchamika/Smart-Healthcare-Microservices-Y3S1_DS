@@ -37,7 +37,11 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
-    const message = payload?.message || `Request failed with status ${response.status}`;
+    const fieldErrors = payload?.errors && typeof payload.errors === 'object'
+      ? Object.values(payload.errors).filter((value): value is string => typeof value === 'string')
+      : [];
+
+    const message = fieldErrors[0] || payload?.message || `Request failed with status ${response.status}`;
     throw new Error(message);
   }
 

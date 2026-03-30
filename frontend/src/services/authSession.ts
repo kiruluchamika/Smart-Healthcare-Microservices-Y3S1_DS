@@ -37,6 +37,25 @@ export function getAuthUser() {
   }
 }
 
+export function getAuthUserRole() {
+  const user = getAuthUser();
+  const role = user?.role;
+
+  if (role === 'DOCTOR' || role === 'ADMIN' || role === 'PATIENT') {
+    return role;
+  }
+
+  return null;
+}
+
+export function isDoctorUser() {
+  return getAuthUserRole() === 'DOCTOR';
+}
+
+export function isAdminUser() {
+  return getAuthUserRole() === 'ADMIN';
+}
+
 export function isUserAuthenticated() {
   return Boolean(getAuthToken() && getAuthUser());
 }
