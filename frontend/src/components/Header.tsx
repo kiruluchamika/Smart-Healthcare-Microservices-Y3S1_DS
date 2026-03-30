@@ -45,8 +45,10 @@ export default function Header() {
 
   const authNavItems = [
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Appointments', href: '/appointments' },
     { label: 'Profile', href: '/profile' },
+    { label: 'Appointments', href: '/appointments' },
+    { label: 'Reports', href: '/reports' },
+    { label: 'History', href: '/history' },
   ];
 
   const displayItems = isAuthPage ? [] : isAuthenticated ? authNavItems : guestNavItems;
