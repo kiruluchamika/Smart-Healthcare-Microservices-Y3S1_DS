@@ -34,10 +34,28 @@ export default function Landing() {
       image: 'https://images.pexels.com/photos/4021775/pexels-photo-4021775.jpeg?auto=compress&cs=tinysrgb&w=1920',
     },
     {
-      title: 'Smart Healthcare',
-      titleAccent: 'AI-Powered Insights',
-      description: 'Advanced health monitoring and personalized recommendations for better wellness.',
-      image: 'https://images.pexels.com/photos/4386464/pexels-photo-4386464.jpeg?auto=compress&cs=tinysrgb&w=1920',
+      title: 'Personal Care',
+      titleAccent: 'Tailored Support',
+      description: 'Get customized health plans and expert guidance based on your unique medical profile.',
+      image: 'https://images.pexels.com/photos/8376233/pexels-photo-8376233.jpeg?auto=compress&cs=tinysrgb&w=1920',
+    },
+    {
+      title: 'Preventive Care',
+      titleAccent: 'Early Detection',
+      description: 'Stay ahead with proactive screenings, alerts, and tailored prevention plans.',
+      image: 'https://images.pexels.com/photos/6129688/pexels-photo-6129688.jpeg?auto=compress&cs=tinysrgb&w=1920',
+    },
+    {
+      title: 'Wellness Tracking',
+      titleAccent: 'Daily Progress',
+      description: 'Monitor vital trends and lifestyle goals with actionable feedback every day.',
+      image: 'https://images.pexels.com/photos/7089401/pexels-photo-7089401.jpeg?auto=compress&cs=tinysrgb&w=1920',
+    },
+    {
+      title: 'Patient First',
+      titleAccent: 'Personalized Plans',
+      description: 'Receive care pathways tailored to your profile, history, and health priorities.',
+      image: 'https://images.pexels.com/photos/5327585/pexels-photo-5327585.jpeg?auto=compress&cs=tinysrgb&w=1920',
     },
   ];
 
