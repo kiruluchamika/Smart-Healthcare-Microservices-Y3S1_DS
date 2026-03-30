@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Menu, X, Heart } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import {
   AUTH_CHANGED_EVENT,
   clearAuthSession,
@@ -110,9 +110,9 @@ export default function Header() {
             <motion.div
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-br from-blue-600 to-cyan-500 p-2 rounded-xl"
+              className="flex items-center justify-center"
             >
-              <Heart className="w-6 h-6 text-white" />
+              <img src="/fav.png" alt="Clinexa" className="h-10 w-10" />
             </motion.div>
             <span className={`text-xl font-bold hidden sm:inline transition-colors ${
               isLandingPage && !scrolled
@@ -149,7 +149,11 @@ export default function Header() {
                 <>
                   <Link
                     to="/login"
-                    className="px-4 py-2 text-gray-700 font-medium hover:text-blue-600 transition-colors"
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      isLandingPage && !scrolled
+                        ? 'text-white hover:text-cyan-400'
+                        : 'text-gray-700 hover:text-blue-600'
+                    }`}
                   >
                     Sign In
                   </Link>
@@ -222,7 +226,11 @@ export default function Header() {
               <div className="pt-4 border-t border-gray-200/20 space-y-2">
                 <Link
                   to="/login"
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className={`block px-4 py-2 rounded-lg transition-colors ${
+                    isLandingPage && !scrolled
+                      ? 'text-white hover:bg-white/10'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
                   onClick={() => setIsOpen(false)}
                 >
                   Sign In
