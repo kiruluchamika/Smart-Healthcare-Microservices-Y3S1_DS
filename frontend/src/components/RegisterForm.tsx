@@ -16,10 +16,16 @@ interface FormErrors {
   confirmPassword?: string;
 }
 
+type RegisterRole = 'PATIENT' | 'DOCTOR';
+
+const NAME_PATTERN = /^[A-Za-z -]+$/;
+const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._#^()\-+=])[A-Za-z\d@$!%*?&._#^()\-+=]{8,64}$/;
+
 export function RegisterForm({ onSwitch }: RegisterFormProps) {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [role, setRole] = useState<RegisterRole>('PATIENT');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,9 +47,14 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
 
   const validateForm = () => {
     const newErrors: FormErrors = {};
+    const normalizedName = name.trim();
 
-    if (!name.trim()) {
+    if (!normalizedName) {
       newErrors.name = 'Full name is required';
+    } else if (normalizedName.length < 2) {
+      newErrors.name = 'Full name must be at least 2 characters';
+    } else if (!NAME_PATTERN.test(normalizedName)) {
+      newErrors.name = 'Name can only contain letters, spaces, and hyphens';
     }
 
     if (!email) {
@@ -54,8 +65,8 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
 
     if (!password) {
       newErrors.password = 'Password is required';
-    } else if (password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+    } else if (!PASSWORD_PATTERN.test(password)) {
+      newErrors.password = 'Use 8+ chars with uppercase, lowercase, number, and special character';
     }
 
     if (!confirmPassword) {
@@ -84,7 +95,7 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
         password,
         firstName,
         lastName,
-        role: 'PATIENT',
+        role,
       });
 
       setAuthSession(response);
@@ -113,7 +124,7 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
   };
 
-  const strengthColor = {
+  const strengthColor: Record<number, string> = {
     0: 'bg-gray-500',
     1: 'bg-red-500',
     2: 'bg-orange-500',
@@ -189,6 +200,20 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
               {errors.email}
             </motion.p>
           )}
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="relative">
+          <label className="block text-xs uppercase tracking-wide text-gray-400 mb-2">
+            Register as
+          </label>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value as RegisterRole)}
+            className="w-full bg-white/10 border-b-2 border-gray-600 py-3 px-0 focus:outline-none focus:border-cyan-400 text-white transition-colors"
+          >
+            <option value="PATIENT" className="text-gray-900">Patient</option>
+            <option value="DOCTOR" className="text-gray-900">Doctor</option>
+          </select>
         </motion.div>
 
         <motion.div variants={itemVariants} className="relative">
