@@ -2,12 +2,18 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Menu, X, Heart } from 'lucide-react';
-import { AUTH_CHANGED_EVENT, clearAuthSession, isUserAuthenticated } from '../services/authSession';
+import {
+  AUTH_CHANGED_EVENT,
+  clearAuthSession,
+  getAuthUserRole,
+  isUserAuthenticated,
+} from '../services/authSession';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(isUserAuthenticated());
+  const [role, setRole] = useState(getAuthUserRole());
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -21,7 +27,10 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    const syncAuthState = () => setIsAuthenticated(isUserAuthenticated());
+    const syncAuthState = () => {
+      setIsAuthenticated(isUserAuthenticated());
+      setRole(getAuthUserRole());
+    };
     window.addEventListener('storage', syncAuthState);
     window.addEventListener(AUTH_CHANGED_EVENT, syncAuthState);
 
@@ -34,6 +43,7 @@ export default function Header() {
   useEffect(() => {
     setIsOpen(false);
     setIsAuthenticated(isUserAuthenticated());
+    setRole(getAuthUserRole());
   }, [location.pathname]);
 
   const guestNavItems = [
@@ -43,12 +53,31 @@ export default function Header() {
     { label: 'Contact', href: '/#contact' },
   ];
 
-  const authNavItems = [
+  const baseAuthNavItems = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Profile', href: '/profile' },
     { label: 'Appointments', href: '/appointments' },
     { label: 'Reports', href: '/reports' },
     { label: 'History', href: '/history' },
+  ];
+
+  const patientDoctorDiscoveryItems = [
+    { label: 'Discover Doctors', href: '/doctors' },
+  ];
+
+  const doctorOperationalItems = [
+    { label: 'Doctor Profile', href: '/doctors/profile' },
+  ];
+
+  const adminNavItems = [
+    { label: 'Doctor Verification', href: '/doctors/admin/verification' },
+  ];
+
+  const authNavItems = [
+    ...baseAuthNavItems,
+    ...(role === 'PATIENT' ? patientDoctorDiscoveryItems : []),
+    ...(role === 'DOCTOR' ? doctorOperationalItems : []),
+    ...(role === 'ADMIN' ? [...doctorOperationalItems, ...adminNavItems] : []),
   ];
 
   const displayItems = isAuthPage ? [] : isAuthenticated ? authNavItems : guestNavItems;
