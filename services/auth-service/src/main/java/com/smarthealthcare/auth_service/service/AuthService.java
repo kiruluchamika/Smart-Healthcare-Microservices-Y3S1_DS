@@ -5,6 +5,7 @@ import com.smarthealthcare.auth_service.dto.LoginRequest;
 import com.smarthealthcare.auth_service.dto.RegisterRequest;
 import com.smarthealthcare.auth_service.dto.UserResponse;
 import com.smarthealthcare.auth_service.entity.User;
+import com.smarthealthcare.auth_service.entity.UserRole;
 import com.smarthealthcare.auth_service.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
+
+    private static final String BCRYPT_PATTERN = "^\\$2[aby]\\$\\d{2}\\$[./A-Za-z0-9]{53}$";
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -44,16 +47,73 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        String normalizedEmail = normalizeEmail(request.getEmail());
+        User user = validateCredentials(request);
 
-        User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+        return buildAuthResponse(user);
+    }
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid email or password");
+    public AuthResponse adminLogin(LoginRequest request) {
+        User user = validateCredentials(request);
+
+        if (user.getRole() != UserRole.ADMIN) {
+            throw new IllegalArgumentException("Admin account is required");
         }
 
         return buildAuthResponse(user);
+    }
+
+    private User validateCredentials(LoginRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        String normalizedEmail = normalizeEmail(request.getEmail());
+        String rawPassword = request.getPassword();
+
+        if (normalizedEmail == null || normalizedEmail.isBlank() || rawPassword == null || rawPassword.isBlank()) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+
+        try {
+            User user = userRepository.findByEmail(normalizedEmail)
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+
+            if (!matchesAndUpgradePasswordIfNeeded(user, rawPassword)) {
+                throw new IllegalArgumentException("Invalid email or password");
+            }
+
+            return user;
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid email or password");
+        }
+    }
+
+    private boolean matchesAndUpgradePasswordIfNeeded(User user, String rawPassword) {
+        String storedHash = user.getPasswordHash();
+        if (storedHash == null || storedHash.isBlank()) {
+            return false;
+        }
+
+        // If legacy plain text is stored (manual seed/insert), accept once and upgrade.
+        if (rawPassword.equals(storedHash)) {
+            user.setPasswordHash(passwordEncoder.encode(rawPassword));
+            userRepository.save(user);
+            return true;
+        }
+
+        // Only run BCrypt check for structurally valid BCrypt hashes.
+        boolean isValidBcryptHash = storedHash.matches(BCRYPT_PATTERN);
+        if (!isValidBcryptHash) {
+            return false;
+        }
+
+        try {
+            return passwordEncoder.matches(rawPassword, storedHash);
+        } catch (Exception ex) {
+            return false;
+        }
     }
 
     private AuthResponse buildAuthResponse(User user) {
