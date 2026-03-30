@@ -7,10 +7,16 @@ import Dashboard from './pages/Dashboard';
 import AppointmentBooking from './pages/AppointmentBooking';
 import Telemedicine from './pages/Telemedicine';
 import Profile from './pages/Profile';
+import DoctorsDirectory from './pages/doctor/DoctorsDirectory';
+import DoctorDetail from './pages/doctor/DoctorDetail';
+import DoctorProfileManager from './pages/doctor/DoctorProfileManager';
+import DoctorAvailabilityManager from './pages/doctor/DoctorAvailabilityManager';
+import DoctorDashboard from './pages/doctor/DoctorDashboard';
+import DoctorVerificationAdmin from './pages/doctor/DoctorVerificationAdmin';
 import AIChat from './components/AIChat';
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
-import { isUserAuthenticated } from './services/authSession';
+import { getAuthUserRole, isUserAuthenticated } from './services/authSession';
 
 function ProtectedRoute({ children }: { children: JSX.Element }) {
   return isUserAuthenticated() ? children : <Navigate to="/login" replace />;
@@ -18,6 +24,27 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
 
 function PublicOnlyRoute({ children }: { children: JSX.Element }) {
   return isUserAuthenticated() ? <Navigate to="/dashboard" replace /> : children;
+}
+
+type Role = 'PATIENT' | 'DOCTOR' | 'ADMIN';
+
+function ProtectedRoleRoute({
+  children,
+  allowedRoles,
+}: {
+  children: JSX.Element;
+  allowedRoles: Role[];
+}) {
+  if (!isUserAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const role = getAuthUserRole();
+  if (!role || !allowedRoles.includes(role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
 }
 
 function App() {
@@ -34,6 +61,12 @@ function App() {
         <Route path="/appointments" element={<ProtectedRoute><Layout><AppointmentBooking /></Layout></ProtectedRoute>} />
         <Route path="/consultation/:id" element={<ProtectedRoute><Layout><Telemedicine /></Layout></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+        <Route path="/doctors" element={<ProtectedRoleRoute allowedRoles={['PATIENT']}><Layout><DoctorsDirectory /></Layout></ProtectedRoleRoute>} />
+        <Route path="/doctors/profile" element={<ProtectedRoleRoute allowedRoles={['DOCTOR', 'ADMIN']}><Layout><DoctorProfileManager /></Layout></ProtectedRoleRoute>} />
+        <Route path="/doctors/:id" element={<ProtectedRoleRoute allowedRoles={['PATIENT']}><Layout><DoctorDetail /></Layout></ProtectedRoleRoute>} />
+        <Route path="/doctors/:id/availability" element={<ProtectedRoleRoute allowedRoles={['DOCTOR', 'ADMIN']}><Layout><DoctorAvailabilityManager /></Layout></ProtectedRoleRoute>} />
+        <Route path="/doctors/:id/dashboard" element={<ProtectedRoleRoute allowedRoles={['DOCTOR', 'ADMIN']}><Layout><DoctorDashboard /></Layout></ProtectedRoleRoute>} />
+        <Route path="/doctors/admin/verification" element={<ProtectedRoleRoute allowedRoles={['ADMIN']}><Layout><DoctorVerificationAdmin /></Layout></ProtectedRoleRoute>} />
       </Routes>
 
       <AIChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
