@@ -7,6 +7,9 @@ import Dashboard from './pages/Dashboard';
 import AppointmentBooking from './pages/AppointmentBooking';
 import Telemedicine from './pages/Telemedicine';
 import Profile from './pages/Profile';
+import MedicalReports from './pages/patient/MedicalReports';
+import MedicalHistoryPage from './pages/patient/MedicalHistory';
+import PrescriptionsPage from './pages/patient/Prescriptions';
 import AIChat from './components/AIChat';
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
@@ -34,6 +37,9 @@ function App() {
         <Route path="/appointments" element={<ProtectedRoute><Layout><AppointmentBooking /></Layout></ProtectedRoute>} />
         <Route path="/consultation/:id" element={<ProtectedRoute><Layout><Telemedicine /></Layout></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute><Layout><MedicalReports /></Layout></ProtectedRoute>} />
+        <Route path="/history" element={<ProtectedRoute><Layout><MedicalHistoryPage /></Layout></ProtectedRoute>} />
+        <Route path="/prescriptions" element={<ProtectedRoute><Layout><PrescriptionsPage /></Layout></ProtectedRoute>} />
       </Routes>
 
       <AIChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
