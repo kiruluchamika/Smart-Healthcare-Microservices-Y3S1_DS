@@ -1,6 +1,8 @@
 package com.smarthealthcare.auth_service.service;
 
 import com.smarthealthcare.auth_service.entity.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +38,27 @@ public class JwtService {
 
     public long getAccessTokenExpirationMs() {
         return accessTokenExpirationMs;
+    }
+
+    public Claims validateAndGetClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public boolean isTokenValid(String token) {
+        try {
+            validateAndGetClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    public String extractRole(Claims claims) {
+        return claims.get("role", String.class);
     }
 
     private SecretKey getSigningKey() {
