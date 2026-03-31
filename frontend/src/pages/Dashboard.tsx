@@ -1,26 +1,28 @@
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Video, Heart, Activity, Clock, ArrowRight, Plus } from 'lucide-react';
+import { Calendar, Video, Heart, Activity, Clock, ArrowRight, Plus, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { TEMP_DOCTORS, getMyAppointments, type AppointmentResponse } from '../services/appointmentsApi';
+
+function formatDateLabel(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatTimeLabel(time: string) {
+  const [hours, minutes] = time.slice(0, 5).split(':').map(Number);
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  const normalizedHours = hours % 12 || 12;
+  return `${normalizedHours}:${String(minutes).padStart(2, '0')} ${suffix}`;
+}
 
 export default function Dashboard() {
-  const upcomingAppointments = [
-    {
-      id: 1,
-      doctorName: 'Dr. Sarah Johnson',
-      specialty: 'Cardiologist',
-      date: '2024-04-15',
-      time: '2:00 PM',
-      type: 'Video Consultation',
-    },
-    {
-      id: 2,
-      doctorName: 'Dr. Michael Chen',
-      specialty: 'General Practitioner',
-      date: '2024-04-18',
-      time: '10:30 AM',
-      type: 'In-Person',
-    },
-  ];
+  const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
+  const [appointmentsError, setAppointmentsError] = useState('');
 
   const healthMetrics = [
     {
@@ -57,7 +59,7 @@ export default function Dashboard() {
     {
       icon: Calendar,
       label: 'Book Appointment',
-      href: '/appointments',
+      href: '/appointments/book',
       color: 'from-blue-600 to-cyan-500',
     },
     {
@@ -79,6 +81,72 @@ export default function Dashboard() {
       color: 'from-orange-600 to-red-500',
     },
   ];
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadAppointments = async () => {
+      setAppointmentsLoading(true);
+      setAppointmentsError('');
+
+      try {
+        const response = await getMyAppointments();
+
+        if (isActive) {
+          setAppointments(response);
+        }
+      } catch (error) {
+        if (isActive) {
+          setAppointmentsError(
+            error instanceof Error ? error.message : 'Failed to load upcoming appointments',
+          );
+        }
+      } finally {
+        if (isActive) {
+          setAppointmentsLoading(false);
+        }
+      }
+    };
+
+    void loadAppointments();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  const upcomingAppointments = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return appointments
+      .filter((appointment) => {
+        const appointmentDate = new Date(`${appointment.appointmentDate}T00:00:00`);
+        return (
+          (appointment.status === 'PENDING' || appointment.status === 'CONFIRMED') &&
+          appointmentDate >= today
+        );
+      })
+      .sort((first, second) => {
+        const firstDate = `${first.appointmentDate}T${first.startTime}`;
+        const secondDate = `${second.appointmentDate}T${second.startTime}`;
+        return firstDate.localeCompare(secondDate);
+      })
+      .slice(0, 3)
+      .map((appointment) => {
+        const doctor = TEMP_DOCTORS.find((item) => item.id === appointment.doctorId);
+
+        return {
+          id: appointment.id,
+          doctorName: doctor?.name || `Doctor #${appointment.doctorId}`,
+          specialty: doctor?.specialty || 'Specialty unavailable',
+          date: formatDateLabel(appointment.appointmentDate),
+          time: formatTimeLabel(appointment.startTime),
+          type: appointment.appointmentType === 'VIDEO' ? 'Video Consultation' : 'In-Person',
+          status: appointment.status,
+        };
+      });
+  }, [appointments]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -160,54 +228,77 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-4">
-                {upcomingAppointments.map((appointment, idx) => (
-                  <motion.div
-                    key={appointment.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3 + idx * 0.1 }}
-                    className="border border-gray-200/30 rounded-xl p-4 sm:p-5 lg:p-6 hover:bg-gray-50/50 transition-colors group"
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-gray-900 mb-1">
-                          {appointment.doctorName}
-                        </h3>
-                        <p className="text-sm text-gray-600 mb-3">{appointment.specialty}</p>
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {appointment.date}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-4 h-4" />
-                            {appointment.time}
-                          </span>
+                {appointmentsLoading ? (
+                  <div className="flex items-center gap-3 rounded-xl border border-gray-200/30 p-6 text-gray-600">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                    Loading upcoming appointments...
+                  </div>
+                ) : appointmentsError ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-sm text-red-600">
+                    {appointmentsError}
+                  </div>
+                ) : upcomingAppointments.length === 0 ? (
+                  <div className="rounded-xl border border-gray-200/30 p-6 text-sm text-gray-600">
+                    No upcoming appointments yet. Book your next visit to see it here.
+                  </div>
+                ) : (
+                  upcomingAppointments.map((appointment, idx) => (
+                    <motion.div
+                      key={appointment.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.5, delay: 0.3 + idx * 0.1 }}
+                      className="border border-gray-200/30 rounded-xl p-4 sm:p-5 lg:p-6 hover:bg-gray-50/50 transition-colors group"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold text-gray-900 mb-1">{appointment.doctorName}</h3>
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                appointment.status === 'CONFIRMED'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-amber-100 text-amber-700'
+                              }`}
+                            >
+                              {appointment.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mb-3">{appointment.specialty}</p>
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {appointment.date}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {appointment.time}
+                            </span>
+                          </div>
                         </div>
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                          className="self-start sm:self-center shrink-0 bg-gradient-to-br from-blue-600 to-cyan-500 text-white px-3 py-2 rounded-lg text-sm font-medium"
+                        >
+                          {appointment.type === 'Video Consultation' ? (
+                            <Video className="w-5 h-5" />
+                          ) : (
+                            <Calendar className="w-5 h-5" />
+                          )}
+                        </motion.div>
                       </div>
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        className="self-start sm:self-center shrink-0 bg-gradient-to-br from-blue-600 to-cyan-500 text-white px-3 py-2 rounded-lg text-sm font-medium"
-                      >
-                        {appointment.type === 'Video Consultation' ? (
-                          <Video className="w-5 h-5" />
-                        ) : (
-                          <Calendar className="w-5 h-5" />
-                        )}
-                      </motion.div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  ))
+                )}
               </div>
 
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+              <Link
+                to="/appointments/book"
                 className="w-full mt-6 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-700 font-semibold hover:border-blue-600 hover:text-blue-600 transition-colors flex items-center justify-center gap-2 text-sm sm:text-base"
               >
                 <Plus className="w-5 h-5" />
                 Book New Appointment
-              </motion.button>
+              </Link>
             </div>
           </motion.div>
 

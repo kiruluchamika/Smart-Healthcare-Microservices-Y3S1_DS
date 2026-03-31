@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Menu, X, Heart } from 'lucide-react';
-import { AUTH_CHANGED_EVENT, clearAuthSession, isUserAuthenticated } from '../services/authSession';
+import { AUTH_CHANGED_EVENT, clearAuthSession, getAuthUser, isUserAuthenticated } from '../services/authSession';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(isUserAuthenticated());
+  const [userRole, setUserRole] = useState<string | null>(getAuthUser()?.role ?? null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -21,7 +22,10 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    const syncAuthState = () => setIsAuthenticated(isUserAuthenticated());
+    const syncAuthState = () => {
+      setIsAuthenticated(isUserAuthenticated());
+      setUserRole(getAuthUser()?.role ?? null);
+    };
     window.addEventListener('storage', syncAuthState);
     window.addEventListener(AUTH_CHANGED_EVENT, syncAuthState);
 
@@ -34,6 +38,7 @@ export default function Header() {
   useEffect(() => {
     setIsOpen(false);
     setIsAuthenticated(isUserAuthenticated());
+    setUserRole(getAuthUser()?.role ?? null);
   }, [location.pathname]);
 
   const guestNavItems = [
@@ -43,11 +48,17 @@ export default function Header() {
     { label: 'Contact', href: '/#contact' },
   ];
 
-  const authNavItems = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Appointments', href: '/appointments' },
-    { label: 'Profile', href: '/profile' },
-  ];
+  const authNavItems = userRole === 'DOCTOR'
+    ? [
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'Doctor Appointments', href: '/doctor/appointments' },
+        { label: 'Profile', href: '/profile' },
+      ]
+    : [
+        { label: 'Dashboard', href: '/dashboard' },
+        { label: 'Appointments', href: '/appointments' },
+        { label: 'Profile', href: '/profile' },
+      ];
 
   const displayItems = isAuthPage ? [] : isAuthenticated ? authNavItems : guestNavItems;
 

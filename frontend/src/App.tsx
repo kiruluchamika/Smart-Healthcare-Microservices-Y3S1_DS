@@ -5,6 +5,8 @@ import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import AppointmentBooking from './pages/AppointmentBooking';
+import MyAppointments from './pages/MyAppointments';
+import DoctorAppointments from './pages/DoctorAppointments';
 import Telemedicine from './pages/Telemedicine';
 import Profile from './pages/Profile';
 import AIChat from './components/AIChat';
@@ -31,7 +33,9 @@ function App() {
         <Route path="/login" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-        <Route path="/appointments" element={<ProtectedRoute><Layout><AppointmentBooking /></Layout></ProtectedRoute>} />
+        <Route path="/appointments" element={<ProtectedRoute><Layout><MyAppointments /></Layout></ProtectedRoute>} />
+        <Route path="/appointments/book" element={<ProtectedRoute><Layout><AppointmentBooking /></Layout></ProtectedRoute>} />
+        <Route path="/doctor/appointments" element={<ProtectedRoute><Layout><DoctorAppointments /></Layout></ProtectedRoute>} />
         <Route path="/consultation/:id" element={<ProtectedRoute><Layout><Telemedicine /></Layout></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
       </Routes>

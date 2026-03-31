@@ -7,6 +7,8 @@ export const ROUTES = {
   REGISTER: '/register',
   DASHBOARD: '/dashboard',
   APPOINTMENTS: '/appointments',
+  APPOINTMENT_BOOKING: '/appointments/book',
+  DOCTOR_APPOINTMENTS: '/doctor/appointments',
   CONSULTATION: '/consultation/:id',
   PROFILE: '/profile',
 };
