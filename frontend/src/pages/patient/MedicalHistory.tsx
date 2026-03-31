@@ -117,7 +117,7 @@ const MedicalHistoryPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_20%_10%,#dbeafe_0%,#f8fafc_40%,#ffffff_100%)] pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_right,#ccfbf1,transparent_40%),linear-gradient(180deg,#f8fafc_0%,#ffffff_80%)] pt-24 pb-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -125,15 +125,15 @@ const MedicalHistoryPage: React.FC = () => {
           transition={{ duration: 0.4 }}
           className="rounded-3xl border border-slate-200 bg-white/80 backdrop-blur-sm shadow-lg overflow-hidden"
         >
-          <div className="bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-500 text-white px-6 py-7 sm:px-8">
+          <div className="bg-gradient-to-r from-teal-600 via-slate-700 to-slate-900 text-white px-6 py-7 sm:px-8">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Medical History Atlas</h1>
-                <p className="text-blue-100 mt-1">A clean timeline of your diagnoses, procedures, and milestones.</p>
+                <p className="text-teal-100 mt-1">A clean timeline of your diagnoses, procedures, and milestones.</p>
               </div>
               <button
                 onClick={() => handleOpenForm()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-blue-700 px-5 py-3 font-bold hover:bg-blue-50 transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-teal-700 px-5 py-3 font-bold hover:bg-teal-50 transition-colors"
               >
                 <Plus className="w-5 h-5" />
                 Add Event
@@ -193,7 +193,7 @@ const MedicalHistoryPage: React.FC = () => {
                 </p>
                 <button
                   onClick={() => handleOpenForm()}
-                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-blue-600 text-white px-5 py-3 font-bold hover:bg-blue-700 transition-colors"
+                  className="mt-6 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-500 text-white px-5 py-3 font-bold hover:from-teal-700 hover:to-cyan-600 transition-colors"
                 >
                   <Plus className="w-5 h-5" />
                   Add First Event
@@ -201,7 +201,7 @@ const MedicalHistoryPage: React.FC = () => {
               </div>
             ) : (
               <div className="relative pl-6 sm:pl-8">
-                <div className="absolute left-2 sm:left-3 top-1 bottom-1 w-px bg-gradient-to-b from-sky-200 via-blue-200 to-cyan-200" />
+                <div className="absolute left-2 sm:left-3 top-1 bottom-1 w-px bg-gradient-to-b from-teal-200 via-slate-200 to-cyan-200" />
 
                 <div className="space-y-5">
                   {history.map((item, idx) => (
@@ -210,9 +210,9 @@ const MedicalHistoryPage: React.FC = () => {
                       initial={{ opacity: 0, x: 15 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.25, delay: idx * 0.04 }}
-                      className="relative rounded-2xl border border-slate-100 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
+                      className="relative rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow"
                     >
-                      <div className="absolute -left-[1.55rem] sm:-left-[1.8rem] top-7 w-3 h-3 rounded-full bg-blue-600 ring-4 ring-blue-100" />
+                      <div className="absolute -left-[1.55rem] sm:-left-[1.8rem] top-7 w-3 h-3 rounded-full bg-teal-600 ring-4 ring-teal-100" />
 
                       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                         <div className="min-w-0">
@@ -256,7 +256,7 @@ const MedicalHistoryPage: React.FC = () => {
                         <div className="flex items-center gap-2 shrink-0">
                           <button
                             onClick={() => handleOpenForm(item)}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 border border-blue-100"
+                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-teal-700 hover:bg-teal-50 border border-teal-100"
                           >
                             <PencilLine className="w-4 h-4" />
                             Edit
@@ -303,7 +303,7 @@ const MedicalHistoryPage: React.FC = () => {
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Event Type</label>
                     <select
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                       value={formData.eventType}
                       onChange={(e) => setFormData({ ...formData, eventType: e.target.value as EventType })}
                     >
@@ -318,7 +318,7 @@ const MedicalHistoryPage: React.FC = () => {
                     <input
                       type="date"
                       required
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                       value={formData.eventDate}
                       onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
                     />
@@ -330,7 +330,7 @@ const MedicalHistoryPage: React.FC = () => {
                       type="text"
                       required
                       placeholder="E.g. Wisdom Tooth Extraction"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     />
@@ -340,7 +340,7 @@ const MedicalHistoryPage: React.FC = () => {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
                     <textarea
                       rows={3}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
@@ -350,7 +350,7 @@ const MedicalHistoryPage: React.FC = () => {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Doctor Name</label>
                     <input
                       type="text"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                       value={formData.doctorName}
                       onChange={(e) => setFormData({ ...formData, doctorName: e.target.value })}
                     />
@@ -360,7 +360,7 @@ const MedicalHistoryPage: React.FC = () => {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Facility / Hospital</label>
                     <input
                       type="text"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
                       value={formData.facilityName}
                       onChange={(e) => setFormData({ ...formData, facilityName: e.target.value })}
                     />
@@ -370,7 +370,7 @@ const MedicalHistoryPage: React.FC = () => {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Notes</label>
                     <textarea
                       rows={3}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none"
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     />
@@ -388,7 +388,7 @@ const MedicalHistoryPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-5 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-500 text-white text-sm font-bold hover:from-teal-700 hover:to-cyan-600 disabled:opacity-60"
                   >
                     {saving ? 'Saving...' : editingId !== null ? 'Save Changes' : 'Create Event'}
                   </button>
