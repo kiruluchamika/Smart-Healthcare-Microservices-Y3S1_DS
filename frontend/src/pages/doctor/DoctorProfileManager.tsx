@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { PlusCircle, Save } from 'lucide-react';
-import { createDoctor, getDoctorById, updateDoctor } from '../../services/doctor/doctorApi';
+import { createDoctor, getDoctorByEmail, getDoctorById, updateDoctor } from '../../services/doctor/doctorApi';
+import { getAuthUser } from '../../services/authSession';
 import type { DoctorCreatePayload, DoctorServiceDoctor, DoctorUpdatePayload } from '../../types/doctor';
 
-interface FormState extends DoctorCreatePayload {
-  active: boolean;
-}
+const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
+
+interface FormState extends DoctorCreatePayload {}
 
 const defaultForm: FormState = {
   firstName: '',
@@ -18,16 +20,37 @@ const defaultForm: FormState = {
   experienceYears: 0,
   licenseNumber: '',
   bio: '',
-  active: true,
 };
 
 export default function DoctorProfileManager() {
+  const navigate = useNavigate();
   const [targetId, setTargetId] = useState('');
   const [form, setForm] = useState<FormState>(defaultForm);
   const [loading, setLoading] = useState(false);
   const [serverMessage, setServerMessage] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [mode, setMode] = useState<'create' | 'update'>('create');
+
+  useEffect(() => {
+    const loadOwnProfile = async () => {
+      const authUser = getAuthUser();
+      if (!authUser?.email) {
+        return;
+      }
+
+      try {
+        const doctor = await getDoctorByEmail(authUser.email);
+        setTargetId(String(doctor.id));
+        setForm(mapDoctorToForm(doctor));
+        setMode('update');
+        localStorage.setItem(DOCTOR_PROFILE_ID_KEY, String(doctor.id));
+      } catch {
+        // Keep create mode when profile is not created yet.
+      }
+    };
+
+    void loadOwnProfile();
+  }, []);
 
   const mapDoctorToForm = (doctor: DoctorServiceDoctor): FormState => ({
     firstName: doctor.firstName,
@@ -39,7 +62,6 @@ export default function DoctorProfileManager() {
     experienceYears: doctor.experienceYears,
     licenseNumber: doctor.licenseNumber,
     bio: doctor.bio || '',
-    active: doctor.active,
   });
 
   const updateField = (key: keyof FormState, value: string | number | boolean) => {
@@ -59,6 +81,7 @@ export default function DoctorProfileManager() {
     try {
       const doctor = await getDoctorById(numericId);
       setForm(mapDoctorToForm(doctor));
+      localStorage.setItem(DOCTOR_PROFILE_ID_KEY, String(doctor.id));
       setMode('update');
       setServerMessage('Doctor profile loaded. You can edit and save changes.');
     } catch (error) {
@@ -78,9 +101,15 @@ export default function DoctorProfileManager() {
 
     try {
       if (mode === 'create') {
-        await createDoctor(form);
-        setServerMessage('Doctor profile created successfully.');
+        const createdDoctor = await createDoctor(form);
+        localStorage.setItem(DOCTOR_PROFILE_ID_KEY, String(createdDoctor.id));
+        setServerMessage('Doctor profile created successfully. Redirecting to dashboard...');
         setForm(defaultForm);
+        
+        // Redirect to dashboard after 1.5 seconds
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
       } else {
         const numericId = Number(targetId);
         if (!numericId) {
@@ -88,8 +117,14 @@ export default function DoctorProfileManager() {
           return;
         }
 
-        await updateDoctor(numericId, form as DoctorUpdatePayload);
-        setServerMessage('Doctor profile updated successfully.');
+        const updatedDoctor = await updateDoctor(numericId, form as DoctorUpdatePayload);
+        localStorage.setItem(DOCTOR_PROFILE_ID_KEY, String(updatedDoctor.id));
+        setServerMessage('Doctor profile updated successfully. Redirecting to dashboard...');
+        
+        // Redirect to dashboard after 1.5 seconds
+        setTimeout(() => {
+          navigate('/doctors/profile');
+        }, 1500);
       }
     } catch (error) {
       const typedError = error as Error & { fieldErrors?: Record<string, string> };
@@ -177,15 +212,6 @@ export default function DoctorProfileManager() {
               {fieldErrors.bio && <span className="mt-1 block text-xs text-rose-600">{fieldErrors.bio}</span>}
             </label>
 
-            <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={form.active}
-                onChange={(e) => updateField('active', e.target.checked)}
-                className="accent-teal-600"
-              />
-              Active profile
-            </label>
           </div>
 
           <button
