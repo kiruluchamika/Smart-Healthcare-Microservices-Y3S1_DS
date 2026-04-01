@@ -4,6 +4,7 @@ import { Save, AlertCircle, CheckCircle, User as UserIcon, Activity, Heart, Shie
 import { patientApi } from '../services/patientApi';
 import { notifyProfileUpdated } from '../services/authSession';
 import { CreateOrUpdateProfileRequest, PatientProfile } from '../types/patient';
+import { getDisplayName } from '../utils/name';
 import axios from 'axios';
 
 const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -33,6 +34,8 @@ export default function Profile() {
     chronicConditions: '',
     bio: ''
   });
+
+  const displayName = getDisplayName(profile?.firstName, profile?.lastName);
 
   const clearProfileImageObjectUrl = () => {
     if (profileImageObjectUrlRef.current) {
@@ -309,7 +312,7 @@ export default function Profile() {
                     )}
                  </div>
                  <div className="pt-16">
-                   <h1 className="text-2xl font-bold text-slate-900">{profile?.firstName} {profile?.lastName}</h1>
+                   <h1 className="text-2xl font-bold text-slate-900">{displayName}</h1>
                    <p className="text-slate-500 mt-1">{profile?.email}</p>
                  </div>
 

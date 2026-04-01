@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { patientApi } from '../../services/patientApi';
+import { Link } from 'react-router-dom';
+import { LayoutDashboard } from 'lucide-react';
 
 const PrescriptionsPage: React.FC = () => {
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
@@ -24,9 +26,18 @@ const PrescriptionsPage: React.FC = () => {
   return (
     <div className="patient-shell px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-black text-slate-900">Your Prescriptions</h1>
-          <p className="mt-1 text-sm text-slate-600">Medications ordered by your doctors.</p>
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900">Your Prescriptions</h1>
+            <p className="mt-1 text-sm text-slate-600">Medications ordered by your doctors.</p>
+          </div>
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-white px-5 py-3 font-bold text-teal-700 shadow-sm hover:bg-teal-50 transition-colors"
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            Dashboard
+          </Link>
         </div>
 
         <div className="mb-4 inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-600">

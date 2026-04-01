@@ -3,23 +3,87 @@ import { patientApi } from '../../services/patientApi';
 import { PatientProfile } from '../../types/patient';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Activity, FileText, Clock, Heart, AlertCircle, Droplet, User as UserIcon, Phone } from 'lucide-react';
+import { Activity, FileText, Clock, Heart, AlertCircle, Droplet, User as UserIcon, Phone, Calendar, Stethoscope, Video } from 'lucide-react';
+import { getAuthUser } from '../../services/authSession';
+import { getDisplayName } from '../../utils/name';
+
+const topNavItems = [
+  {
+    label: 'Appointments',
+    href: '/appointments',
+    icon: Calendar,
+    color: 'from-teal-600 to-cyan-500',
+  },
+  {
+    label: 'Discover Doctors',
+    href: '/doctors',
+    icon: Stethoscope,
+    color: 'from-cyan-600 to-blue-500',
+  },
+  {
+    label: 'Medical Reports',
+    href: '/reports',
+    icon: FileText,
+    color: 'from-slate-700 to-teal-600',
+  },
+  {
+    label: 'Medical History',
+    href: '/history',
+    icon: Activity,
+    color: 'from-teal-500 to-emerald-500',
+  },
+  {
+    label: 'Prescriptions',
+    href: '/prescriptions',
+    icon: Heart,
+    color: 'from-emerald-500 to-cyan-500',
+  },
+  {
+    label: 'Telemedicine',
+    href: '/consultation/1',
+    icon: Video,
+    color: 'from-blue-600 to-cyan-500',
+  },
+];
 
 const PatientDashboard: React.FC = () => {
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const authUser = getAuthUser() as { firstName?: string; lastName?: string; email?: string } | null;
+
+  const buildProfileFallback = (source?: Partial<PatientProfile>): PatientProfile => ({
+    id: source?.id ?? 0,
+    authUserId: source?.authUserId ?? 0,
+    firstName: source?.firstName || authUser?.firstName || '',
+    lastName: source?.lastName || authUser?.lastName || '',
+    email: source?.email || authUser?.email || '',
+    dateOfBirth: source?.dateOfBirth ?? null,
+    gender: source?.gender ?? null,
+    bloodGroup: source?.bloodGroup ?? null,
+    address: source?.address ?? null,
+    emergencyContactName: source?.emergencyContactName ?? null,
+    emergencyContactPhone: source?.emergencyContactPhone ?? null,
+    allergies: source?.allergies ?? null,
+    chronicConditions: source?.chronicConditions ?? null,
+    profilePictureUrl: source?.profilePictureUrl ?? null,
+    bio: source?.bio ?? null,
+    totalReports: source?.totalReports ?? 0,
+    totalHistoryEntries: source?.totalHistoryEntries ?? 0,
+    createdAt: source?.createdAt ?? '',
+    updatedAt: source?.updatedAt ?? '',
+  });
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         const res = await patientApi.getProfile();
-        if (res.success) {
-          setProfile(res.data);
-        }
+        setProfile(buildProfileFallback(res.success ? res.data : undefined));
       } catch (err) {
-        setError('Failed to load patient dashboard. Please try again later.');
+        setProfile(buildProfileFallback());
+        setError('Some patient details could not be loaded. Showing available account data.');
       } finally {
         setLoading(false);
       }
@@ -44,6 +108,9 @@ const PatientDashboard: React.FC = () => {
 
   if (!profile) return null;
 
+  const greetingName = getDisplayName(profile.firstName, profile.lastName);
+  const legalName = getDisplayName(profile.firstName, profile.lastName, 'Not Set');
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -60,6 +127,44 @@ const PatientDashboard: React.FC = () => {
   return (
     <div className="patient-shell pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-8"
+        >
+          <div className="rounded-2xl border border-teal-100 bg-white/75 backdrop-blur-sm p-4 sm:p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900">Patient Navigation Panel</h2>
+              <span className="text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-100 rounded-full px-2.5 py-1">
+                Quick Access
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+              {topNavItems.map((item, index) => (
+                <motion.div
+                  key={item.label}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35, delay: 0.08 + index * 0.04 }}
+                  whileHover={{ y: -2 }}
+                  className="group"
+                >
+                  <Link
+                    to={item.href}
+                    className={`relative flex h-full min-h-[96px] flex-col justify-between overflow-hidden rounded-xl border border-white/20 bg-gradient-to-br ${item.color} p-3.5 text-white shadow-md transition-all hover:shadow-lg`}
+                  >
+                    <div className="absolute inset-0 bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
+                    <item.icon className="relative h-5 w-5" />
+                    <p className="relative text-sm font-semibold leading-tight">{item.label}</p>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </motion.section>
         
         {/* Hero Section */}
         <motion.div 
@@ -74,7 +179,7 @@ const PatientDashboard: React.FC = () => {
           <div className="relative z-10 px-8 py-12 sm:px-12 sm:py-16 md:flex md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-2">
-                Hello, {profile.firstName || 'Patient'} 👋
+                Hello, {greetingName} 👋
               </h1>
               <p className="text-teal-100 text-lg max-w-2xl">
                 Welcome to your command center. Check your latest diagnostic reports, upcoming appointments, and health metrics directly from here.
@@ -198,7 +303,7 @@ const PatientDashboard: React.FC = () => {
              <div className="space-y-6">
                 <div>
                   <p className="text-sm text-slate-500 font-medium mb-1">Full Legal Name</p>
-                  <p className="text-slate-900 font-medium text-lg">{profile.firstName || 'Not Set'} {profile.lastName || ''}</p>
+                  <p className="text-slate-900 font-medium text-lg">{legalName}</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 font-medium mb-1">Email Address</p>

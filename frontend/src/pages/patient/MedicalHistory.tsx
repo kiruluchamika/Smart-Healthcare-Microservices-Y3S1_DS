@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle, Building2, CalendarDays, PencilLine, Plus, ShieldCheck, Stethoscope, Trash2 } from 'lucide-react';
+import { AlertCircle, Building2, CalendarDays, PencilLine, Plus, ShieldCheck, Stethoscope, Trash2, LayoutDashboard } from 'lucide-react';
 import { patientApi } from '../../services/patientApi';
 import { EventType, MedicalHistory, MedicalHistoryRequest } from '../../types/patient';
+import { Link } from 'react-router-dom';
 
 const emptyFormState = (): MedicalHistoryRequest => ({
   eventType: 'DIAGNOSIS',
@@ -131,13 +132,22 @@ const MedicalHistoryPage: React.FC = () => {
                 <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Medical History Atlas</h1>
                 <p className="text-teal-100 mt-1">A clean timeline of your diagnoses, procedures, and milestones.</p>
               </div>
-              <button
-                onClick={() => handleOpenForm()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-teal-700 px-5 py-3 font-bold hover:bg-teal-50 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                Add Event
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/15 text-white px-5 py-3 font-bold hover:bg-white/25 transition-colors"
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  Dashboard
+                </Link>
+                <button
+                  onClick={() => handleOpenForm()}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white text-teal-700 px-5 py-3 font-bold hover:bg-teal-50 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  Add Event
+                </button>
+              </div>
             </div>
           </div>
 

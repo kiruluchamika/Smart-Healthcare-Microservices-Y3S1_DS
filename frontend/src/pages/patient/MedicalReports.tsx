@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { patientApi } from '../../services/patientApi';
 import { MedicalReport, ReportType } from '../../types/patient';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Trash2, FileText, UploadCloud, X, Folder, AlertCircle } from 'lucide-react';
+import { Download, Trash2, FileText, UploadCloud, X, Folder, AlertCircle, LayoutDashboard } from 'lucide-react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
 
 const MedicalReports: React.FC = () => {
   const [reports, setReports] = useState<MedicalReport[]>([]);
@@ -140,13 +141,22 @@ const MedicalReports: React.FC = () => {
             </h1>
             <p className="mt-2 text-slate-600 text-lg">Safely upload, manage, and download all your patient records.</p>
           </div>
-          <button
-            onClick={() => setShowUpload(!showUpload)}
-            className="inline-flex items-center gap-2 px-6 py-3 border border-transparent rounded-xl shadow-md text-white bg-gradient-to-r from-teal-600 to-cyan-500 hover:from-teal-700 hover:to-cyan-600 transition-all font-bold group transform hover:-translate-y-0.5"
-          >
-            {showUpload ? <X className="w-5 h-5"/> : <UploadCloud className="w-5 h-5 group-hover:scale-110 transition-transform" />}
-            {showUpload ? 'Close Uploader' : 'Upload New Report'}
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-2 px-5 py-3 rounded-xl border border-teal-200 bg-white text-teal-700 font-bold hover:bg-teal-50 transition-colors"
+            >
+              <LayoutDashboard className="w-5 h-5" />
+              Dashboard
+            </Link>
+            <button
+              onClick={() => setShowUpload(!showUpload)}
+              className="inline-flex items-center gap-2 px-6 py-3 border border-transparent rounded-xl shadow-md text-white bg-gradient-to-r from-teal-600 to-cyan-500 hover:from-teal-700 hover:to-cyan-600 transition-all font-bold group transform hover:-translate-y-0.5"
+            >
+              {showUpload ? <X className="w-5 h-5"/> : <UploadCloud className="w-5 h-5 group-hover:scale-110 transition-transform" />}
+              {showUpload ? 'Close Uploader' : 'Upload New Report'}
+            </button>
+          </div>
         </div>
 
         <AnimatePresence>
