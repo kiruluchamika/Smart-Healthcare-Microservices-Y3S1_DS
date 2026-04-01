@@ -22,7 +22,6 @@ public class DoctorMapper {
                 .experienceYears(request.getExperienceYears())
                 .licenseNumber(request.getLicenseNumber())
                 .bio(request.getBio())
-                .active(request.getActive() == null ? Boolean.TRUE : request.getActive())
                 .verificationStatus(VerificationStatus.PENDING)
                 .onboardingState(OnboardingState.SUBMITTED)
                 .build();
@@ -38,7 +37,6 @@ public class DoctorMapper {
         doctor.setExperienceYears(request.getExperienceYears());
         doctor.setLicenseNumber(request.getLicenseNumber());
         doctor.setBio(request.getBio());
-        doctor.setActive(request.getActive());
     }
 
     public DoctorResponse toResponse(Doctor doctor) {

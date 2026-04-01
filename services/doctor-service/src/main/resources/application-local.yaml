@@ -3,9 +3,9 @@ server:
 
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/doctor_service_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3308/doctor_service_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:doctor_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:doctor_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -17,7 +17,11 @@ spring:
         format_sql: true
   docker:
     compose:
-      enabled: false
+      enabled: true
+      file: services/doctor-service/docker-compose.yaml
+      lifecycle-management: start-and-stop
+      stop:
+        command: down
 
 app:
   seed-data: true

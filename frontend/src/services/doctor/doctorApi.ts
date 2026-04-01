@@ -119,6 +119,11 @@ export function getDoctorById(doctorId: number) {
   return request<DoctorServiceDoctor>(`/${doctorId}`);
 }
 
+export function getDoctorByEmail(email: string) {
+  const query = serializeParams({ email });
+  return request<DoctorServiceDoctor>(`/by-email${query}`);
+}
+
 export function createDoctor(payload: DoctorCreatePayload, idempotencyKey?: string) {
   return request<DoctorServiceDoctor>('', {
     method: 'POST',

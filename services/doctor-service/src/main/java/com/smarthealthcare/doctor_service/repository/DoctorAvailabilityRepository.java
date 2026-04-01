@@ -17,23 +17,21 @@ public interface DoctorAvailabilityRepository extends JpaRepository<DoctorAvaila
             Long doctorId,
             DayOfWeek dayOfWeek,
             LocalTime endTime,
-            LocalTime startTime
-    );
+            LocalTime startTime);
 
     boolean existsByDoctorIdAndDayOfWeekAndStartTimeLessThanAndEndTimeGreaterThanAndIdNot(
             Long doctorId,
             DayOfWeek dayOfWeek,
             LocalTime endTime,
             LocalTime startTime,
-            Long id
-    );
+            Long id);
 
     long countByDoctorId(Long doctorId);
 
     long countByDoctorIdAndAvailableTrue(Long doctorId);
 
-        @Query("select distinct da.doctorId from DoctorAvailability da where da.dayOfWeek = :dayOfWeek and da.available = true")
-        List<Long> findDistinctDoctorIdsByDayOfWeekAndAvailableTrue(DayOfWeek dayOfWeek);
+    @Query("select distinct da.doctorId from DoctorAvailability da where da.dayOfWeek = :dayOfWeek and da.available = true")
+    List<Long> findDistinctDoctorIdsByDayOfWeekAndAvailableTrue(DayOfWeek dayOfWeek);
 
     void deleteByDoctorId(Long doctorId);
 }

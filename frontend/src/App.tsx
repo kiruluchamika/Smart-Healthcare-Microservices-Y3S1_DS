@@ -14,6 +14,7 @@ import PrescriptionsPage from './pages/patient/Prescriptions';
 import DoctorsDirectory from './pages/doctor/DoctorsDirectory';
 import DoctorDetail from './pages/doctor/DoctorDetail';
 import DoctorProfileManager from './pages/doctor/DoctorProfileManager';
+import DoctorMyProfile from './pages/doctor/DoctorMyProfile';
 import DoctorAvailabilityManager from './pages/doctor/DoctorAvailabilityManager';
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
 import DoctorVerificationAdmin from './pages/doctor/DoctorVerificationAdmin';
@@ -154,6 +155,14 @@ function App() {
         />
         <Route
           path="/doctors/profile"
+          element={
+            <ProtectedRoleRoute allowedRoles={['DOCTOR', 'ADMIN']}>
+              <Layout><DoctorMyProfile /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
+        <Route
+          path="/doctors/profile/manage"
           element={
             <ProtectedRoleRoute allowedRoles={['DOCTOR', 'ADMIN']}>
               <Layout><DoctorProfileManager /></Layout>

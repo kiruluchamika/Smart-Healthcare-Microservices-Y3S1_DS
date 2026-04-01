@@ -22,13 +22,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(
-        name = "doctors",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_doctor_email", columnNames = "email"),
-                @UniqueConstraint(name = "uk_doctor_license", columnNames = "license_number")
-        }
-)
+@Table(name = "doctors", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_doctor_email", columnNames = "email"),
+        @UniqueConstraint(name = "uk_doctor_license", columnNames = "license_number")
+})
 @Getter
 @Setter
 @Builder
@@ -98,9 +95,7 @@ public class Doctor {
         if (this.verificationStatus == null) {
             this.verificationStatus = VerificationStatus.PENDING;
         }
-        if (this.active == null) {
-            this.active = Boolean.TRUE;
-        }
+        syncActivationFromVerification();
         if (this.profileCompletenessScore == null) {
             this.profileCompletenessScore = 0;
         }
@@ -112,5 +107,10 @@ public class Doctor {
     @PreUpdate
     void preUpdate() {
         this.updatedAt = LocalDateTime.now();
+        syncActivationFromVerification();
+    }
+
+    private void syncActivationFromVerification() {
+        this.active = this.verificationStatus == VerificationStatus.APPROVED;
     }
 }

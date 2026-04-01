@@ -49,10 +49,12 @@ public class DoctorAvailabilityServiceImpl implements DoctorAvailabilityService 
 
     @Override
     @Transactional
-    public DoctorAvailabilityResponse updateAvailability(Long doctorId, Long availabilityId, DoctorAvailabilityUpdateRequest request) {
+    public DoctorAvailabilityResponse updateAvailability(Long doctorId, Long availabilityId,
+            DoctorAvailabilityUpdateRequest request) {
         ensureDoctorExists(doctorId);
         DoctorAvailability availability = findAvailabilityOrThrow(doctorId, availabilityId);
-        validateSlotRules(doctorId, request.getDayOfWeek(), request.getStartTime(), request.getEndTime(), availabilityId);
+        validateSlotRules(doctorId, request.getDayOfWeek(), request.getStartTime(), request.getEndTime(),
+                availabilityId);
 
         availabilityMapper.updateEntity(availability, request);
         DoctorAvailability updated = availabilityRepository.save(availability);
@@ -87,8 +89,7 @@ public class DoctorAvailabilityServiceImpl implements DoctorAvailabilityService 
             java.time.DayOfWeek dayOfWeek,
             java.time.LocalTime startTime,
             java.time.LocalTime endTime,
-            Long availabilityId
-    ) {
+            Long availabilityId) {
         if (!startTime.isBefore(endTime)) {
             throw new BadRequestException("Start time must be before end time");
         }

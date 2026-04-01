@@ -76,6 +76,14 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public DoctorResponse getDoctorByEmail(String email) {
+        Doctor doctor = doctorRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Doctor not found with email: " + email));
+        return doctorMapper.toResponse(doctor);
+    }
+
+    @Override
     @Transactional
     public DoctorResponse updateDoctor(Long doctorId, DoctorUpdateRequest request) {
         Doctor doctor = findDoctorOrThrow(doctorId);
@@ -126,11 +134,11 @@ public class DoctorServiceImpl implements DoctorService {
             Boolean verified,
             Boolean active,
             Integer minExperience,
-            DayOfWeek dayOfWeek
-    ) {
+            DayOfWeek dayOfWeek) {
         List<Long> doctorIdsByAvailability = null;
         if (dayOfWeek != null) {
-            doctorIdsByAvailability = availabilityRepository.findDistinctDoctorIdsByDayOfWeekAndAvailableTrue(dayOfWeek);
+            doctorIdsByAvailability = availabilityRepository
+                    .findDistinctDoctorIdsByDayOfWeekAndAvailableTrue(dayOfWeek);
             if (doctorIdsByAvailability.isEmpty()) {
                 return List.of();
             }
@@ -163,10 +171,10 @@ public class DoctorServiceImpl implements DoctorService {
         return doctorRepository.findAll(specification)
                 .stream()
                 .sorted(
-                        Comparator.comparing((Doctor d) -> d.getVerificationStatus() == VerificationStatus.APPROVED).reversed()
+                        Comparator.comparing((Doctor d) -> d.getVerificationStatus() == VerificationStatus.APPROVED)
+                                .reversed()
                                 .thenComparing(Doctor::getExperienceYears, Comparator.reverseOrder())
-                                .thenComparing(Doctor::getProfileCompletenessScore, Comparator.reverseOrder())
-                )
+                                .thenComparing(Doctor::getProfileCompletenessScore, Comparator.reverseOrder()))
                 .map(doctorMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -180,10 +188,13 @@ public class DoctorServiceImpl implements DoctorService {
 
         if (request.getVerificationStatus() == VerificationStatus.APPROVED) {
             doctor.setOnboardingState(OnboardingState.VERIFIED);
+            doctor.setActive(Boolean.TRUE);
         } else if (request.getVerificationStatus() == VerificationStatus.REJECTED) {
             doctor.setOnboardingState(OnboardingState.SUSPENDED);
+            doctor.setActive(Boolean.FALSE);
         } else {
             doctor.setOnboardingState(OnboardingState.SUBMITTED);
+            doctor.setActive(Boolean.FALSE);
         }
 
         Doctor updatedDoctor = doctorRepository.save(doctor);
@@ -213,7 +224,8 @@ public class DoctorServiceImpl implements DoctorService {
         Map<String, Long> weeklySlots = new HashMap<>();
         for (DayOfWeek day : DayOfWeek.values()) {
             weeklySlots.put(day.name(),
-                    slots.stream().filter(s -> s.getDayOfWeek() == day && Boolean.TRUE.equals(s.getAvailable())).count());
+                    slots.stream().filter(s -> s.getDayOfWeek() == day && Boolean.TRUE.equals(s.getAvailable()))
+                            .count());
         }
 
         return DoctorDashboardSummaryResponse.builder()
@@ -262,7 +274,7 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     private int calculateProfileCompletenessScore(Doctor doctor) {
-        int total = 10;
+        int total = 9;
         int filled = 0;
 
         if (hasText(doctor.getFirstName())) {
@@ -292,10 +304,6 @@ public class DoctorServiceImpl implements DoctorService {
         if (hasText(doctor.getBio())) {
             filled++;
         }
-        if (doctor.getActive() != null) {
-            filled++;
-        }
-
         return (filled * 100) / total;
     }
 

@@ -7,10 +7,11 @@ import { getDoctors, searchDoctors } from '../../services/doctor/doctorApi';
 import type { DoctorSearchParams, DoctorServiceDoctor, PagedResponse } from '../../types/doctor';
 
 const defaultFilters: DoctorSearchParams = {};
+const discoveryBaselineFilters: DoctorSearchParams = { verified: true, active: true };
 
 export default function DoctorsDirectory() {
   const [filters, setFilters] = useState<DoctorSearchParams>(defaultFilters);
-  const [queryFilters, setQueryFilters] = useState<DoctorSearchParams>(defaultFilters);
+  const [queryFilters, setQueryFilters] = useState<DoctorSearchParams>(discoveryBaselineFilters);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [doctors, setDoctors] = useState<DoctorServiceDoctor[]>([]);
@@ -29,15 +30,21 @@ export default function DoctorsDirectory() {
       setError('');
 
       try {
+        const effectiveFilters: DoctorSearchParams = { ...queryFilters, ...discoveryBaselineFilters };
+
         if (isFilterMode) {
-          const result = await searchDoctors(queryFilters);
+          const result = await searchDoctors(effectiveFilters);
           setDoctors(result);
           setPageState(null);
           return;
         }
 
         const result = await getDoctors({ page, size, sortBy: 'createdAt', sortDir: 'desc' });
-        setDoctors(result.content);
+        setDoctors(
+          result.content.filter(
+            (doctor) => doctor.verificationStatus === 'APPROVED' && doctor.active,
+          ),
+        );
         setPageState(result);
       } catch (requestError) {
         const message = requestError instanceof Error ? requestError.message : 'Failed to fetch doctors.';
@@ -52,13 +59,13 @@ export default function DoctorsDirectory() {
 
   const handleApplyFilters = () => {
     setPage(0);
-    setQueryFilters(filters);
+    setQueryFilters({ ...filters, ...discoveryBaselineFilters });
   };
 
   const handleResetFilters = () => {
     setPage(0);
     setFilters(defaultFilters);
-    setQueryFilters(defaultFilters);
+    setQueryFilters(discoveryBaselineFilters);
   };
 
   return (

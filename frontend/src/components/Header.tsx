@@ -141,33 +141,35 @@ export default function Header() {
     { label: 'Contact', href: '/#contact' },
   ];
 
-  const baseAuthNavItems = [
+  const patientNavItems = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Profile', href: '/profile' },
     { label: 'Appointments', href: '/appointments' },
     { label: 'Reports', href: '/reports' },
     { label: 'History', href: '/history' },
-  ];
-
-  const patientDoctorDiscoveryItems = [
     { label: 'Discover Doctors', href: '/doctors' },
   ];
 
-  const doctorOperationalItems = [
+  const doctorNavItems = [
+    { label: 'Dashboard', href: '/dashboard' },
     { label: 'Doctor Profile', href: '/doctors/profile' },
+    { label: 'Appointments', href: '/appointments' },
   ];
 
   const adminNavItems = [
     { label: 'Admin Panel', href: '/admin/dashboard' },
     { label: 'Doctor Verification', href: '/admin/verification' },
+    { label: 'Doctor Profile', href: '/doctors/profile' },
   ];
 
-  const authNavItems = [
-    ...baseAuthNavItems,
-    ...(role === 'PATIENT' ? patientDoctorDiscoveryItems : []),
-    ...(role === 'DOCTOR' ? doctorOperationalItems : []),
-    ...(role === 'ADMIN' ? [...doctorOperationalItems, ...adminNavItems] : []),
-  ];
+  const authNavItems =
+    role === 'PATIENT'
+      ? patientNavItems
+      : role === 'DOCTOR'
+        ? doctorNavItems
+        : role === 'ADMIN'
+          ? adminNavItems
+          : [];
 
   const displayItems = isAuthPage ? [] : isAuthenticated && role === 'PATIENT' ? guestNavItems : isAuthenticated ? authNavItems : guestNavItems;
 

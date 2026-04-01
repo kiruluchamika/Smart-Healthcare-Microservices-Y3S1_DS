@@ -55,12 +55,9 @@ export interface DoctorCreatePayload {
   experienceYears: number;
   licenseNumber: string;
   bio?: string;
-  active?: boolean;
 }
 
-export interface DoctorUpdatePayload extends DoctorCreatePayload {
-  active: boolean;
-}
+export interface DoctorUpdatePayload extends DoctorCreatePayload {}
 
 export interface DoctorAvailability {
   id: number;

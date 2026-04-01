@@ -16,6 +16,8 @@ public interface DoctorService {
 
     DoctorResponse getDoctorById(Long doctorId);
 
+    DoctorResponse getDoctorByEmail(String email);
+
     DoctorResponse updateDoctor(Long doctorId, DoctorUpdateRequest request);
 
     void deleteDoctor(Long doctorId);
@@ -27,8 +29,7 @@ public interface DoctorService {
             Boolean verified,
             Boolean active,
             Integer minExperience,
-            DayOfWeek dayOfWeek
-    );
+            DayOfWeek dayOfWeek);
 
     DoctorResponse updateVerificationStatus(Long doctorId, DoctorVerificationStatusUpdateRequest request);
 
