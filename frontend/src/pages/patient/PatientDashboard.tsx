@@ -54,11 +54,11 @@ const PatientDashboard: React.FC = () => {
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
-    visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } }
+    visible: { y: 0, opacity: 1, transition: { type: 'spring' as const, stiffness: 100 } }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pt-20 pb-12">
+    <div className="patient-shell pt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Hero Section */}
@@ -66,22 +66,22 @@ const PatientDashboard: React.FC = () => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 shadow-xl mb-10"
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-600 via-slate-700 to-slate-900 shadow-xl mb-10"
         >
           <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white opacity-10 blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-cyan-400 opacity-20 blur-3xl"></div>
+          <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 rounded-full bg-orange-300 opacity-20 blur-3xl"></div>
           
           <div className="relative z-10 px-8 py-12 sm:px-12 sm:py-16 md:flex md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-2">
                 Hello, {profile.firstName || 'Patient'} 👋
               </h1>
-              <p className="text-blue-100 text-lg max-w-2xl">
+              <p className="text-teal-100 text-lg max-w-2xl">
                 Welcome to your command center. Check your latest diagnostic reports, upcoming appointments, and health metrics directly from here.
               </p>
             </div>
             <div className="mt-8 md:mt-0 flex gap-4">
-               <Link to="/appointments" className="px-6 py-3 bg-white text-blue-700 font-bold rounded-xl shadow-lg hover:bg-blue-50 transition-all transform hover:-translate-y-1">
+               <Link to="/appointments" className="px-6 py-3 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:bg-teal-50 transition-all transform hover:-translate-y-1">
                  Book Appointment
                </Link>
             </div>
@@ -95,52 +95,52 @@ const PatientDashboard: React.FC = () => {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10"
         >
           {/* Stat 1 */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition-shadow cursor-default">
-            <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+          <motion.div variants={itemVariants} className="patient-card-hover p-6 flex items-center gap-5 cursor-default">
+            <div className="w-14 h-14 rounded-2xl bg-teal-50 flex items-center justify-center text-teal-600">
               <FileText className="w-7 h-7" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Medical Reports</p>
-              <h3 className="text-3xl font-bold text-gray-900">{profile.totalReports}</h3>
+              <p className="text-sm font-medium text-slate-500 mb-1">Medical Reports</p>
+              <h3 className="text-3xl font-bold text-slate-900">{profile.totalReports}</h3>
             </div>
           </motion.div>
 
           {/* Stat 2 */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition-shadow cursor-default">
-            <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600">
+          <motion.div variants={itemVariants} className="patient-card-hover p-6 flex items-center gap-5 cursor-default">
+            <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-teal-600">
               <Clock className="w-7 h-7" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Timeline Events</p>
-              <h3 className="text-3xl font-bold text-gray-900">{profile.totalHistoryEntries}</h3>
+              <p className="text-sm font-medium text-slate-500 mb-1">Timeline Events</p>
+              <h3 className="text-3xl font-bold text-slate-900">{profile.totalHistoryEntries}</h3>
             </div>
           </motion.div>
 
           {/* Stat 3 */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition-shadow cursor-default">
+          <motion.div variants={itemVariants} className="patient-card-hover p-6 flex items-center gap-5 cursor-default">
             <div className="w-14 h-14 rounded-2xl bg-red-50 flex items-center justify-center text-red-600">
               <Droplet className="w-7 h-7 fill-red-100" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Blood Group</p>
-              <h3 className="text-3xl font-bold text-gray-900">{profile.bloodGroup || '--'}</h3>
+              <p className="text-sm font-medium text-slate-500 mb-1">Blood Group</p>
+              <h3 className="text-3xl font-bold text-slate-900">{profile.bloodGroup || '--'}</h3>
             </div>
           </motion.div>
 
           {/* Stat 4 */}
-          <motion.div variants={itemVariants} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center gap-5 hover:shadow-md transition-shadow cursor-default">
+          <motion.div variants={itemVariants} className="patient-card-hover p-6 flex items-center gap-5 cursor-default">
             <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
               <Activity className="w-7 h-7" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Allergies</p>
-              <h3 className="text-lg font-bold text-gray-900 truncate">{profile.allergies ? 'Reported' : 'None'}</h3>
+              <p className="text-sm font-medium text-slate-500 mb-1">Allergies</p>
+              <h3 className="text-lg font-bold text-slate-900 truncate">{profile.allergies ? 'Reported' : 'None'}</h3>
             </div>
           </motion.div>
         </motion.div>
 
         {/* Action Grid */}
-        <h2 className="text-xl font-bold text-gray-900 mb-6 px-2">Quick Navigation</h2>
+        <h2 className="text-xl font-bold text-slate-900 mb-6 px-2">Quick Navigation</h2>
         <motion.div 
           variants={containerVariants}
           initial="hidden"
@@ -148,32 +148,32 @@ const PatientDashboard: React.FC = () => {
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10"
         >
           <motion.div variants={itemVariants}>
-            <Link to="/reports" className="block h-full bg-white rounded-3xl p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 text-white flex items-center justify-center mb-6 shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform">
+            <Link to="/reports" className="block h-full rounded-3xl p-8 border border-slate-200 bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-500 text-white flex items-center justify-center mb-6 shadow-lg shadow-teal-200 group-hover:scale-110 transition-transform">
                 <FileText className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Diagnostics Vault</h3>
-              <p className="text-gray-500">Securely view and upload your blood tests, MRI scans, and lab results.</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Diagnostics Vault</h3>
+              <p className="text-slate-500">Securely view and upload your blood tests, MRI scans, and lab results.</p>
             </Link>
           </motion.div>
 
           <motion.div variants={itemVariants}>
-            <Link to="/history" className="block h-full bg-white rounded-3xl p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-white flex items-center justify-center mb-6 shadow-lg shadow-purple-200 group-hover:scale-110 transition-transform">
+            <Link to="/history" className="block h-full rounded-3xl p-8 border border-slate-200 bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-700 to-teal-600 text-white flex items-center justify-center mb-6 shadow-lg shadow-slate-300 group-hover:scale-110 transition-transform">
                 <Activity className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Health Timeline</h3>
-              <p className="text-gray-500">Track your past surgeries, treatments, vaccinations, and overall medical history.</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">Health Timeline</h3>
+              <p className="text-slate-500">Track your past surgeries, treatments, vaccinations, and overall medical history.</p>
             </Link>
           </motion.div>
 
           <motion.div variants={itemVariants}>
-            <Link to="/prescriptions" className="block h-full bg-white rounded-3xl p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 group">
+            <Link to="/prescriptions" className="block h-full rounded-3xl p-8 border border-slate-200 bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center mb-6 shadow-lg shadow-emerald-200 group-hover:scale-110 transition-transform">
                 <Heart className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">My Prescriptions</h3>
-              <p className="text-gray-500">Check active medication orders, dosage instructions, and refill options.</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">My Prescriptions</h3>
+              <p className="text-slate-500">Check active medication orders, dosage instructions, and refill options.</p>
             </Link>
           </motion.div>
         </motion.div>
@@ -183,30 +183,30 @@ const PatientDashboard: React.FC = () => {
            initial={{ opacity: 0, y: 30 }}
            animate={{ opacity: 1, y: 0 }}
            transition={{ delay: 0.4 }}
-           className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
+           className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden"
         >
-           <div className="border-b border-gray-100 px-8 py-6 flex justify-between items-center bg-gray-50/50">
+           <div className="border-b border-slate-200 px-8 py-6 flex justify-between items-center bg-slate-50">
              <div className="flex items-center gap-3">
-               <UserIcon className="w-6 h-6 text-gray-400" />
-               <h3 className="text-xl font-bold text-gray-900">Personal File</h3>
+               <UserIcon className="w-6 h-6 text-slate-500" />
+               <h3 className="text-xl font-bold text-slate-900">Personal File</h3>
              </div>
-             <Link to="/profile" className="text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-4 py-2 rounded-lg transition-colors">
+             <Link to="/profile" className="text-sm font-bold text-teal-700 hover:text-teal-800 bg-teal-50 px-4 py-2 rounded-lg transition-colors">
                Edit Profile
              </Link>
            </div>
            <div className="p-8 grid md:grid-cols-2 gap-8">
              <div className="space-y-6">
                 <div>
-                  <p className="text-sm text-gray-500 font-medium mb-1">Full Legal Name</p>
-                  <p className="text-gray-900 font-medium text-lg">{profile.firstName || 'Not Set'} {profile.lastName || ''}</p>
+                  <p className="text-sm text-slate-500 font-medium mb-1">Full Legal Name</p>
+                  <p className="text-slate-900 font-medium text-lg">{profile.firstName || 'Not Set'} {profile.lastName || ''}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500 font-medium mb-1">Email Address</p>
-                  <p className="text-gray-900 font-medium text-lg">{profile.email}</p>
+                  <p className="text-sm text-slate-500 font-medium mb-1">Email Address</p>
+                  <p className="text-slate-900 font-medium text-lg">{profile.email}</p>
                 </div>
                 <div>
-                   <p className="text-sm text-gray-500 font-medium mb-1">Registered Address</p>
-                   <p className="text-gray-900 font-medium">{profile.address || 'Address not on file.'}</p>
+                   <p className="text-sm text-slate-500 font-medium mb-1">Registered Address</p>
+                   <p className="text-slate-900 font-medium">{profile.address || 'Address not on file.'}</p>
                 </div>
              </div>
              <div className="space-y-6">
@@ -221,8 +221,8 @@ const PatientDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                   <p className="text-sm text-gray-500 font-medium mb-1">Chronic Conditions noted by doctor</p>
-                   <p className="text-gray-900 italic font-medium">{profile.chronicConditions || 'No chronic conditions reported.'}</p>
+                   <p className="text-sm text-slate-500 font-medium mb-1">Chronic Conditions noted by doctor</p>
+                   <p className="text-slate-900 italic font-medium">{profile.chronicConditions || 'No chronic conditions reported.'}</p>
                 </div>
              </div>
            </div>

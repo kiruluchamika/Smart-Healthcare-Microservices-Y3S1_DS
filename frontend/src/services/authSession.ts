@@ -4,9 +4,14 @@ const AUTH_TOKEN_KEY = 'authToken';
 const AUTH_USER_KEY = 'user';
 const AUTH_TOKEN_EXPIRES_AT_KEY = 'authTokenExpiresAt';
 export const AUTH_CHANGED_EVENT = 'auth-state-changed';
+export const PROFILE_UPDATED_EVENT = 'patient-profile-updated';
 
 function notifyAuthChanged() {
   window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
+export function notifyProfileUpdated() {
+  window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
 }
 
 export function setAuthSession(response: AuthResponse) {

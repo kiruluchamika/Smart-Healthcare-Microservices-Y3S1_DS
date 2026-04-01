@@ -56,7 +56,11 @@ public class PatientProfileResponse {
         resp.setEmergencyContactPhone(profile.getEmergencyContactPhone());
         resp.setAllergies(profile.getAllergies());
         resp.setChronicConditions(profile.getChronicConditions());
-        resp.setProfilePictureUrl(profile.getProfilePictureUrl());
+        resp.setProfilePictureUrl(
+            profile.getProfilePictureUrl() != null && !profile.getProfilePictureUrl().isBlank()
+                ? "/api/patients/me/profile-picture"
+                : null
+        );
         resp.setBio(profile.getBio());
         resp.setTotalReports(profile.getMedicalReports().size());
         resp.setTotalHistoryEntries(profile.getMedicalHistories().size());
