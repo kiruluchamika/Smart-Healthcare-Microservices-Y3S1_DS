@@ -4,6 +4,11 @@ import { Save, AlertCircle, CheckCircle, User as UserIcon, Activity, Heart, Shie
 import { patientApi } from '../services/patientApi';
 import { notifyProfileUpdated } from '../services/authSession';
 import { CreateOrUpdateProfileRequest, PatientProfile } from '../types/patient';
+import { getDisplayName } from '../utils/name';
+import axios from 'axios';
+
+const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_PROFILE_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
 export default function Profile() {
   const [profile, setProfile] = useState<PatientProfile | null>(null);
@@ -29,6 +34,8 @@ export default function Profile() {
     chronicConditions: '',
     bio: ''
   });
+
+  const displayName = getDisplayName(profile?.firstName, profile?.lastName);
 
   const clearProfileImageObjectUrl = () => {
     if (profileImageObjectUrlRef.current) {
@@ -120,6 +127,33 @@ export default function Profile() {
 
   const handleProfileFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
+
+    if (!file) {
+      setSelectedProfileFile(null);
+      clearProfilePreviewObjectUrl();
+      setProfileImagePreview(null);
+      return;
+    }
+
+    const contentType = (file.type || '').toLowerCase();
+    if (!ALLOWED_PROFILE_IMAGE_TYPES.includes(contentType)) {
+      setSelectedProfileFile(null);
+      clearProfilePreviewObjectUrl();
+      setProfileImagePreview(null);
+      setError('Only JPEG, PNG, WEBP, or GIF images are allowed.');
+      setSuccessMsg('');
+      return;
+    }
+
+    if (file.size > MAX_PROFILE_IMAGE_BYTES) {
+      setSelectedProfileFile(null);
+      clearProfilePreviewObjectUrl();
+      setProfileImagePreview(null);
+      setError('Profile picture size must be 5MB or less.');
+      setSuccessMsg('');
+      return;
+    }
+
     setSelectedProfileFile(file);
 
     clearProfilePreviewObjectUrl();
@@ -145,17 +179,39 @@ export default function Profile() {
       setError('');
       setSuccessMsg('');
       const res = await patientApi.uploadProfilePicture(selectedProfileFile);
-      if (res.success) {
-        setProfile(res.data);
-        setSelectedProfileFile(null);
-        clearProfilePreviewObjectUrl();
-        setProfileImagePreview(null);
-        await loadProfilePicture();
-        notifyProfileUpdated();
-        setSuccessMsg('Profile picture updated successfully!');
+      if (!res.success) {
+        setError(res.message || 'Failed to upload profile picture.');
+        return;
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to upload profile picture.');
+
+      const profileRes = await patientApi.getProfile();
+      if (!profileRes.success || !profileRes.data.profilePictureUrl) {
+        setError('Upload did not persist on server. Please try again.');
+        return;
+      }
+
+      setProfile(profileRes.data);
+      setSelectedProfileFile(null);
+      clearProfilePreviewObjectUrl();
+      setProfileImagePreview(null);
+      await loadProfilePicture();
+      notifyProfileUpdated();
+      setSuccessMsg('Profile picture updated successfully!');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const message = err.response?.data?.message;
+
+        if (status === 413) {
+          setError('Profile image is too large for upload. Please use a file up to 5MB.');
+        } else if (status === 401) {
+          setError('Your session has expired. Please login again.');
+        } else {
+          setError((typeof message === 'string' && message) || err.message || 'Failed to upload profile picture.');
+        }
+      } else {
+        setError('Failed to upload profile picture.');
+      }
     } finally {
       setImageSaving(false);
     }
@@ -256,7 +312,7 @@ export default function Profile() {
                     )}
                  </div>
                  <div className="pt-16">
-                   <h1 className="text-2xl font-bold text-slate-900">{profile?.firstName} {profile?.lastName}</h1>
+                   <h1 className="text-2xl font-bold text-slate-900">{displayName}</h1>
                    <p className="text-slate-500 mt-1">{profile?.email}</p>
                  </div>
 
@@ -266,6 +322,12 @@ export default function Profile() {
                       Choose Photo
                       <input type="file" accept="image/*" className="hidden" onChange={handleProfileFileChange} />
                     </label>
+
+                    {selectedProfileFile && (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        Preview selected: {selectedProfileFile.name}. Click Upload Photo to save it permanently.
+                      </p>
+                    )}
 
                     <button
                       type="button"

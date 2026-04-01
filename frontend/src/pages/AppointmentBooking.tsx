@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, MapPin, Clock, Star, CheckCircle, ChevronRight } from 'lucide-react';
+import { Search, MapPin, Clock, Star, CheckCircle, ChevronRight, LayoutDashboard } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function AppointmentBooking() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -97,10 +98,19 @@ export default function AppointmentBooking() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="mb-12"
+          className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
         >
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Book an Appointment</h1>
-          <p className="text-gray-600">Find and book with a healthcare professional</p>
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">Book an Appointment</h1>
+            <p className="text-gray-600">Find and book with a healthcare professional</p>
+          </div>
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-white px-5 py-3 font-bold text-teal-700 shadow-sm hover:bg-teal-50 transition-colors"
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            Dashboard
+          </Link>
         </motion.div>
 
         <motion.div

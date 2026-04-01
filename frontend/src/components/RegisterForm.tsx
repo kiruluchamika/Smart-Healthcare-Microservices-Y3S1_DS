@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../services/authApi';
 import { setAuthSession } from '../services/authSession';
+import { LAST_NAME_PLACEHOLDER } from '../utils/name';
 
 interface RegisterFormProps {
   onSwitch: () => void;
@@ -86,8 +87,9 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
     setIsLoading(true);
     setServerError('');
 
-    const [firstName, ...rest] = name.trim().split(/\s+/);
-    const lastName = rest.length > 0 ? rest.join(' ') : firstName;
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    const firstName = parts[0] || '';
+    const lastName = parts.length > 1 ? parts.slice(1).join(' ') : LAST_NAME_PLACEHOLDER;
 
     try {
       const response = await register({

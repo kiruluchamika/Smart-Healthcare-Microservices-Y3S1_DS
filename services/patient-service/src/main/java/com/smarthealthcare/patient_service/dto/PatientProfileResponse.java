@@ -45,9 +45,9 @@ public class PatientProfileResponse {
         PatientProfileResponse resp = new PatientProfileResponse();
         resp.setId(profile.getId());
         resp.setAuthUserId(profile.getAuthUserId());
-        resp.setFirstName(firstName);
-        resp.setLastName(lastName);
-        resp.setEmail(email);
+        resp.setFirstName(firstName == null ? "" : firstName.trim());
+        resp.setLastName(lastName == null ? "" : lastName.trim());
+        resp.setEmail(email == null ? "" : email.trim());
         resp.setDateOfBirth(profile.getDateOfBirth());
         resp.setGender(profile.getGender());
         resp.setBloodGroup(profile.getBloodGroup());
@@ -62,8 +62,8 @@ public class PatientProfileResponse {
                 : null
         );
         resp.setBio(profile.getBio());
-        resp.setTotalReports(profile.getMedicalReports().size());
-        resp.setTotalHistoryEntries(profile.getMedicalHistories().size());
+        resp.setTotalReports(profile.getMedicalReports() == null ? 0 : profile.getMedicalReports().size());
+        resp.setTotalHistoryEntries(profile.getMedicalHistories() == null ? 0 : profile.getMedicalHistories().size());
         resp.setCreatedAt(profile.getCreatedAt());
         resp.setUpdatedAt(profile.getUpdatedAt());
         return resp;

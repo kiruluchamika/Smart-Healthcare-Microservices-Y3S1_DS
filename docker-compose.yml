@@ -42,7 +42,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-auth:3306/auth_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
-      APP_SECURITY_ALLOWED_ORIGINS: http://localhost:5173,http://localhost
+      APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
     depends_on:
       mysql-auth:
         condition: service_healthy
@@ -85,7 +85,7 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
       APP_JWT_SECRET: your-secret-key-change-this-in-production-must-be-at-least-256-bits-long-for-HS256-algorithm-security
-      APP_SECURITY_ALLOWED_ORIGINS: http://localhost:5173,http://localhost
+      APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
     depends_on:
       mysql-patient:
         condition: service_healthy
