@@ -76,6 +76,14 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public DoctorResponse getDoctorByEmail(String email) {
+        Doctor doctor = doctorRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Doctor not found with email: " + email));
+        return doctorMapper.toResponse(doctor);
+    }
+
+    @Override
     @Transactional
     public DoctorResponse updateDoctor(Long doctorId, DoctorUpdateRequest request) {
         Doctor doctor = findDoctorOrThrow(doctorId);
@@ -180,10 +188,13 @@ public class DoctorServiceImpl implements DoctorService {
 
         if (request.getVerificationStatus() == VerificationStatus.APPROVED) {
             doctor.setOnboardingState(OnboardingState.VERIFIED);
+            doctor.setActive(Boolean.TRUE);
         } else if (request.getVerificationStatus() == VerificationStatus.REJECTED) {
             doctor.setOnboardingState(OnboardingState.SUSPENDED);
+            doctor.setActive(Boolean.FALSE);
         } else {
             doctor.setOnboardingState(OnboardingState.SUBMITTED);
+            doctor.setActive(Boolean.FALSE);
         }
 
         Doctor updatedDoctor = doctorRepository.save(doctor);
@@ -263,7 +274,7 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     private int calculateProfileCompletenessScore(Doctor doctor) {
-        int total = 10;
+        int total = 9;
         int filled = 0;
 
         if (hasText(doctor.getFirstName())) {
@@ -293,10 +304,6 @@ public class DoctorServiceImpl implements DoctorService {
         if (hasText(doctor.getBio())) {
             filled++;
         }
-        if (doctor.getActive() != null) {
-            filled++;
-        }
-
         return (filled * 100) / total;
     }
 

@@ -50,7 +50,4 @@ public class DoctorUpdateRequest {
 
     @Size(max = 2500, message = "Bio must not exceed 2500 characters")
     private String bio;
-
-    @NotNull(message = "Active status is required")
-    private Boolean active;
 }

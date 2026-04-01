@@ -16,6 +16,8 @@ public interface DoctorService {
 
     DoctorResponse getDoctorById(Long doctorId);
 
+    DoctorResponse getDoctorByEmail(String email);
+
     DoctorResponse updateDoctor(Long doctorId, DoctorUpdateRequest request);
 
     void deleteDoctor(Long doctorId);

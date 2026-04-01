@@ -50,6 +50,4 @@ public class DoctorCreateRequest {
 
     @Size(max = 2500, message = "Bio must not exceed 2500 characters")
     private String bio;
-
-    private Boolean active;
 }

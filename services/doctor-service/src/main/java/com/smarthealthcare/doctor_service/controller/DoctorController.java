@@ -55,6 +55,12 @@ public class DoctorController {
         return ResponseEntity.ok(doctorService.getDoctorById(doctorId));
     }
 
+    @GetMapping("/by-email")
+    @Operation(summary = "Get doctor by email")
+    public ResponseEntity<DoctorResponse> getDoctorByEmail(@RequestParam String email) {
+        return ResponseEntity.ok(doctorService.getDoctorByEmail(email));
+    }
+
     @PutMapping("/{doctorId}")
     @Operation(summary = "Update doctor by id")
     public ResponseEntity<DoctorResponse> updateDoctor(
