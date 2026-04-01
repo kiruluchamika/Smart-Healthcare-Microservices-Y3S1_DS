@@ -126,11 +126,11 @@ public class DoctorServiceImpl implements DoctorService {
             Boolean verified,
             Boolean active,
             Integer minExperience,
-            DayOfWeek dayOfWeek
-    ) {
+            DayOfWeek dayOfWeek) {
         List<Long> doctorIdsByAvailability = null;
         if (dayOfWeek != null) {
-            doctorIdsByAvailability = availabilityRepository.findDistinctDoctorIdsByDayOfWeekAndAvailableTrue(dayOfWeek);
+            doctorIdsByAvailability = availabilityRepository
+                    .findDistinctDoctorIdsByDayOfWeekAndAvailableTrue(dayOfWeek);
             if (doctorIdsByAvailability.isEmpty()) {
                 return List.of();
             }
@@ -163,10 +163,10 @@ public class DoctorServiceImpl implements DoctorService {
         return doctorRepository.findAll(specification)
                 .stream()
                 .sorted(
-                        Comparator.comparing((Doctor d) -> d.getVerificationStatus() == VerificationStatus.APPROVED).reversed()
+                        Comparator.comparing((Doctor d) -> d.getVerificationStatus() == VerificationStatus.APPROVED)
+                                .reversed()
                                 .thenComparing(Doctor::getExperienceYears, Comparator.reverseOrder())
-                                .thenComparing(Doctor::getProfileCompletenessScore, Comparator.reverseOrder())
-                )
+                                .thenComparing(Doctor::getProfileCompletenessScore, Comparator.reverseOrder()))
                 .map(doctorMapper::toResponse)
                 .collect(Collectors.toList());
     }
@@ -213,7 +213,8 @@ public class DoctorServiceImpl implements DoctorService {
         Map<String, Long> weeklySlots = new HashMap<>();
         for (DayOfWeek day : DayOfWeek.values()) {
             weeklySlots.put(day.name(),
-                    slots.stream().filter(s -> s.getDayOfWeek() == day && Boolean.TRUE.equals(s.getAvailable())).count());
+                    slots.stream().filter(s -> s.getDayOfWeek() == day && Boolean.TRUE.equals(s.getAvailable()))
+                            .count());
         }
 
         return DoctorDashboardSummaryResponse.builder()
