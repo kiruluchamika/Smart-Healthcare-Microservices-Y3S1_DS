@@ -124,7 +124,7 @@ public class PatientProfileService {
         }
 
         profile.setProfilePictureUrl(newFileName);
-        PatientProfile saved = patientProfileRepository.save(profile);
+        PatientProfile saved = patientProfileRepository.saveAndFlush(profile);
 
         if (previousFileName != null && !previousFileName.isBlank() && !previousFileName.equals(newFileName)) {
             try {
@@ -188,7 +188,7 @@ public class PatientProfileService {
         }
 
         profile.setProfilePictureUrl(null);
-        PatientProfile saved = patientProfileRepository.save(profile);
+        PatientProfile saved = patientProfileRepository.saveAndFlush(profile);
         return PatientProfileResponse.fromEntity(saved, principal.getFirstName(), principal.getLastName(), principal.getEmail());
     }
 }
