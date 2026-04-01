@@ -20,8 +20,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleResourceNotFound(
             ResourceNotFoundException ex,
-            HttpServletRequest request
-    ) {
+            HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, Map.of());
     }
 
@@ -33,8 +32,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidationErrors(
             MethodArgumentNotValidException ex,
-            HttpServletRequest request
-    ) {
+            HttpServletRequest request) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             fieldErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
@@ -45,16 +43,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleConstraintViolation(
             ConstraintViolationException ex,
-            HttpServletRequest request
-    ) {
+            HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request, Map.of());
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiErrorResponse> handleDataIntegrity(
             DataIntegrityViolationException ex,
-            HttpServletRequest request
-    ) {
+            HttpServletRequest request) {
         return buildErrorResponse(HttpStatus.CONFLICT, "Database integrity violation", request, Map.of());
     }
 
@@ -67,8 +63,7 @@ public class GlobalExceptionHandler {
             HttpStatus status,
             String message,
             HttpServletRequest request,
-            Map<String, String> fieldErrors
-    ) {
+            Map<String, String> fieldErrors) {
         ApiErrorResponse error = ApiErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(status.value())

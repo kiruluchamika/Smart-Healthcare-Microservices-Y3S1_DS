@@ -22,13 +22,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(
-        name = "doctors",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_doctor_email", columnNames = "email"),
-                @UniqueConstraint(name = "uk_doctor_license", columnNames = "license_number")
-        }
-)
+@Table(name = "doctors", uniqueConstraints = {
+        @UniqueConstraint(name = "uk_doctor_email", columnNames = "email"),
+        @UniqueConstraint(name = "uk_doctor_license", columnNames = "license_number")
+})
 @Getter
 @Setter
 @Builder

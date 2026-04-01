@@ -45,8 +45,7 @@ public class DoctorController {
     @Operation(summary = "Create doctor profile")
     public ResponseEntity<DoctorResponse> createDoctor(
             @Valid @RequestBody DoctorCreateRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
-    ) {
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
         return ResponseEntity.status(HttpStatus.CREATED).body(doctorService.createDoctor(request, idempotencyKey));
     }
 
@@ -60,8 +59,7 @@ public class DoctorController {
     @Operation(summary = "Update doctor by id")
     public ResponseEntity<DoctorResponse> updateDoctor(
             @PathVariable Long doctorId,
-            @Valid @RequestBody DoctorUpdateRequest request
-    ) {
+            @Valid @RequestBody DoctorUpdateRequest request) {
         return ResponseEntity.ok(doctorService.updateDoctor(doctorId, request));
     }
 
@@ -78,8 +76,7 @@ public class DoctorController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir
-    ) {
+            @RequestParam(defaultValue = "desc") String sortDir) {
         return ResponseEntity.ok(doctorService.getDoctors(page, size, sortBy, sortDir));
     }
 
@@ -90,9 +87,9 @@ public class DoctorController {
             @RequestParam(required = false) Boolean verified,
             @RequestParam(required = false) Boolean active,
             @RequestParam(required = false) Integer minExperience,
-            @RequestParam(required = false) DayOfWeek dayOfWeek
-    ) {
-        return ResponseEntity.ok(doctorService.searchDoctors(specialization, verified, active, minExperience, dayOfWeek));
+            @RequestParam(required = false) DayOfWeek dayOfWeek) {
+        return ResponseEntity
+                .ok(doctorService.searchDoctors(specialization, verified, active, minExperience, dayOfWeek));
     }
 
     @PatchMapping("/{doctorId}/verification-status")
@@ -100,8 +97,7 @@ public class DoctorController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DoctorResponse> updateVerificationStatus(
             @PathVariable Long doctorId,
-            @Valid @RequestBody DoctorVerificationStatusUpdateRequest request
-    ) {
+            @Valid @RequestBody DoctorVerificationStatusUpdateRequest request) {
         return ResponseEntity.ok(doctorService.updateVerificationStatus(doctorId, request));
     }
 
@@ -115,9 +111,9 @@ public class DoctorController {
     @Operation(summary = "Create doctor availability slot")
     public ResponseEntity<DoctorAvailabilityResponse> createAvailability(
             @PathVariable Long doctorId,
-            @Valid @RequestBody DoctorAvailabilityCreateRequest request
-    ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(availabilityService.createAvailability(doctorId, request));
+            @Valid @RequestBody DoctorAvailabilityCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(availabilityService.createAvailability(doctorId, request));
     }
 
     @GetMapping("/{doctorId}/availability")
@@ -131,8 +127,7 @@ public class DoctorController {
     public ResponseEntity<DoctorAvailabilityResponse> updateAvailability(
             @PathVariable Long doctorId,
             @PathVariable Long availabilityId,
-            @Valid @RequestBody DoctorAvailabilityUpdateRequest request
-    ) {
+            @Valid @RequestBody DoctorAvailabilityUpdateRequest request) {
         return ResponseEntity.ok(availabilityService.updateAvailability(doctorId, availabilityId, request));
     }
 
@@ -140,8 +135,7 @@ public class DoctorController {
     @Operation(summary = "Delete doctor availability slot")
     public ResponseEntity<ApiSuccessResponse> deleteAvailability(
             @PathVariable Long doctorId,
-            @PathVariable Long availabilityId
-    ) {
+            @PathVariable Long availabilityId) {
         availabilityService.deleteAvailability(doctorId, availabilityId);
         return ResponseEntity.ok(ApiSuccessResponse.builder().message("Availability deleted successfully").build());
     }
