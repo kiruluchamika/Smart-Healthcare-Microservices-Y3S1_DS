@@ -31,7 +31,7 @@ app:
   jwt:
     secret: ${APP_JWT_SECRET:your-secret-key-change-this-in-production-must-be-at-least-256-bits-long-for-HS256-algorithm-security}
   security:
-    allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:80,http://127.0.0.1:80}
+    allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:*,http://127.0.0.1:*}
   upload:
     dir: ${APP_UPLOAD_DIR:uploads}
 
