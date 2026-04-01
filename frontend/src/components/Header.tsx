@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronDown, Menu, UserCircle2, X } from 'lucide-react';
+import { patientApi } from '../services/patientApi';
 import {
   AUTH_CHANGED_EVENT,
+  PROFILE_UPDATED_EVENT,
   clearAuthSession,
   getAuthUser,
   getAuthUserRole,
@@ -17,7 +19,10 @@ export default function Header() {
   const [role, setRole] = useState(getAuthUserRole());
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isPatientMobileMenuOpen, setIsPatientMobileMenuOpen] = useState(false);
+  const [patientAvatarUrl, setPatientAvatarUrl] = useState<string | null>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const avatarObjectUrlRef = useRef<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -40,12 +45,19 @@ export default function Header() {
       setIsProfileOpen(false);
       setIsPatientMobileMenuOpen(false);
     };
+
+    const handleProfileUpdated = () => {
+      setAvatarVersion((prev) => prev + 1);
+    };
+
     window.addEventListener('storage', syncAuthState);
     window.addEventListener(AUTH_CHANGED_EVENT, syncAuthState);
+    window.addEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
 
     return () => {
       window.removeEventListener('storage', syncAuthState);
       window.removeEventListener(AUTH_CHANGED_EVENT, syncAuthState);
+      window.removeEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
     };
   }, []);
 
@@ -73,6 +85,54 @@ export default function Header() {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const resetAvatar = () => {
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
+      if (mounted) {
+        setPatientAvatarUrl(null);
+      }
+    };
+
+    const loadProfileAvatar = async () => {
+      if (!isAuthenticated || role !== 'PATIENT') {
+        resetAvatar();
+        return;
+      }
+
+      try {
+        const response = await patientApi.getProfilePictureBlob();
+        if (!mounted) {
+          return;
+        }
+
+        if (avatarObjectUrlRef.current) {
+          URL.revokeObjectURL(avatarObjectUrlRef.current);
+        }
+
+        const objectUrl = URL.createObjectURL(response.data);
+        avatarObjectUrlRef.current = objectUrl;
+        setPatientAvatarUrl(objectUrl);
+      } catch {
+        resetAvatar();
+      }
+    };
+
+    void loadProfileAvatar();
+
+    return () => {
+      mounted = false;
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
+    };
+  }, [isAuthenticated, role, avatarVersion]);
 
   const guestNavItems = [
     { label: 'Home', href: '/' },
@@ -219,9 +279,13 @@ export default function Header() {
                         : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="h-9 w-9 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-semibold flex items-center justify-center">
-                      {patientInitial}
-                    </div>
+                    {patientAvatarUrl ? (
+                      <img src={patientAvatarUrl} alt="Patient avatar" className="h-9 w-9 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-9 w-9 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-semibold flex items-center justify-center">
+                        {patientInitial}
+                      </div>
+                    )}
                     <div className="text-left">
                       <p className="text-sm font-semibold leading-tight">{patientDisplayName}</p>
                       {patientEmail && <p className="text-xs opacity-80 leading-tight">{patientEmail}</p>}
@@ -339,7 +403,11 @@ export default function Header() {
                     onClick={() => setIsPatientMobileMenuOpen((prev) => !prev)}
                   >
                     <span className="flex items-center gap-2 font-semibold">
-                      <UserCircle2 className="h-5 w-5" />
+                      {patientAvatarUrl ? (
+                        <img src={patientAvatarUrl} alt="Patient avatar" className="h-6 w-6 rounded-full object-cover" />
+                      ) : (
+                        <UserCircle2 className="h-5 w-5" />
+                      )}
                       {patientDisplayName}
                     </span>
                     <ChevronDown className={`h-4 w-4 transition-transform ${isPatientMobileMenuOpen ? 'rotate-180' : ''}`} />
