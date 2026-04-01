@@ -30,7 +30,7 @@ public class MedicalReportController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<MedicalReportResponse>>> getMyReports(
             @AuthenticationPrincipal AuthenticatedPatient principal,
-            @RequestParam(required = false) ReportType type) {
+            @RequestParam(name = "type", required = false) ReportType type) {
 
         List<MedicalReportResponse> reports = medicalReportService.getReports(principal.getAuthUserId(), type);
         return ResponseEntity.ok(ApiResponse.success("Reports retrieved successfully", reports));

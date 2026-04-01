@@ -3,6 +3,7 @@ import { patientApi } from '../../services/patientApi';
 import { MedicalReport, ReportType } from '../../types/patient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Trash2, FileText, UploadCloud, X, Folder, AlertCircle } from 'lucide-react';
+import axios from 'axios';
 
 const MedicalReports: React.FC = () => {
   const [reports, setReports] = useState<MedicalReport[]>([]);
@@ -70,8 +71,23 @@ const MedicalReports: React.FC = () => {
         setReportType('LAB_REPORT');
         setReportDate('');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to upload report. The file may be too large.');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const serverMessage = err.response?.data?.message;
+
+        if (status === 413) {
+          setError('Upload failed: the selected file is too large for the gateway. Please upload a smaller file (max 10MB).');
+        } else if (status === 401) {
+          setError('Your session has expired. Please log in again and retry the upload.');
+        } else if (status === 400 && typeof serverMessage === 'string' && serverMessage.includes('ReportType')) {
+          setError('Upload failed due to report type binding on the server. Please retry and contact support if it persists.');
+        } else {
+          setError((typeof serverMessage === 'string' && serverMessage) || err.message || 'Failed to upload report.');
+        }
+      } else {
+        setError('Failed to upload report. Please try again.');
+      }
     } finally {
       setUploading(false);
     }
