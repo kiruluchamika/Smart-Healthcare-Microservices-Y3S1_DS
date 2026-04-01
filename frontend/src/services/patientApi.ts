@@ -45,6 +45,31 @@ export const patientApi = {
     return response.data;
   },
 
+  uploadProfilePicture: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await axios.post<ApiResponse<PatientProfile>>(`${API_URL}/profile-picture`, formData, {
+      headers: getHeaders(),
+    });
+    return response.data;
+  },
+
+  getProfilePictureBlob: async () => {
+    const response = await axios.get(`${API_URL}/profile-picture`, {
+      headers: getHeaders(),
+      responseType: 'blob',
+    });
+    return response;
+  },
+
+  deleteProfilePicture: async () => {
+    const response = await axios.delete<ApiResponse<PatientProfile>>(`${API_URL}/profile-picture`, {
+      headers: getHeaders(),
+    });
+    return response.data;
+  },
+
   // Reports
   getReports: async (type?: ReportType) => {
     const url = type ? `${API_URL}/reports?type=${type}` : `${API_URL}/reports`;
