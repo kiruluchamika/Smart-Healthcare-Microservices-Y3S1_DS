@@ -2,26 +2,66 @@ import type { AuthResponse } from './authApi';
 
 const AUTH_TOKEN_KEY = 'authToken';
 const AUTH_USER_KEY = 'user';
+const AUTH_TOKEN_EXPIRES_AT_KEY = 'authTokenExpiresAt';
 export const AUTH_CHANGED_EVENT = 'auth-state-changed';
+export const PROFILE_UPDATED_EVENT = 'patient-profile-updated';
 
 function notifyAuthChanged() {
   window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
 }
 
+export function notifyProfileUpdated() {
+  window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
+}
+
 export function setAuthSession(response: AuthResponse) {
+  const expiresAt = Date.now() + (response.expiresInMs || 0);
   localStorage.setItem(AUTH_TOKEN_KEY, response.accessToken);
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
+  localStorage.setItem(AUTH_TOKEN_EXPIRES_AT_KEY, String(expiresAt));
   notifyAuthChanged();
 }
 
 export function clearAuthSession() {
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem(AUTH_USER_KEY);
+  localStorage.removeItem(AUTH_TOKEN_EXPIRES_AT_KEY);
   notifyAuthChanged();
 }
 
+function isTokenExpired(token: string) {
+  const expiresAtRaw = localStorage.getItem(AUTH_TOKEN_EXPIRES_AT_KEY);
+  const expiresAt = expiresAtRaw ? Number(expiresAtRaw) : NaN;
+
+  if (Number.isFinite(expiresAt) && expiresAt > 0) {
+    return Date.now() >= expiresAt;
+  }
+
+  // Fallback: parse JWT exp claim if persisted expiry is missing.
+  try {
+    const payloadBase64 = token.split('.')[1];
+    if (!payloadBase64) return false;
+    const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+    const payload = JSON.parse(payloadJson) as { exp?: number };
+    if (!payload.exp) return false;
+    return Date.now() >= payload.exp * 1000;
+  } catch {
+    return false;
+  }
+}
+
 export function getAuthToken() {
-  return localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (!token) {
+    return null;
+  }
+
+  if (isTokenExpired(token)) {
+    clearAuthSession();
+    return null;
+  }
+
+  return token;
 }
 
 export function getAuthUser() {
@@ -35,6 +75,25 @@ export function getAuthUser() {
   } catch {
     return null;
   }
+}
+
+export function getAuthUserRole() {
+  const user = getAuthUser();
+  const role = user?.role;
+
+  if (role === 'DOCTOR' || role === 'ADMIN' || role === 'PATIENT') {
+    return role;
+  }
+
+  return null;
+}
+
+export function isDoctorUser() {
+  return getAuthUserRole() === 'DOCTOR';
+}
+
+export function isAdminUser() {
+  return getAuthUserRole() === 'ADMIN';
 }
 
 export function isUserAuthenticated() {

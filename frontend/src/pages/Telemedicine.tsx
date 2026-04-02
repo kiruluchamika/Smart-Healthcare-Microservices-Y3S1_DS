@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Minimize2, Maximize2, Mic, MicOff, Volume2, VolumeX, Phone, MessageCircle, Share2, Download } from 'lucide-react';
+import { Minimize2, Maximize2, Mic, MicOff, Volume2, Phone, MessageCircle, Share2, Download, LayoutDashboard } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Telemedicine() {
   const [isMuted, setIsMuted] = useState(false);
@@ -43,6 +44,17 @@ export default function Telemedicine() {
   return (
     <div className={`${isFullscreen ? 'fixed inset-0 pt-0' : 'min-h-screen pt-32 pb-20'} px-4 sm:px-6 lg:px-8 bg-black`}>
       <div className={`${isFullscreen ? 'h-screen' : 'max-w-7xl mx-auto'} flex flex-col`}>
+        {!isFullscreen && (
+          <div className="mb-4 flex justify-end">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-2 rounded-xl border border-teal-500/40 bg-teal-500/20 px-5 py-2.5 font-bold text-teal-200 hover:bg-teal-500/30 transition-colors"
+            >
+              <LayoutDashboard className="w-5 h-5" />
+              Dashboard
+            </Link>
+          </div>
+        )}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}

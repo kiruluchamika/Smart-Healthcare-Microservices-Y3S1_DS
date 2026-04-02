@@ -34,10 +34,27 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
     },
   });
 
-  const payload = await response.json().catch(() => null);
+  const rawBody = await response.text();
+  let payload: any = null;
+
+  if (rawBody) {
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      payload = null;
+    }
+  }
 
   if (!response.ok) {
-    const message = payload?.message || `Request failed with status ${response.status}`;
+    const fieldErrors = payload?.errors && typeof payload.errors === 'object'
+      ? Object.values(payload.errors).filter((value): value is string => typeof value === 'string')
+      : [];
+
+    const message =
+      fieldErrors[0] ||
+      payload?.message ||
+      (typeof rawBody === 'string' && rawBody.trim().length > 0 ? rawBody : null) ||
+      `Request failed with status ${response.status}`;
     throw new Error(message);
   }
 
@@ -53,6 +70,13 @@ export function register(payload: RegisterPayload) {
 
 export function login(email: string, password: string) {
   return request<AuthResponse>('/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function adminLogin(email: string, password: string) {
+  return request<AuthResponse>('/admin/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });

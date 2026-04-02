@@ -18,6 +18,26 @@
   .card-hover {
     @apply hover:shadow-lg hover:border-blue-200/30 transition-all;
   }
+
+  .patient-shell {
+    @apply min-h-screen bg-[radial-gradient(circle_at_top_right,#ccfbf1,transparent_40%),linear-gradient(180deg,#f8fafc_0%,#ffffff_80%)] pt-24 pb-12;
+  }
+
+  .patient-card {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+  }
+
+  .patient-card-hover {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow hover:shadow-md;
+  }
+
+  .patient-input {
+    @apply w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-teal-400;
+  }
+
+  .patient-button-primary {
+    @apply rounded-xl bg-gradient-to-r from-teal-600 to-cyan-500 px-5 py-3 text-sm font-semibold text-white transition-colors hover:from-teal-700 hover:to-cyan-600;
+  }
 }
 
 @keyframes slideIn {

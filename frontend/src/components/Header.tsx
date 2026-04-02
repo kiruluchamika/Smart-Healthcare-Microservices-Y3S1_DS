@@ -1,18 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Menu, X, Heart } from 'lucide-react';
-import { AUTH_CHANGED_EVENT, clearAuthSession, getAuthUser, isUserAuthenticated } from '../services/authSession';
+import { ChevronDown, Menu, UserCircle2, X } from 'lucide-react';
+import { patientApi } from '../services/patientApi';
+import {
+  AUTH_CHANGED_EVENT,
+  PROFILE_UPDATED_EVENT,
+  clearAuthSession,
+  getAuthUser,
+  getAuthUserRole,
+  isUserAuthenticated,
+} from '../services/authSession';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(isUserAuthenticated());
-  const [userRole, setUserRole] = useState<string | null>(getAuthUser()?.role ?? null);
+  const [role, setRole] = useState(getAuthUserRole());
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isPatientMobileMenuOpen, setIsPatientMobileMenuOpen] = useState(false);
+  const [patientAvatarUrl, setPatientAvatarUrl] = useState<string | null>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
+  const avatarObjectUrlRef = useRef<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  const isAuthPage =
+    location.pathname === '/login' ||
+    location.pathname === '/register' ||
+    location.pathname === '/admin/login';
   const isLandingPage = location.pathname === '/';
 
   useEffect(() => {
@@ -24,22 +41,98 @@ export default function Header() {
   useEffect(() => {
     const syncAuthState = () => {
       setIsAuthenticated(isUserAuthenticated());
-      setUserRole(getAuthUser()?.role ?? null);
+      setRole(getAuthUserRole());
+      setIsProfileOpen(false);
+      setIsPatientMobileMenuOpen(false);
     };
+
+    const handleProfileUpdated = () => {
+      setAvatarVersion((prev) => prev + 1);
+    };
+
     window.addEventListener('storage', syncAuthState);
     window.addEventListener(AUTH_CHANGED_EVENT, syncAuthState);
+    window.addEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
 
     return () => {
       window.removeEventListener('storage', syncAuthState);
       window.removeEventListener(AUTH_CHANGED_EVENT, syncAuthState);
+      window.removeEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdated);
     };
   }, []);
 
   useEffect(() => {
     setIsOpen(false);
+    setIsProfileOpen(false);
+    setIsPatientMobileMenuOpen(false);
     setIsAuthenticated(isUserAuthenticated());
-    setUserRole(getAuthUser()?.role ?? null);
+    setRole(getAuthUserRole());
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!profileMenuRef.current) {
+        return;
+      }
+
+      if (!profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const resetAvatar = () => {
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
+      if (mounted) {
+        setPatientAvatarUrl(null);
+      }
+    };
+
+    const loadProfileAvatar = async () => {
+      if (!isAuthenticated || role !== 'PATIENT') {
+        resetAvatar();
+        return;
+      }
+
+      try {
+        const response = await patientApi.getProfilePictureBlob();
+        if (!mounted) {
+          return;
+        }
+
+        if (avatarObjectUrlRef.current) {
+          URL.revokeObjectURL(avatarObjectUrlRef.current);
+        }
+
+        const objectUrl = URL.createObjectURL(response.data);
+        avatarObjectUrlRef.current = objectUrl;
+        setPatientAvatarUrl(objectUrl);
+      } catch {
+        resetAvatar();
+      }
+    };
+
+    void loadProfileAvatar();
+
+    return () => {
+      mounted = false;
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
+    };
+  }, [isAuthenticated, role, avatarVersion]);
 
   const guestNavItems = [
     { label: 'Home', href: '/' },
@@ -48,19 +141,62 @@ export default function Header() {
     { label: 'Contact', href: '/#contact' },
   ];
 
-  const authNavItems = userRole === 'DOCTOR'
-    ? [
-        { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Doctor Appointments', href: '/doctor/appointments' },
-        { label: 'Profile', href: '/profile' },
-      ]
-    : [
-        { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Appointments', href: '/appointments' },
-        { label: 'Profile', href: '/profile' },
-      ];
+  const patientNavItems = [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Profile', href: '/profile' },
+    { label: 'Appointments', href: '/appointments' },
+    { label: 'Reports', href: '/reports' },
+    { label: 'History', href: '/history' },
+    { label: 'Discover Doctors', href: '/doctors' },
+  ];
 
-  const displayItems = isAuthPage ? [] : isAuthenticated ? authNavItems : guestNavItems;
+  const doctorNavItems = [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Doctor Profile', href: '/doctors/profile' },
+    { label: 'Appointments', href: '/appointments' },
+  ];
+
+  const adminNavItems = [
+    { label: 'Admin Panel', href: '/admin/dashboard' },
+    { label: 'Doctor Verification', href: '/admin/verification' },
+    { label: 'Doctor Profile', href: '/doctors/profile' },
+  ];
+
+  const authNavItems =
+    role === 'PATIENT'
+      ? patientNavItems
+      : role === 'DOCTOR'
+        ? doctorNavItems
+        : role === 'ADMIN'
+          ? adminNavItems
+          : [];
+
+  const displayItems = isAuthPage
+    ? []
+    : isAuthenticated && role === 'PATIENT'
+      ? guestNavItems
+      : isAuthenticated
+        ? authNavItems
+        : guestNavItems;
+
+  const patientUser = role === 'PATIENT' ? getAuthUser() : null;
+  const patientDisplayName = patientUser
+    ? `${patientUser.firstName || ''} ${patientUser.lastName || ''}`.trim() ||
+      patientUser.email ||
+      'Patient'
+    : 'Patient';
+  const patientEmail = patientUser?.email || '';
+  const patientInitial = patientDisplayName.charAt(0).toUpperCase() || 'P';
+
+  const patientServiceLinks = [
+    { label: 'Profile', href: '/profile' },
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Appointments', href: '/appointments' },
+    { label: 'MedicalReports', href: '/reports' },
+    { label: 'MedicalHistory', href: '/history' },
+    { label: 'Prescription', href: '/prescriptions' },
+    { label: 'Discover Doctors', href: '/doctors' },
+  ];
 
   const handleLogout = () => {
     clearAuthSession();
@@ -83,12 +219,8 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <Link to="/" className="flex items-center gap-2 group">
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-gradient-to-br from-blue-600 to-cyan-500 p-2 rounded-xl"
-            >
-              <Heart className="w-6 h-6 text-white" />
+            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="flex items-center justify-center">
+              <img src="/fav.png" alt="Clinexa" className="h-10 w-10" />
             </motion.div>
             <span className={`text-xl font-bold hidden sm:inline transition-colors ${
               isLandingPage && !scrolled
@@ -125,7 +257,11 @@ export default function Header() {
                 <>
                   <Link
                     to="/login"
-                    className="px-4 py-2 text-gray-700 font-medium hover:text-blue-600 transition-colors"
+                    className={`px-4 py-2 font-medium transition-colors ${
+                      isLandingPage && !scrolled
+                        ? 'text-white hover:text-cyan-400'
+                        : 'text-gray-700 hover:text-blue-600'
+                    }`}
                   >
                     Sign In
                   </Link>
@@ -137,10 +273,57 @@ export default function Header() {
                   </Link>
                 </>
               )
+            ) : role === 'PATIENT' ? (
+              <div className="relative" ref={profileMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsProfileOpen((prev) => !prev)}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-colors ${
+                    isLandingPage && !scrolled
+                      ? 'bg-white/10 text-white hover:bg-white/20'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {patientAvatarUrl ? (
+                    <img src={patientAvatarUrl} alt="Patient avatar" className="h-9 w-9 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-semibold flex items-center justify-center">
+                      {patientInitial}
+                    </div>
+                  )}
+                  <div className="text-left">
+                    <p className="text-sm font-semibold leading-tight">{patientDisplayName}</p>
+                    {patientEmail && <p className="text-xs opacity-80 leading-tight">{patientEmail}</p>}
+                  </div>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isProfileOpen && (
+                  <div className="absolute right-0 mt-2 w-60 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
+                    {patientServiceLinks.map((item) => (
+                      <Link
+                        key={item.label}
+                        to={item.href}
+                        onClick={() => setIsProfileOpen(false)}
+                        className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 <Link
-                  to="/dashboard"
+                  to={role === 'ADMIN' ? '/admin/dashboard' : '/dashboard'}
                   className={`px-4 py-2 font-medium transition-colors ${
                     isLandingPage && !scrolled
                       ? 'text-white hover:text-cyan-400'
@@ -198,7 +381,11 @@ export default function Header() {
               <div className="pt-4 border-t border-gray-200/20 space-y-2">
                 <Link
                   to="/login"
-                  className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className={`block px-4 py-2 rounded-lg transition-colors ${
+                    isLandingPage && !scrolled
+                      ? 'text-white hover:bg-white/10'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
                   onClick={() => setIsOpen(false)}
                 >
                   Sign In
@@ -210,6 +397,53 @@ export default function Header() {
                 >
                   Sign Up
                 </Link>
+              </div>
+            ) : role === 'PATIENT' ? (
+              <div className="pt-4 border-t border-gray-200/20 space-y-2">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-lg bg-gray-100 px-4 py-3 text-left text-gray-800"
+                  onClick={() => setIsPatientMobileMenuOpen((prev) => !prev)}
+                >
+                  <span className="flex items-center gap-2 font-semibold">
+                    {patientAvatarUrl ? (
+                      <img src={patientAvatarUrl} alt="Patient avatar" className="h-6 w-6 rounded-full object-cover" />
+                    ) : (
+                      <UserCircle2 className="h-5 w-5" />
+                    )}
+                    {patientDisplayName}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isPatientMobileMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isPatientMobileMenuOpen && (
+                  <div className="space-y-1 rounded-lg border border-gray-200 bg-white p-2">
+                    {patientServiceLinks.map((item) => (
+                      <Link
+                        key={item.label}
+                        to={item.href}
+                        className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                        onClick={() => {
+                          setIsOpen(false);
+                          setIsPatientMobileMenuOpen(false);
+                        }}
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                    <button
+                      type="button"
+                      className="block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                      onClick={() => {
+                        setIsOpen(false);
+                        setIsPatientMobileMenuOpen(false);
+                        handleLogout();
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="pt-4 border-t border-gray-200/20 space-y-2">

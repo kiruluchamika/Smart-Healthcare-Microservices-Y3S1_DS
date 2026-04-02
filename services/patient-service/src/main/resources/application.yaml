@@ -1,3 +1,43 @@
 spring:
   application:
-    name: patient-Service
+    name: patient-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/patient_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+  jackson:
+    default-property-inclusion: non_null
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+server:
+  port: ${SERVER_PORT:8085}
+  servlet:
+    context-path: /
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:your-secret-key-change-this-in-production-must-be-at-least-256-bits-long-for-HS256-algorithm-security}
+  security:
+    allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:*,http://127.0.0.1:*}
+  upload:
+    dir: ${APP_UPLOAD_DIR:uploads}
+
+logging:
+  level:
+    root: INFO
+    com.smarthealthcare.patient_service: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
