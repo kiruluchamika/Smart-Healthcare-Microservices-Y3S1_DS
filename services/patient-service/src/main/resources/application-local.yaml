@@ -1,0 +1,41 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3309/patient_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  docker:
+    compose:
+      enabled: true
+      file: services/patient-service/docker-compose.yaml
+      lifecycle-management: start-and-stop
+      wait:
+        timeout: 2m
+      stop:
+        command: down
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+server:
+  port: 8085
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:your-secret-key-change-this-in-production-must-be-at-least-256-bits-long-for-HS256-algorithm-security}
+  security:
+    allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:*,http://127.0.0.1:*}
+  upload:
+    dir: ${APP_UPLOAD_DIR:uploads}
+
+logging:
+  level:
+    root: DEBUG
+    com.smarthealthcare.patient_service: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
