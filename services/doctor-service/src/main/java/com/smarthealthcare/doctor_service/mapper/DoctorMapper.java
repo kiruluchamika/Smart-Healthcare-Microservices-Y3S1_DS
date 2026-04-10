@@ -22,6 +22,11 @@ public class DoctorMapper {
                 .experienceYears(request.getExperienceYears())
                 .licenseNumber(request.getLicenseNumber())
                 .bio(request.getBio())
+                .boardCertifications(request.getBoardCertifications())
+                .languagesSpoken(request.getLanguagesSpoken())
+                .clinicLocations(request.getClinicLocations())
+                .insuranceProviders(request.getInsuranceProviders())
+                .licenseExpiryDate(request.getLicenseExpiryDate())
                 .verificationStatus(VerificationStatus.PENDING)
                 .onboardingState(OnboardingState.SUBMITTED)
                 .build();
@@ -37,6 +42,11 @@ public class DoctorMapper {
         doctor.setExperienceYears(request.getExperienceYears());
         doctor.setLicenseNumber(request.getLicenseNumber());
         doctor.setBio(request.getBio());
+        doctor.setBoardCertifications(request.getBoardCertifications());
+        doctor.setLanguagesSpoken(request.getLanguagesSpoken());
+        doctor.setClinicLocations(request.getClinicLocations());
+        doctor.setInsuranceProviders(request.getInsuranceProviders());
+        doctor.setLicenseExpiryDate(request.getLicenseExpiryDate());
     }
 
     public DoctorResponse toResponse(Doctor doctor) {
@@ -51,6 +61,11 @@ public class DoctorMapper {
                 .experienceYears(doctor.getExperienceYears())
                 .licenseNumber(doctor.getLicenseNumber())
                 .bio(doctor.getBio())
+                .boardCertifications(doctor.getBoardCertifications())
+                .languagesSpoken(doctor.getLanguagesSpoken())
+                .clinicLocations(doctor.getClinicLocations())
+                .insuranceProviders(doctor.getInsuranceProviders())
+                .licenseExpiryDate(doctor.getLicenseExpiryDate())
                 .verificationStatus(doctor.getVerificationStatus())
                 .active(doctor.getActive())
                 .profileCompletenessScore(doctor.getProfileCompletenessScore())
