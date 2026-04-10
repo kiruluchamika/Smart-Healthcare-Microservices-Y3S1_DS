@@ -274,7 +274,7 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     private int calculateProfileCompletenessScore(Doctor doctor) {
-        int total = 9;
+        int total = 14;
         int filled = 0;
 
         if (hasText(doctor.getFirstName())) {
@@ -302,6 +302,21 @@ public class DoctorServiceImpl implements DoctorService {
             filled++;
         }
         if (hasText(doctor.getBio())) {
+            filled++;
+        }
+        if (hasText(doctor.getBoardCertifications())) {
+            filled++;
+        }
+        if (hasText(doctor.getLanguagesSpoken())) {
+            filled++;
+        }
+        if (hasText(doctor.getClinicLocations())) {
+            filled++;
+        }
+        if (hasText(doctor.getInsuranceProviders())) {
+            filled++;
+        }
+        if (doctor.getLicenseExpiryDate() != null) {
             filled++;
         }
         return (filled * 100) / total;
