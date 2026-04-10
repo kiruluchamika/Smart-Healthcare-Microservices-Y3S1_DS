@@ -4,6 +4,13 @@ import { Link } from 'react-router-dom';
 import type { DoctorServiceDoctor } from '../../types/doctor';
 import { DoctorStatusBadge } from './DoctorStatusBadge';
 
+function splitValues(value?: string | null) {
+  return (value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 interface DoctorCardProps {
   doctor: DoctorServiceDoctor;
 }
@@ -40,7 +47,21 @@ export function DoctorCard({ doctor }: DoctorCardProps) {
             <Clock3 className="h-4 w-4 text-teal-600" />
             <span>Profile score {doctor.profileCompletenessScore}%</span>
           </div>
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-teal-600" />
+            <span>{doctor.licenseExpiryDate ? `License expires ${new Date(doctor.licenseExpiryDate).toLocaleDateString()}` : 'License expiry not set'}</span>
+          </div>
         </div>
+
+        {splitValues(doctor.languagesSpoken).length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {splitValues(doctor.languagesSpoken).map((language) => (
+              <span key={language} className="rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
+                {language}
+              </span>
+            ))}
+          </div>
+        )}
 
         <p className="line-clamp-2 text-sm text-slate-700">{doctor.bio || 'No biography provided yet.'}</p>
 
