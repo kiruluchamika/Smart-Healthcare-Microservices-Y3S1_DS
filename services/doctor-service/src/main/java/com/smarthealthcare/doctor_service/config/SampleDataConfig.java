@@ -7,6 +7,7 @@ import com.smarthealthcare.doctor_service.enums.VerificationStatus;
 import com.smarthealthcare.doctor_service.repository.DoctorAvailabilityRepository;
 import com.smarthealthcare.doctor_service.repository.DoctorRepository;
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -39,6 +40,11 @@ public class SampleDataConfig {
                                         .experienceYears(12)
                                         .licenseNumber("SLMC-CAR-001")
                                         .bio("Senior cardiologist focused on preventive heart care.")
+                                        .boardCertifications("Board Certified in Cardiovascular Medicine")
+                                        .languagesSpoken("English, Sinhala, Tamil")
+                                        .clinicLocations("City Heart Clinic, Colombo")
+                                        .insuranceProviders("AIA, Allianz, Union Assurance")
+                                        .licenseExpiryDate(LocalDate.of(2028, 12, 31))
                                         .verificationStatus(VerificationStatus.APPROVED)
                                         .active(true)
                                         .onboardingState(OnboardingState.VERIFIED)
@@ -55,10 +61,15 @@ public class SampleDataConfig {
                                         .experienceYears(8)
                                         .licenseNumber("SLMC-NEU-002")
                                         .bio("Neurologist with special interest in stroke recovery.")
+                                        .boardCertifications("Board Certified in Neurology")
+                                        .languagesSpoken("English, Sinhala")
+                                        .clinicLocations("Neuro Care Center, Kandy")
+                                        .insuranceProviders("AIA, NDB")
+                                        .licenseExpiryDate(LocalDate.of(2027, 6, 30))
                                         .verificationStatus(VerificationStatus.PENDING)
                                         .active(true)
                                         .onboardingState(OnboardingState.SUBMITTED)
-                                        .profileCompletenessScore(90)
+                                        .profileCompletenessScore(100)
                                         .build());
 
                         availabilityRepository.save(DoctorAvailability.builder()
