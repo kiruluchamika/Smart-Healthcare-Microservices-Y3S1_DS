@@ -61,8 +61,23 @@ services:
     container_name: frontend
     depends_on:
       - auth-service
+      - api-gateway
     ports:
       - "5173:80"
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    environment:
+      DOCTOR_SERVICE_URL: http://host.docker.internal:8083
+      AI_DOCTOR_SUGGESTION_SERVICE_URL: http://ai-doctor-suggestion-service:8092
+      APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
+    depends_on:
+      - ai-doctor-suggestion-service
+    ports:
+      - "8088:8088"
 
   mysql-patient:
     image: mysql:8.0

@@ -1,3 +1,61 @@
 spring:
   application:
     name: api-gateway
+  autoconfigure:
+    exclude:
+      - org.springframework.cloud.autoconfigure.LifecycleMvcEndpointAutoConfiguration
+  docker:
+    compose:
+      enabled: true
+      file: api-gateway/docker-compose.yaml
+      lifecycle-management: start-and-stop
+      stop:
+        command: down
+  cloud:
+    gateway:
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 30s
+      globalcors:
+        cors-configurations:
+          "[/**]":
+            allowedOriginPatterns:
+              - "http://localhost:*"
+              - "http://127.0.0.1:*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+      routes:
+        - id: doctor-service
+          uri: ${DOCTOR_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/doctors/**
+          filters:
+            - RewritePath=/api/doctors/(?<segment>.*), /api/v1/doctors/${segment}
+            - PreserveHostHeader
+        - id: ai-doctor-suggestion-service
+          uri: ${AI_DOCTOR_SUGGESTION_SERVICE_URL:http://localhost:8092}
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - RewritePath=/api/ai/(?<segment>.*), /api/v1/ai/${segment}
+            - PreserveHostHeader
+
+server:
+  port: ${SERVER_PORT:8088}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always
