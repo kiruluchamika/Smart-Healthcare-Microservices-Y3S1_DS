@@ -2,6 +2,7 @@ package com.smarthealthcare.doctor_service.dto;
 
 import com.smarthealthcare.doctor_service.enums.OnboardingState;
 import com.smarthealthcare.doctor_service.enums.VerificationStatus;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Value;
@@ -19,6 +20,11 @@ public class DoctorResponse {
     Integer experienceYears;
     String licenseNumber;
     String bio;
+    String boardCertifications;
+    String languagesSpoken;
+    String clinicLocations;
+    String insuranceProviders;
+    LocalDate licenseExpiryDate;
     VerificationStatus verificationStatus;
     Boolean active;
     Integer profileCompletenessScore;

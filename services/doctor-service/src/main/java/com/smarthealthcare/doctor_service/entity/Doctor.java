@@ -14,6 +14,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -63,6 +64,21 @@ public class Doctor {
 
     @Column(length = 2500)
     private String bio;
+
+    @Column(name = "board_certifications", length = 500)
+    private String boardCertifications;
+
+    @Column(name = "languages_spoken", length = 300)
+    private String languagesSpoken;
+
+    @Column(name = "clinic_locations", length = 500)
+    private String clinicLocations;
+
+    @Column(name = "insurance_providers", length = 500)
+    private String insuranceProviders;
+
+    @Column(name = "license_expiry_date")
+    private LocalDate licenseExpiryDate;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)

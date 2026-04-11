@@ -5,6 +5,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: 123456
       MYSQL_DATABASE: auth_service_db
+      MYSQL_USER: auth_user
+      MYSQL_PASSWORD: auth_pass
     ports:
       - "3307:3306"
     volumes:
@@ -39,10 +41,13 @@ services:
       dockerfile: Dockerfile
     container_name: auth-service
     environment:
+      SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-auth:3306/auth_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_DATASOURCE_USERNAME: auth_user
+      SPRING_DATASOURCE_PASSWORD: auth_pass
+      APP_JWT_SECRET: auth-service-dev-secret-change-this-in-production-must-be-at-least-256-bits-long
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
+      SERVER_PORT: 8080
     depends_on:
       mysql-auth:
         condition: service_healthy
@@ -94,8 +99,45 @@ services:
     volumes:
       - patient-uploads:/app/uploads
 
+  mysql-ai-suggestion:
+    image: mysql:8.0
+    container_name: mysql-ai-suggestion
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ai_doctor_suggestion_db
+    ports:
+      - "3310:3306"
+    volumes:
+      - mysql-ai-suggestion-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ai-doctor-suggestion-service:
+    build:
+      context: ./services/ai-doctor-suggestion-service
+      dockerfile: Dockerfile
+    container_name: ai-doctor-suggestion-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-ai-suggestion:3306/ai_doctor_suggestion_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      DOCTOR_SERVICE_BASE_URL: http://host.docker.internal:8083
+      DOCTOR_SERVICE_USERNAME: doctor
+      DOCTOR_SERVICE_PASSWORD: doctor123
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_EMBEDDING_MODEL: nomic-embed-text
+    depends_on:
+      mysql-ai-suggestion:
+        condition: service_healthy
+    ports:
+      - "8092:8092"
+
 volumes:
   mysql-auth-data:
   mysql-doctor-data:
   mysql-patient-data:
   patient-uploads:
+  mysql-ai-suggestion-data:

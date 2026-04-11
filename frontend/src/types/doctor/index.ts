@@ -14,6 +14,11 @@ export interface DoctorServiceDoctor {
   experienceYears: number;
   licenseNumber: string;
   bio?: string;
+  boardCertifications?: string;
+  languagesSpoken?: string;
+  clinicLocations?: string;
+  insuranceProviders?: string;
+  licenseExpiryDate?: string | null;
   verificationStatus: DoctorVerificationStatus;
   active: boolean;
   profileCompletenessScore: number;
@@ -55,9 +60,14 @@ export interface DoctorCreatePayload {
   experienceYears: number;
   licenseNumber: string;
   bio?: string;
+  boardCertifications?: string;
+  languagesSpoken?: string;
+  clinicLocations?: string;
+  insuranceProviders?: string;
+  licenseExpiryDate?: string | null;
 }
 
-export interface DoctorUpdatePayload extends DoctorCreatePayload {}
+export interface DoctorUpdatePayload extends DoctorCreatePayload { }
 
 export interface DoctorAvailability {
   id: number;

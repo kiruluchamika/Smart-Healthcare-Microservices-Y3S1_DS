@@ -8,6 +8,13 @@ import type { DoctorServiceDoctor } from '../../types/doctor';
 
 const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
 
+function splitValues(value?: string | null) {
+  return (value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function getStatusStyle(status: DoctorServiceDoctor['verificationStatus']) {
   if (status === 'APPROVED') {
     return 'bg-emerald-100 text-emerald-700 border-emerald-200';
@@ -173,6 +180,38 @@ export default function DoctorMyProfile() {
             <div className="rounded-2xl border border-slate-200 p-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Profile Completion</p>
               <p className="mt-1 text-sm font-semibold text-slate-800">{doctor.profileCompletenessScore}%</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">License Expiry</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">
+                {doctor.licenseExpiryDate ? new Date(doctor.licenseExpiryDate).toLocaleDateString() : 'Not set'}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 p-4 sm:col-span-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Board Certifications</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">{doctor.boardCertifications || 'Not added yet.'}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 p-4 sm:col-span-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Languages Spoken</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {splitValues(doctor.languagesSpoken).length > 0 ? (
+                  splitValues(doctor.languagesSpoken).map((language) => (
+                    <span key={language} className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                      {language}
+                    </span>
+                  ))
+                ) : (
+                  <p className="text-sm font-semibold text-slate-800">Not added yet.</p>
+                )}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-200 p-4 sm:col-span-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Clinic Locations</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">{doctor.clinicLocations || 'Not added yet.'}</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 p-4 sm:col-span-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Insurance Providers</p>
+              <p className="mt-1 text-sm font-semibold text-slate-800">{doctor.insuranceProviders || 'Not added yet.'}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 p-4 sm:col-span-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bio</p>
