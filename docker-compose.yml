@@ -5,6 +5,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: 123456
       MYSQL_DATABASE: auth_service_db
+      MYSQL_USER: auth_user
+      MYSQL_PASSWORD: auth_pass
     ports:
       - "3307:3306"
     volumes:
@@ -39,10 +41,13 @@ services:
       dockerfile: Dockerfile
     container_name: auth-service
     environment:
+      SPRING_PROFILES_ACTIVE: docker
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-auth:3306/auth_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 123456
+      SPRING_DATASOURCE_USERNAME: auth_user
+      SPRING_DATASOURCE_PASSWORD: auth_pass
+      APP_JWT_SECRET: auth-service-dev-secret-change-this-in-production-must-be-at-least-256-bits-long
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
+      SERVER_PORT: 8080
     depends_on:
       mysql-auth:
         condition: service_healthy
