@@ -31,7 +31,7 @@ server:
 
 app:
   jwt:
-    secret: ${APP_JWT_SECRET:auth-service-dev-secret-change-this-in-production-must-be-at-least-256-bits-long}
+    secret: ${APP_JWT_SECRET:smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes}
     access-token-expiration-ms: ${APP_JWT_ACCESS_TOKEN_EXPIRATION_MS:900000}
     refresh-token-expiration-ms: 604800000
   security:
