@@ -41,11 +41,11 @@ Register request body:
 
 ```json
 {
-	"email": "user@example.com",
-	"password": "StrongPass1!",
-	"firstName": "John",
-	"lastName": "Doe",
-	"role": "PATIENT"
+  "email": "user@example.com",
+  "password": "StrongPass1!",
+  "firstName": "John",
+  "lastName": "Doe",
+  "role": "PATIENT"
 }
 ```
 
@@ -53,8 +53,8 @@ Login request body:
 
 ```json
 {
-	"email": "user@example.com",
-	"password": "StrongPass1!"
+  "email": "user@example.com",
+  "password": "StrongPass1!"
 }
 ```
 
@@ -62,17 +62,17 @@ Success response shape:
 
 ```json
 {
-	"accessToken": "...jwt...",
-	"tokenType": "Bearer",
-	"expiresInMs": 900000,
-	"user": {
-		"id": 1,
-		"email": "user@example.com",
-		"firstName": "John",
-		"lastName": "Doe",
-		"phoneNumber": null,
-		"role": "PATIENT"
-	}
+  "accessToken": "...jwt...",
+  "tokenType": "Bearer",
+  "expiresInMs": 900000,
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "firstName": "John",
+    "lastName": "Doe",
+    "phoneNumber": null,
+    "role": "PATIENT"
+  }
 }
 ```
 
@@ -139,3 +139,12 @@ For this Docker route, browser sees same origin (`localhost:5173`), so CORS pain
 3. Add refresh token flow and logout invalidation.
 4. Add integration tests for register/login.
 
+## 9. Team Setup For Ollama Embeddings (AI Doctor Suggestion)
+
+Use only these steps for every teammate.
+
+1. Install Ollama manually from https://ollama.com/download
+2. Start `doctor-service`
+3. Start `ai-doctor-suggestion-service`
+
+No extra setup is required for normal flow.
