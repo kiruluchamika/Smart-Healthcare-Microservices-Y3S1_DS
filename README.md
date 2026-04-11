@@ -101,6 +101,38 @@ Stop and remove DB volume (fresh database):
 docker compose down -v
 ```
 
+## 4.1 Run Auth-Service In Doctor-Style Local Mode
+
+This mode is similar to doctor-service local development flow.
+
+1. Move to auth-service folder:
+
+```bash
+cd services/auth-service
+```
+
+2. Run auth-service (Spring Boot will manage local MySQL from service compose):
+
+```bash
+./mvnw spring-boot:run
+```
+
+On Windows PowerShell:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+What this does:
+
+- Starts MySQL from `services/auth-service/docker-compose.yaml`
+- Uses dedicated DB credentials `auth_user/auth_pass`
+- Runs auth-service on port `8080`
+
+Stop local mode:
+
+- Stop the Spring app (Ctrl+C), then Spring Docker Compose lifecycle will bring down the local MySQL container.
+
 ## 5. Verify End-to-End Quickly
 
 1. Open frontend at `http://localhost:5173`
