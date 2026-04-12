@@ -1,6 +1,7 @@
-import { getAuthToken, getAuthUser } from './authSession';
+import { getAuthToken, getAuthUser, getAuthUserRole } from './authSession';
 
 const API_BASE = import.meta.env.VITE_PAYMENT_API_BASE || '/api/payments';
+const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
 
 export interface CreateCheckoutSessionPayload {
   appointmentId: number;
@@ -79,11 +80,13 @@ function buildHeaders(includeJson = true) {
 function buildDoctorHeaders(includeJson = true) {
   const token = getAuthToken();
   const user = getAuthUser();
+  const storedDoctorProfileId = localStorage.getItem(DOCTOR_PROFILE_ID_KEY);
+  const doctorId = storedDoctorProfileId || (user?.id ? String(user.id) : null);
 
   return {
     ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(user?.id ? { 'X-Doctor-Id': String(user.id) } : {}),
+    ...(doctorId ? { 'X-Doctor-Id': doctorId } : {}),
   };
 }
 
@@ -145,8 +148,22 @@ export function getMyDoctorPayments() {
 }
 
 export function getPaymentByAppointmentId(appointmentId: number) {
-  return request<PaymentResponse>(`/appointment/${appointmentId}`, {
+  const role = getAuthUserRole();
+  const headers = role === 'DOCTOR' ? buildDoctorHeaders() : buildHeaders();
+
+  return fetch(`${API_BASE}/appointment/${appointmentId}`, {
     method: 'GET',
+    headers,
+  }).then(async (response) => {
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      const message =
+        payload?.message ||
+        payload?.errors?.appointmentId ||
+        `Request failed with status ${response.status}`;
+      throw new PaymentApiError(message, response.status);
+    }
+    return payload as PaymentResponse;
   });
 }
 

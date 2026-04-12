@@ -57,8 +57,8 @@ const topNavItems = [
     color: 'from-emerald-500 to-cyan-500',
   },
   {
-    label: 'Telemedicine',
-    href: '/consultation/1',
+    label: 'Video Sessions',
+    href: '/appointments',
     icon: Video,
     color: 'from-blue-600 to-cyan-500',
   },

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   Calendar,
@@ -24,12 +24,18 @@ import {
   type AppointmentResponse,
 } from '../services/appointmentsApi';
 import { getDoctorById } from '../services/doctor/doctorApi';
+import { getAuthUser } from '../services/authSession';
+import {
+  getMyPatientTelemedicineSessions,
+  type TelemedicineSessionResponse,
+} from '../services/telemedicineApi';
 import type { DoctorServiceDoctor } from '../types/doctor';
 import {
   getDoctorFullName,
   getPrimaryClinicLocation,
 } from '../utils/doctor/doctorFormatters';
 import { formatDisplayAmount } from '../utils/currency';
+import { getConsultationAccessState } from '../utils/telemedicine/telemedicineFlow';
 
 const APPOINTMENT_DURATION_MINUTES = 60;
 
@@ -89,6 +95,7 @@ export default function MyAppointments() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [paymentMap, setPaymentMap] = useState<Record<number, PaymentResponse>>({});
   const [doctorMap, setDoctorMap] = useState<Record<number, DoctorServiceDoctor>>({});
+  const [telemedicineMap, setTelemedicineMap] = useState<Record<number, TelemedicineSessionResponse>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeRescheduleId, setActiveRescheduleId] = useState<number | null>(null);
@@ -133,6 +140,42 @@ export default function MyAppointments() {
   useEffect(() => {
     void loadAppointments();
   }, []);
+
+  useEffect(() => {
+    const authUser = getAuthUser();
+    if (!authUser?.id) {
+      setTelemedicineMap({});
+      return;
+    }
+
+    let isActive = true;
+
+    const loadTelemedicineSessions = async () => {
+      try {
+        const sessions = await getMyPatientTelemedicineSessions(authUser.id);
+        if (!isActive) {
+          return;
+        }
+
+        setTelemedicineMap(
+          sessions.reduce<Record<number, TelemedicineSessionResponse>>((acc, session) => {
+            acc[session.appointmentId] = session;
+            return acc;
+          }, {}),
+        );
+      } catch {
+        if (isActive) {
+          setTelemedicineMap({});
+        }
+      }
+    };
+
+    void loadTelemedicineSessions();
+
+    return () => {
+      isActive = false;
+    };
+  }, [appointments]);
 
   useEffect(() => {
     const refreshPaymentFor = searchParams.get('refreshPaymentFor');
@@ -443,6 +486,11 @@ export default function MyAppointments() {
                       : appointment.status === 'CONFIRMED'
                         ? 'PAYMENT DUE'
                         : 'NOT AVAILABLE YET';
+                    const telemedicineSession = telemedicineMap[appointment.id];
+                    const consultationState =
+                      appointment.appointmentType === 'VIDEO'
+                        ? getConsultationAccessState(appointment, telemedicineSession, 'PATIENT')
+                        : null;
 
                     return (
                       <motion.div
@@ -575,6 +623,39 @@ export default function MyAppointments() {
                                   Number(payment?.amount ?? amountDue ?? 0),
                                   payment?.currency || amountCurrency,
                                 )}). Non-refundable policy applies.
+                              </div>
+                            )}
+
+                            {consultationState && (
+                              <div className="mt-3 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">
+                                      Video Consultation
+                                    </p>
+                                    <h4 className="mt-1 text-sm font-bold text-slate-900">
+                                      {consultationState.primaryLabel}
+                                    </h4>
+                                    <p className="mt-1 text-sm text-slate-700">{consultationState.message}</p>
+                                    {telemedicineSession?.consultationSummary && (
+                                      <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                                          Meeting Summary
+                                        </p>
+                                        <p className="mt-1">{telemedicineSession.consultationSummary}</p>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {consultationState.canOpenPage && (
+                                    <Link
+                                      to={`/consultation/${encodeURIComponent(String(appointment.id))}`}
+                                      className="inline-flex shrink-0 items-center justify-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
+                                    >
+                                      {consultationState.primaryLabel}
+                                    </Link>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>

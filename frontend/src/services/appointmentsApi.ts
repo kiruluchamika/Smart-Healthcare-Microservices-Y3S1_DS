@@ -156,6 +156,12 @@ export function getMyAppointments() {
   });
 }
 
+export function getAppointmentById(appointmentId: number) {
+  return request<AppointmentResponse>(`/${appointmentId}`, {
+    method: 'GET',
+  });
+}
+
 export function cancelAppointment(appointmentId: number) {
   return request<{ message: string; timestamp: string }>(`/${appointmentId}/cancel`, {
     method: 'PATCH',
