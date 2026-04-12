@@ -7,6 +7,13 @@ import { getAvailability, getDashboardSummary, getDoctorById } from '../../servi
 import type { DoctorAvailability, DoctorDashboardSummary, DoctorServiceDoctor } from '../../types/doctor';
 import { formatDate, formatDayOfWeek, formatTime } from '../../utils/doctor/doctorFormatters';
 
+function splitValues(value?: string | null) {
+  return (value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function DoctorDetail() {
   const params = useParams();
   const doctorId = Number(params.id || 0);
@@ -82,6 +89,41 @@ export default function DoctorDetail() {
                   </div>
 
                   <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-700">{doctor.bio || 'No biography available.'}</p>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Board certifications</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">{doctor.boardCertifications || 'Not provided'}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">License expiry</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">
+                        {doctor.licenseExpiryDate ? new Date(doctor.licenseExpiryDate).toLocaleDateString() : 'Not provided'}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Languages spoken</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {splitValues(doctor.languagesSpoken).length > 0 ? (
+                          splitValues(doctor.languagesSpoken).map((language) => (
+                            <span key={language} className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200">
+                              {language}
+                            </span>
+                          ))
+                        ) : (
+                          <p className="text-sm font-semibold text-slate-800">Not provided</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Clinic locations</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">{doctor.clinicLocations || 'Not provided'}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Insurance providers</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-800">{doctor.insuranceProviders || 'Not provided'}</p>
+                    </div>
+                  </div>
 
                   <div className="mt-6 flex flex-wrap gap-2">
                     <Link

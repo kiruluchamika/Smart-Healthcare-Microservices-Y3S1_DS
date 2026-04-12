@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3310/ai_doctor_suggestion_db}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+
+server:
+  port: ${SERVER_PORT:8092}
+
+doctor:
+  service:
+    base-url: ${DOCTOR_SERVICE_BASE_URL:http://localhost:8083}
+    username: ${DOCTOR_SERVICE_USERNAME:doctor}
+    password: ${DOCTOR_SERVICE_PASSWORD:doctor123}
+
+ollama:
+  base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+  embedding:
+    model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+  startup:
+    enabled: ${OLLAMA_STARTUP_ENABLED:true}
+    auto-start-cli: ${OLLAMA_STARTUP_AUTO_START_CLI:true}
+    auto-pull-model: ${OLLAMA_STARTUP_AUTO_PULL_MODEL:true}
+    fail-fast-if-unavailable: ${OLLAMA_STARTUP_FAIL_FAST:true}
+    readiness-attempts: ${OLLAMA_STARTUP_READINESS_ATTEMPTS:20}
+    readiness-interval-ms: ${OLLAMA_STARTUP_READINESS_INTERVAL_MS:1500}
+    fallback-ports: ${OLLAMA_STARTUP_FALLBACK_PORTS:12000,12001,12002}

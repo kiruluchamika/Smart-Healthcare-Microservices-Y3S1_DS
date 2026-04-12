@@ -8,7 +8,7 @@ import type { DoctorCreatePayload, DoctorServiceDoctor, DoctorUpdatePayload } fr
 
 const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
 
-interface FormState extends DoctorCreatePayload {}
+interface FormState extends DoctorCreatePayload { }
 
 const defaultForm: FormState = {
   firstName: '',
@@ -20,6 +20,11 @@ const defaultForm: FormState = {
   experienceYears: 0,
   licenseNumber: '',
   bio: '',
+  boardCertifications: '',
+  languagesSpoken: '',
+  clinicLocations: '',
+  insuranceProviders: '',
+  licenseExpiryDate: '',
 };
 
 export default function DoctorProfileManager() {
@@ -62,11 +67,21 @@ export default function DoctorProfileManager() {
     experienceYears: doctor.experienceYears,
     licenseNumber: doctor.licenseNumber,
     bio: doctor.bio || '',
+    boardCertifications: doctor.boardCertifications || '',
+    languagesSpoken: doctor.languagesSpoken || '',
+    clinicLocations: doctor.clinicLocations || '',
+    insuranceProviders: doctor.insuranceProviders || '',
+    licenseExpiryDate: doctor.licenseExpiryDate || '',
   });
 
   const updateField = (key: keyof FormState, value: string | number | boolean) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
+
+  const buildPayload = () => ({
+    ...form,
+    licenseExpiryDate: form.licenseExpiryDate.trim() ? form.licenseExpiryDate : undefined,
+  });
 
   const loadDoctor = async () => {
     const numericId = Number(targetId);
@@ -101,11 +116,11 @@ export default function DoctorProfileManager() {
 
     try {
       if (mode === 'create') {
-        const createdDoctor = await createDoctor(form);
+        const createdDoctor = await createDoctor(buildPayload());
         localStorage.setItem(DOCTOR_PROFILE_ID_KEY, String(createdDoctor.id));
         setServerMessage('Doctor profile created successfully. Redirecting to dashboard...');
         setForm(defaultForm);
-        
+
         // Redirect to dashboard after 1.5 seconds
         setTimeout(() => {
           navigate('/dashboard');
@@ -117,10 +132,10 @@ export default function DoctorProfileManager() {
           return;
         }
 
-        const updatedDoctor = await updateDoctor(numericId, form as DoctorUpdatePayload);
+        const updatedDoctor = await updateDoctor(numericId, buildPayload() as DoctorUpdatePayload);
         localStorage.setItem(DOCTOR_PROFILE_ID_KEY, String(updatedDoctor.id));
         setServerMessage('Doctor profile updated successfully. Redirecting to dashboard...');
-        
+
         // Redirect to dashboard after 1.5 seconds
         setTimeout(() => {
           navigate('/doctors/profile');
@@ -210,6 +225,65 @@ export default function DoctorProfileManager() {
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
               />
               {fieldErrors.bio && <span className="mt-1 block text-xs text-rose-600">{fieldErrors.bio}</span>}
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Board certifications</span>
+              <textarea
+                rows={3}
+                value={form.boardCertifications || ''}
+                onChange={(e) => updateField('boardCertifications', e.target.value)}
+                placeholder="Example: Board Certified in Cardiovascular Medicine"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
+              />
+              {fieldErrors.boardCertifications && <span className="mt-1 block text-xs text-rose-600">{fieldErrors.boardCertifications}</span>}
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Languages spoken</span>
+              <input
+                type="text"
+                value={form.languagesSpoken || ''}
+                onChange={(e) => updateField('languagesSpoken', e.target.value)}
+                placeholder="English, Sinhala, Tamil"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
+              />
+              {fieldErrors.languagesSpoken && <span className="mt-1 block text-xs text-rose-600">{fieldErrors.languagesSpoken}</span>}
+            </label>
+
+            <label className="block md:col-span-2">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Clinic locations</span>
+              <textarea
+                rows={3}
+                value={form.clinicLocations || ''}
+                onChange={(e) => updateField('clinicLocations', e.target.value)}
+                placeholder="City Heart Clinic, Colombo"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
+              />
+              {fieldErrors.clinicLocations && <span className="mt-1 block text-xs text-rose-600">{fieldErrors.clinicLocations}</span>}
+            </label>
+
+            <label className="block md:col-span-2">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Insurance providers</span>
+              <textarea
+                rows={3}
+                value={form.insuranceProviders || ''}
+                onChange={(e) => updateField('insuranceProviders', e.target.value)}
+                placeholder="AIA, Allianz, Union Assurance"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
+              />
+              {fieldErrors.insuranceProviders && <span className="mt-1 block text-xs text-rose-600">{fieldErrors.insuranceProviders}</span>}
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">License expiry date</span>
+              <input
+                type="date"
+                value={form.licenseExpiryDate || ''}
+                onChange={(e) => updateField('licenseExpiryDate', e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
+              />
+              {fieldErrors.licenseExpiryDate && <span className="mt-1 block text-xs text-rose-600">{fieldErrors.licenseExpiryDate}</span>}
             </label>
 
           </div>

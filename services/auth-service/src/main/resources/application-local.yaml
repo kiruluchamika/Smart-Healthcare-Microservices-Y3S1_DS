@@ -1,0 +1,8 @@
+spring:
+  docker:
+    compose:
+      enabled: true
+      file: services/auth-service/docker-compose.yaml
+      lifecycle-management: start-and-stop
+      stop:
+        command: down
