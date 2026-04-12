@@ -18,6 +18,7 @@ export const ROUTES = {
   DOCTOR_APPOINTMENTS: '/doctor/appointments',
   CONSULTATION: '/consultation/:id',
   PROFILE: '/profile',
+  AI_DOCTOR_SUGGESTION: '/ai-doctor-suggestion',
   DOCTORS: '/doctors',
   DOCTOR_DETAIL: '/doctors/:id',
   DOCTOR_PROFILE: '/doctors/profile',

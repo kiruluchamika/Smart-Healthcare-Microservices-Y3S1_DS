@@ -13,6 +13,7 @@ import Profile from './pages/Profile';
 import MedicalReports from './pages/patient/MedicalReports';
 import MedicalHistoryPage from './pages/patient/MedicalHistory';
 import PrescriptionsPage from './pages/patient/Prescriptions';
+import AIDoctorSuggestion from './pages/patient/AIDoctorSuggestion';
 import DoctorsDirectory from './pages/doctor/DoctorsDirectory';
 import DoctorDetail from './pages/doctor/DoctorDetail';
 import DoctorProfileManager from './pages/doctor/DoctorProfileManager';
@@ -148,6 +149,14 @@ function App() {
         <Route path="/reports" element={<ProtectedRoute><Layout><MedicalReports /></Layout></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><Layout><MedicalHistoryPage /></Layout></ProtectedRoute>} />
         <Route path="/prescriptions" element={<ProtectedRoute><Layout><PrescriptionsPage /></Layout></ProtectedRoute>} />
+        <Route
+          path="/ai-doctor-suggestion"
+          element={
+            <ProtectedRoleRoute allowedRoles={['PATIENT']}>
+              <Layout><AIDoctorSuggestion /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
 
         <Route
           path="/doctors"

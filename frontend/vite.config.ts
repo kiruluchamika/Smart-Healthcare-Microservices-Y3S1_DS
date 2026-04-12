@@ -26,6 +26,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/doctors/, '/api/v1/doctors'),
       },
+      '/api/ai': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+      },
     },
   },
   optimizeDeps: {

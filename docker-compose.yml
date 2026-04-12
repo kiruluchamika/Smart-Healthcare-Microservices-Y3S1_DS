@@ -45,7 +45,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-auth:3306/auth_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: auth_user
       SPRING_DATASOURCE_PASSWORD: auth_pass
-      APP_JWT_SECRET: auth-service-dev-secret-change-this-in-production-must-be-at-least-256-bits-long
+      APP_JWT_SECRET: smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
       SERVER_PORT: 8080
     depends_on:
@@ -104,7 +104,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-patient:3306/patient_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
-      APP_JWT_SECRET: your-secret-key-change-this-in-production-must-be-at-least-256-bits-long-for-HS256-algorithm-security
+      APP_JWT_SECRET: smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
     depends_on:
       mysql-patient:
@@ -149,6 +149,19 @@ services:
         condition: service_healthy
     ports:
       - "8092:8092"
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    environment:
+      SERVER_PORT: 8081
+      AI_SUGGESTION_SERVICE_BASE_URL: http://ai-doctor-suggestion-service:8092
+    depends_on:
+      - ai-doctor-suggestion-service
+    ports:
+      - "8081:8081"
 
 volumes:
   mysql-auth-data:

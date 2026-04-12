@@ -3,7 +3,7 @@ import { patientApi } from '../../services/patientApi';
 import { PatientProfile } from '../../types/patient';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Activity, FileText, Clock, Heart, AlertCircle, Droplet, User as UserIcon, Phone, Calendar, Stethoscope, Video } from 'lucide-react';
+import { Activity, FileText, Clock, Heart, AlertCircle, Droplet, User as UserIcon, Phone, Calendar, Stethoscope, Video, Sparkles } from 'lucide-react';
 import { getAuthUser } from '../../services/authSession';
 import { getDisplayName } from '../../utils/name';
 
@@ -25,6 +25,12 @@ const topNavItems = [
     href: '/doctors',
     icon: Stethoscope,
     color: 'from-cyan-600 to-blue-500',
+  },
+  {
+    label: 'AI Doctor Suggestion',
+    href: '/ai-doctor-suggestion',
+    icon: Sparkles,
+    color: 'from-orange-500 to-amber-500',
   },
   {
     label: 'Medical Reports',
