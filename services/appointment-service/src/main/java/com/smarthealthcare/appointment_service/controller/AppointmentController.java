@@ -2,6 +2,8 @@ package com.smarthealthcare.appointment_service.controller;
 
 import com.smarthealthcare.appointment_service.dto.request.CreateAppointmentRequest;
 import com.smarthealthcare.appointment_service.dto.request.RescheduleAppointmentRequest;
+import com.smarthealthcare.appointment_service.dto.request.AcceptAppointmentRequest;
+import com.smarthealthcare.appointment_service.dto.request.UpdateAppointmentPaymentStatusRequest;
 import com.smarthealthcare.appointment_service.dto.response.ApiMessageResponse;
 import com.smarthealthcare.appointment_service.dto.response.AppointmentResponse;
 import com.smarthealthcare.appointment_service.dto.response.AvailabilityResponse;
@@ -89,8 +91,9 @@ public class AppointmentController {
     @PatchMapping("/{appointmentId}/accept")
     public ResponseEntity<AppointmentResponse> acceptAppointment(
             @PathVariable @Positive Long appointmentId,
-            @RequestHeader("X-Doctor-Id") @Positive Long doctorId) {
-        return ResponseEntity.ok(appointmentService.acceptAppointment(appointmentId, doctorId));
+            @RequestHeader("X-Doctor-Id") @Positive Long doctorId,
+            @Valid @RequestBody(required = false) AcceptAppointmentRequest request) {
+        return ResponseEntity.ok(appointmentService.acceptAppointment(appointmentId, doctorId, request));
     }
 
     @PatchMapping("/{appointmentId}/reject")
@@ -105,6 +108,13 @@ public class AppointmentController {
             @PathVariable @Positive Long appointmentId,
             @RequestHeader("X-Doctor-Id") @Positive Long doctorId) {
         return ResponseEntity.ok(appointmentService.completeAppointment(appointmentId, doctorId));
+    }
+
+    @PatchMapping("/{appointmentId}/payment-status")
+    public ResponseEntity<AppointmentResponse> updatePaymentStatus(
+            @PathVariable @Positive Long appointmentId,
+            @Valid @RequestBody UpdateAppointmentPaymentStatusRequest request) {
+        return ResponseEntity.ok(appointmentService.updatePaymentStatus(appointmentId, request));
     }
 
     @GetMapping("/availability")

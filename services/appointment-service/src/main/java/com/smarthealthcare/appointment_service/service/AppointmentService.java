@@ -2,6 +2,8 @@ package com.smarthealthcare.appointment_service.service;
 
 import com.smarthealthcare.appointment_service.dto.request.CreateAppointmentRequest;
 import com.smarthealthcare.appointment_service.dto.request.RescheduleAppointmentRequest;
+import com.smarthealthcare.appointment_service.dto.request.AcceptAppointmentRequest;
+import com.smarthealthcare.appointment_service.dto.request.UpdateAppointmentPaymentStatusRequest;
 import com.smarthealthcare.appointment_service.dto.response.ApiMessageResponse;
 import com.smarthealthcare.appointment_service.dto.response.AppointmentResponse;
 import com.smarthealthcare.appointment_service.dto.response.AvailabilityResponse;
@@ -26,11 +28,13 @@ public interface AppointmentService {
 
     ApiMessageResponse cancelAppointment(Long appointmentId, Long patientId);
 
-    AppointmentResponse acceptAppointment(Long appointmentId, Long doctorId);
+    AppointmentResponse acceptAppointment(Long appointmentId, Long doctorId, AcceptAppointmentRequest request);
 
     AppointmentResponse rejectAppointment(Long appointmentId, Long doctorId);
 
     AppointmentResponse completeAppointment(Long appointmentId, Long doctorId);
+
+    AppointmentResponse updatePaymentStatus(Long appointmentId, UpdateAppointmentPaymentStatusRequest request);
 
     AvailabilityResponse getDoctorAvailability(Long doctorId, LocalDate appointmentDate);
 }

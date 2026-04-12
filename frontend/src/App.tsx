@@ -10,6 +10,8 @@ import MyAppointments from './pages/MyAppointments';
 import DoctorAppointments from './pages/DoctorAppointments';
 import Telemedicine from './pages/Telemedicine';
 import Profile from './pages/Profile';
+import PaymentCancel from './pages/payments/PaymentCancel';
+import PaymentSuccess from './pages/payments/PaymentSuccess';
 import MedicalReports from './pages/patient/MedicalReports';
 import MedicalHistoryPage from './pages/patient/MedicalHistory';
 import PrescriptionsPage from './pages/patient/Prescriptions';
@@ -142,6 +144,8 @@ function App() {
         <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
         <Route path="/appointments" element={<ProtectedRoute><Layout><MyAppointments /></Layout></ProtectedRoute>} />
         <Route path="/appointments/book" element={<ProtectedRoute><Layout><AppointmentBooking /></Layout></ProtectedRoute>} />
+        <Route path="/payments/success" element={<ProtectedRoute><Layout><PaymentSuccess /></Layout></ProtectedRoute>} />
+        <Route path="/payments/cancel" element={<ProtectedRoute><Layout><PaymentCancel /></Layout></ProtectedRoute>} />
         <Route path="/doctor/appointments" element={<ProtectedRoute><Layout><DoctorAppointments /></Layout></ProtectedRoute>} />
         <Route path="/consultation/:id" element={<ProtectedRoute><Layout><Telemedicine /></Layout></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />

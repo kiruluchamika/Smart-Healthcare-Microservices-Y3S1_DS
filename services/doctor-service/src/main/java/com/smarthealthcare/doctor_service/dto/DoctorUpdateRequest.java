@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import lombok.Getter;
 import lombok.Setter;
@@ -67,4 +68,8 @@ public class DoctorUpdateRequest {
 
     @FutureOrPresent(message = "License expiry date must be today or later")
     private LocalDate licenseExpiryDate;
+
+    @Min(value = 1, message = "Consultation fee must be at least 1")
+    @Max(value = 100000, message = "Consultation fee must not exceed 100000")
+    private BigDecimal consultationFee;
 }

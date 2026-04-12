@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -49,6 +50,31 @@ public class Appointment {
 
     @Column(nullable = false, length = 1000)
     private String reasonForVisit;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal fixedFeeSnapshot;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal doctorExtraFee;
+
+    @Column(precision = 19, scale = 2)
+    private BigDecimal finalFee;
+
+    @Column(length = 8)
+    private String feeCurrency;
+
+    private LocalDateTime feeLockedAt;
+
+    @Column(length = 500)
+    private String extraFeeReason;
+
+    @Column(length = 32)
+    private String paymentStatusHint;
+
+    private LocalDateTime paymentPaidAt;
+
+    @Column(length = 1024)
+    private String telemedicineSessionUrl;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -141,6 +167,78 @@ public class Appointment {
 
     public void setReasonForVisit(String reasonForVisit) {
         this.reasonForVisit = reasonForVisit;
+    }
+
+    public BigDecimal getFixedFeeSnapshot() {
+        return fixedFeeSnapshot;
+    }
+
+    public void setFixedFeeSnapshot(BigDecimal fixedFeeSnapshot) {
+        this.fixedFeeSnapshot = fixedFeeSnapshot;
+    }
+
+    public BigDecimal getDoctorExtraFee() {
+        return doctorExtraFee;
+    }
+
+    public void setDoctorExtraFee(BigDecimal doctorExtraFee) {
+        this.doctorExtraFee = doctorExtraFee;
+    }
+
+    public BigDecimal getFinalFee() {
+        return finalFee;
+    }
+
+    public void setFinalFee(BigDecimal finalFee) {
+        this.finalFee = finalFee;
+    }
+
+    public String getFeeCurrency() {
+        return feeCurrency;
+    }
+
+    public void setFeeCurrency(String feeCurrency) {
+        this.feeCurrency = feeCurrency;
+    }
+
+    public LocalDateTime getFeeLockedAt() {
+        return feeLockedAt;
+    }
+
+    public void setFeeLockedAt(LocalDateTime feeLockedAt) {
+        this.feeLockedAt = feeLockedAt;
+    }
+
+    public String getExtraFeeReason() {
+        return extraFeeReason;
+    }
+
+    public void setExtraFeeReason(String extraFeeReason) {
+        this.extraFeeReason = extraFeeReason;
+    }
+
+    public String getPaymentStatusHint() {
+        return paymentStatusHint;
+    }
+
+    public void setPaymentStatusHint(String paymentStatusHint) {
+        this.paymentStatusHint = paymentStatusHint;
+    }
+
+    public LocalDateTime getPaymentPaidAt() {
+        return paymentPaidAt;
+    }
+
+    public void setPaymentPaidAt(LocalDateTime paymentPaidAt) {
+        this.paymentPaidAt = paymentPaidAt;
+    }
+
+    public String getTelemedicineSessionUrl() {
+        return telemedicineSessionUrl;
+    }
+
+    public void setTelemedicineSessionUrl(String telemedicineSessionUrl) {
+        this.telemedicineSessionUrl = telemedicineSessionUrl;
     }
 
     public LocalDateTime getCreatedAt() {

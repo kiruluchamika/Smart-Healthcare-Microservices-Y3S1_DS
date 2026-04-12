@@ -18,10 +18,10 @@ ollama:
   embedding:
     model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
   startup:
-    enabled: ${OLLAMA_STARTUP_ENABLED:true}
-    auto-start-cli: ${OLLAMA_STARTUP_AUTO_START_CLI:true}
-    auto-pull-model: ${OLLAMA_STARTUP_AUTO_PULL_MODEL:true}
-    fail-fast-if-unavailable: ${OLLAMA_STARTUP_FAIL_FAST:true}
+    enabled: ${OLLAMA_STARTUP_ENABLED:false}
+    auto-start-cli: ${OLLAMA_STARTUP_AUTO_START_CLI:false}
+    auto-pull-model: ${OLLAMA_STARTUP_AUTO_PULL_MODEL:false}
+    fail-fast-if-unavailable: ${OLLAMA_STARTUP_FAIL_FAST:false}
     readiness-attempts: ${OLLAMA_STARTUP_READINESS_ATTEMPTS:20}
     readiness-interval-ms: ${OLLAMA_STARTUP_READINESS_INTERVAL_MS:1500}
     fallback-ports: ${OLLAMA_STARTUP_FALLBACK_PORTS:12000,12001,12002}

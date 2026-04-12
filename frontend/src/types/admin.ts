@@ -7,6 +7,7 @@ export interface AdminOverviewResponse {
   patientUsers: number;
   enabledUsers: number;
   disabledUsers: number;
+  [key: string]: number | undefined;
 }
 
 export interface AdminUserItem {

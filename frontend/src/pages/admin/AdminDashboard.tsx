@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Activity, ShieldCheck, Stethoscope, UserCircle2, Users } from 'lucide-react';
 import { getAdminOverview } from '../../services/adminApi';
 import type { AdminOverviewResponse } from '../../types/admin';
+import { formatAdminMetricValue } from '../../utils/admin/adminMetricFormatter';
 
 const metricConfig = [
   { key: 'totalUsers', label: 'Total Users', icon: Users, tone: 'from-blue-500 to-blue-600' },
@@ -61,7 +62,8 @@ export default function AdminDashboard() {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metricConfig.map((metric) => {
           const Icon = metric.icon;
-          const value = overview ? overview[metric.key] : 0;
+          const rawValue = overview ? overview[metric.key] : 0;
+          const formattedValue = isLoading ? '...' : formatAdminMetricValue(metric.key, rawValue);
 
           return (
             <article key={metric.key} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -71,7 +73,7 @@ export default function AdminDashboard() {
                   <Icon className="h-4 w-4" />
                 </div>
               </div>
-              <p className="mt-4 text-3xl font-black text-slate-900">{isLoading ? '...' : value.toLocaleString()}</p>
+              <p className="mt-4 text-3xl font-black text-slate-900">{formattedValue}</p>
             </article>
           );
         })}

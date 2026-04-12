@@ -20,8 +20,11 @@ import {
 } from '../services/appointmentsApi';
 import { getBookableDoctors } from '../services/doctor/doctorApi';
 import type { AppointmentBookingDoctor } from '../types/doctor';
+import { formatDisplayAmount } from '../utils/currency';
 
 const APPOINTMENT_DURATION_MINUTES = 60;
+const FIXED_VIDEO_PRICE = 15;
+const FIXED_PHYSICAL_PRICE = 20;
 
 function formatTimeLabel(time: string) {
   const [hours, minutes] = time.split(':').map(Number);
@@ -89,6 +92,7 @@ export default function AppointmentBooking() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<number | null>(null);
+  const [appointmentType, setAppointmentType] = useState<'VIDEO' | 'PHYSICAL'>('PHYSICAL');
   const [step, setStep] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [reasonForVisit, setReasonForVisit] = useState('');
@@ -161,6 +165,22 @@ export default function AppointmentBooking() {
     () => doctors.find((doctor) => doctor.id === selectedDoctor) || null,
     [doctors, selectedDoctor],
   );
+
+  const resolvedPrice = useMemo(() => {
+    if (selectedDoctorDetails?.consultationFee) {
+      const custom = Number(selectedDoctorDetails.consultationFee);
+      if (!Number.isNaN(custom) && custom > 0) {
+        return custom;
+      }
+    }
+
+    return appointmentType === 'VIDEO' ? FIXED_VIDEO_PRICE : FIXED_PHYSICAL_PRICE;
+  }, [appointmentType, selectedDoctorDetails]);
+
+  const pricingSourceLabel =
+    selectedDoctorDetails?.consultationFee && Number(selectedDoctorDetails.consultationFee) > 0
+      ? 'Doctor custom price'
+      : 'Fixed system price';
 
   useEffect(() => {
     if (!selectedDoctor || !selectedDate) {
@@ -265,7 +285,7 @@ export default function AppointmentBooking() {
         appointmentDate: selectedDate,
         startTime: selectedTime,
         endTime: addMinutes(selectedTime, APPOINTMENT_DURATION_MINUTES),
-        appointmentType: 'PHYSICAL',
+        appointmentType,
         reasonForVisit: reasonForVisit.trim(),
       });
 
@@ -444,6 +464,10 @@ export default function AppointmentBooking() {
                         <Clock className="w-4 h-4 text-green-600" />
                         <span className="text-green-600 font-medium">{doctor.availabilityLabel}</span>
                       </div>
+                      <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-orange-800">
+                        <span className="text-xs font-semibold uppercase tracking-wide">Channeling Price</span>
+                        <p className="mt-1 text-sm font-semibold">{doctor.pricingLabel}</p>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -513,7 +537,39 @@ export default function AppointmentBooking() {
                     ? dateOptions.find((option) => option.value === selectedDate)?.fullLabel || selectedDate
                     : 'Not selected'}
                 </p>
+                <p>
+                  <span className="font-semibold text-gray-900">Consultation Type:</span> {appointmentType}
+                </p>
+                <p>
+                  <span className="font-semibold text-gray-900">Estimated Channeling Fee:</span>{' '}
+                  {formatDisplayAmount(resolvedPrice, 'USD')} ({pricingSourceLabel})
+                </p>
               </div>
+            </div>
+
+            <div className="mb-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setAppointmentType('PHYSICAL')}
+                className={`rounded-lg border px-4 py-3 text-sm font-semibold transition ${
+                  appointmentType === 'PHYSICAL'
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
+                }`}
+              >
+                Physical Consultation
+              </button>
+              <button
+                type="button"
+                onClick={() => setAppointmentType('VIDEO')}
+                className={`rounded-lg border px-4 py-3 text-sm font-semibold transition ${
+                  appointmentType === 'VIDEO'
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300'
+                }`}
+              >
+                Video Consultation
+              </button>
             </div>
 
             {isLoadingAvailability && (
@@ -657,6 +713,12 @@ export default function AppointmentBooking() {
                   <div>
                     <p className="text-sm text-gray-600">Status</p>
                     <p className="font-semibold text-gray-900">{createdAppointment?.status || 'PENDING'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Estimated Channeling Fee</p>
+                    <p className="font-semibold text-gray-900">
+                      {formatDisplayAmount(resolvedPrice, 'USD')} ({pricingSourceLabel})
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Reason for Visit</p>

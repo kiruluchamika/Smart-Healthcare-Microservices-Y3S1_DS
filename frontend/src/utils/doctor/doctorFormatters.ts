@@ -3,6 +3,7 @@ import type {
   DoctorServiceDoctor,
   DoctorVerificationStatus,
 } from '../../types/doctor';
+import { formatDisplayAmount } from '../currency';
 
 export function getDoctorFullName(doctor?: Pick<DoctorServiceDoctor, 'firstName' | 'lastName'> | null) {
   if (!doctor) {
@@ -24,6 +25,17 @@ export function getPrimaryClinicLocation(value?: string | null) {
 }
 
 export function toAppointmentBookingDoctor(doctor: DoctorServiceDoctor): AppointmentBookingDoctor {
+  const hasCustomFee = doctor.consultationFee !== null && doctor.consultationFee !== undefined && doctor.consultationFee !== '';
+  const doctorFee = Number(doctor.consultationFee);
+  const doctorFeeLabel = Number.isFinite(doctorFee)
+    ? formatDisplayAmount(doctorFee, 'USD')
+    : 'LKR 0.00';
+  const fixedVideoLabel = formatDisplayAmount(15, 'USD');
+  const fixedPhysicalLabel = formatDisplayAmount(20, 'USD');
+  const pricingLabel = hasCustomFee
+    ? `Doctor price: ${doctorFeeLabel}`
+    : `Fixed channeling price applies (${fixedVideoLabel} video / ${fixedPhysicalLabel} physical)`;
+
   return {
     id: doctor.id,
     fullName: getDoctorFullName(doctor),
@@ -32,6 +44,8 @@ export function toAppointmentBookingDoctor(doctor: DoctorServiceDoctor): Appoint
     experienceYears: doctor.experienceYears,
     location: getPrimaryClinicLocation(doctor.clinicLocations),
     availabilityLabel: doctor.active ? 'Availability from live schedule' : 'Currently unavailable',
+    consultationFee: doctor.consultationFee,
+    pricingLabel,
     profileCompletenessScore: doctor.profileCompletenessScore,
     initials: getDoctorInitials(doctor),
   };
