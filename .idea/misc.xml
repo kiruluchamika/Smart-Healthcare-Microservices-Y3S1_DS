@@ -5,6 +5,7 @@
     <option name="originalFiles">
       <list>
         <option value="$PROJECT_DIR$/services/auth-service/pom.xml" />
+        <option value="$PROJECT_DIR$/services/appointment-service/pom.xml" />
         <option value="$PROJECT_DIR$/services/patient-service/pom.xml" />
         <option value="$PROJECT_DIR$/services/doctor-service/pom.xml" />
         <option value="$PROJECT_DIR$/services/ai-doctor-suggestion-service/pom.xml" />

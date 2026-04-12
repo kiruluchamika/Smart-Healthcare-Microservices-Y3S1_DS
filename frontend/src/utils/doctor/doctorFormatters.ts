@@ -1,4 +1,48 @@
-import type { DoctorVerificationStatus } from '../../types/doctor';
+import type {
+  AppointmentBookingDoctor,
+  DoctorServiceDoctor,
+  DoctorVerificationStatus,
+} from '../../types/doctor';
+
+export function getDoctorFullName(doctor?: Pick<DoctorServiceDoctor, 'firstName' | 'lastName'> | null) {
+  if (!doctor) {
+    return '';
+  }
+
+  return `Dr. ${doctor.firstName} ${doctor.lastName}`.trim();
+}
+
+export function getDoctorInitials(doctor: Pick<DoctorServiceDoctor, 'firstName' | 'lastName'>) {
+  const firstInitial = doctor.firstName?.charAt(0) || '';
+  const lastInitial = doctor.lastName?.charAt(0) || '';
+  return `${firstInitial}${lastInitial}`.toUpperCase() || 'DR';
+}
+
+export function getPrimaryClinicLocation(value?: string | null) {
+  const locations = splitValues(value);
+  return locations[0] || 'Clinic location not specified';
+}
+
+export function toAppointmentBookingDoctor(doctor: DoctorServiceDoctor): AppointmentBookingDoctor {
+  return {
+    id: doctor.id,
+    fullName: getDoctorFullName(doctor),
+    specialty: doctor.specialization,
+    qualifications: doctor.qualifications,
+    experienceYears: doctor.experienceYears,
+    location: getPrimaryClinicLocation(doctor.clinicLocations),
+    availabilityLabel: doctor.active ? 'Availability from live schedule' : 'Currently unavailable',
+    profileCompletenessScore: doctor.profileCompletenessScore,
+    initials: getDoctorInitials(doctor),
+  };
+}
+
+function splitValues(value?: string | null) {
+  return (value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
 export function formatDayOfWeek(day: string) {
   const normalized = day.toLowerCase();

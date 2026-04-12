@@ -14,6 +14,8 @@ export const ROUTES = {
   ADMIN_VERIFICATION: '/admin/verification',
   DASHBOARD: '/dashboard',
   APPOINTMENTS: '/appointments',
+  APPOINTMENT_BOOKING: '/appointments/book',
+  DOCTOR_APPOINTMENTS: '/doctor/appointments',
   CONSULTATION: '/consultation/:id',
   PROFILE: '/profile',
   AI_DOCTOR_SUGGESTION: '/ai-doctor-suggestion',

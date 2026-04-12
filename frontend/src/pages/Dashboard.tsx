@@ -1,12 +1,6 @@
 import PatientDashboardPage from './patient/PatientDashboard';
 import { motion } from 'framer-motion';
-import {
-  Activity,
-  ArrowRight,
-  Calendar,
-  Settings,
-  ShieldCheck,
-} from 'lucide-react';
+import { Activity, ArrowRight, Calendar, Settings, ShieldCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getAuthUserRole } from '../services/authSession';
 
@@ -77,7 +71,8 @@ function DoctorDashboardView() {
       >
         <p className="text-sm font-semibold text-amber-800">Doctor id routes</p>
         <p className="mt-2 text-sm text-amber-700">
-          For id-based pages, use paths like /doctors/123/availability and /doctors/123/dashboard with your profile id.
+          For id-based pages, use paths like /doctors/123/availability and /doctors/123/dashboard with
+          your profile id.
         </p>
       </motion.div>
     </>

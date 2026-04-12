@@ -9,10 +9,16 @@ import { getDisplayName } from '../../utils/name';
 
 const topNavItems = [
   {
-    label: 'Appointments',
-    href: '/appointments',
+    label: 'Book Appointment',
+    href: '/appointments/book',
     icon: Calendar,
     color: 'from-teal-600 to-cyan-500',
+  },
+  {
+    label: 'My Appointments',
+    href: '/appointments',
+    icon: Clock,
+    color: 'from-sky-600 to-blue-500',
   },
   {
     label: 'Discover Doctors',
@@ -148,7 +154,7 @@ const PatientDashboard: React.FC = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-3">
               {topNavItems.map((item, index) => (
                 <motion.div
                   key={item.label}
@@ -192,7 +198,7 @@ const PatientDashboard: React.FC = () => {
               </p>
             </div>
             <div className="mt-8 md:mt-0 flex gap-4">
-               <Link to="/appointments" className="px-6 py-3 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:bg-teal-50 transition-all transform hover:-translate-y-1">
+               <Link to="/appointments/book" className="px-6 py-3 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:bg-teal-50 transition-all transform hover:-translate-y-1">
                  Book Appointment
                </Link>
             </div>

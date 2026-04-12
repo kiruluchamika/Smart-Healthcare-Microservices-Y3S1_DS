@@ -127,7 +127,7 @@ export default function DoctorDetail() {
 
                   <div className="mt-6 flex flex-wrap gap-2">
                     <Link
-                      to="/appointments"
+                      to="/appointments/book"
                       className="rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 px-4 py-2 text-sm font-semibold text-white"
                     >
                       Book appointment
