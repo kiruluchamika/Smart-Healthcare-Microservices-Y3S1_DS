@@ -16,6 +16,7 @@ import MedicalReports from './pages/patient/MedicalReports';
 import MedicalHistoryPage from './pages/patient/MedicalHistory';
 import PrescriptionsPage from './pages/patient/Prescriptions';
 import AIDoctorSuggestion from './pages/patient/AIDoctorSuggestion';
+import AISymptomPage from './pages/patient/AISymptomPage';
 import DoctorsDirectory from './pages/doctor/DoctorsDirectory';
 import DoctorDetail from './pages/doctor/DoctorDetail';
 import DoctorProfileManager from './pages/doctor/DoctorProfileManager';
@@ -158,6 +159,14 @@ function App() {
           element={
             <ProtectedRoleRoute allowedRoles={['PATIENT']}>
               <Layout><AIDoctorSuggestion /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
+        <Route
+          path="/ai-symptom"
+          element={
+            <ProtectedRoleRoute allowedRoles={['PATIENT']}>
+              <Layout><AISymptomPage /></Layout>
             </ProtectedRoleRoute>
           }
         />

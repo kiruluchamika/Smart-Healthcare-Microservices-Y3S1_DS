@@ -11,16 +11,7 @@
         <module name="auth-service" />
         <module name="patient-service" />
         <module name="appointment-service" />
-      </profile>
-      <profile name="Annotation profile for doctor-service" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.44/lombok-1.18.44.jar" />
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.44/lombok-1.18.44.jar" />
-        </processorPath>
-        <module name="doctor-service" />
+        <module name="ai-symptom-service" />
       </profile>
       <profile name="Annotation profile for payment-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -28,15 +19,18 @@
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.44/lombok-1.18.44.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.44/lombok-1.18.44.jar" />
         </processorPath>
         <module name="ai-doctor-suggestion-service" />
         <module name="payment-service" />
+        <module name="doctor-service" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="ai-doctor-suggestion-service" options="-parameters" />
+      <module name="ai-symptom-service" options="-parameters" />
       <module name="api-gateway" options="-parameters" />
       <module name="appointment-service" options="-parameters" />
       <module name="auth-service" options="-parameters" />

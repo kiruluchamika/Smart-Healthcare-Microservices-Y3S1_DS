@@ -33,6 +33,12 @@ const topNavItems = [
     color: 'from-orange-500 to-amber-500',
   },
   {
+    label: 'AI Symptom',
+    href: '/ai-symptom',
+    icon: Sparkles,
+    color: 'from-teal-600 to-sky-500',
+  },
+  {
     label: 'Medical Reports',
     href: '/reports',
     icon: FileText,
@@ -262,7 +268,7 @@ const PatientDashboard: React.FC = () => {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10"
+          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10"
         >
           <motion.div variants={itemVariants}>
             <Link to="/reports" className="block h-full rounded-3xl p-8 border border-slate-200 bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
@@ -291,6 +297,16 @@ const PatientDashboard: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">My Prescriptions</h3>
               <p className="text-slate-500">Check active medication orders, dosage instructions, and refill options.</p>
+            </Link>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <Link to="/ai-symptom" className="block h-full rounded-3xl p-8 border border-slate-200 bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-600 to-sky-500 text-white flex items-center justify-center mb-6 shadow-lg shadow-teal-200 group-hover:scale-110 transition-transform">
+                <Sparkles className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">AI Symptom Triage</h3>
+              <p className="text-slate-500">Analyze symptoms, review urgency guidance, and browse structured symptom history.</p>
             </Link>
           </motion.div>
         </motion.div>
