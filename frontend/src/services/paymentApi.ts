@@ -55,6 +55,16 @@ export interface RefundRequest {
   amount?: number;
 }
 
+export class PaymentApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'PaymentApiError';
+    this.status = status;
+  }
+}
+
 function buildHeaders(includeJson = true) {
   const token = getAuthToken();
   const user = getAuthUser();
@@ -95,7 +105,7 @@ async function request<T>(path: string, init?: RequestInit, headers?: Record<str
       payload?.errors?.appointmentId ||
       payload?.errors?.reason ||
       `Request failed with status ${response.status}`;
-    throw new Error(message);
+    throw new PaymentApiError(message, response.status);
   }
 
   return payload as T;
@@ -108,10 +118,16 @@ export function createCheckoutSession(payload: CreateCheckoutSessionPayload) {
   });
 }
 
-export function getMyPayments() {
-  return request<PaymentResponse[]>('/patient/me', {
-    method: 'GET',
+export function syncCheckoutSession(sessionId: string) {
+  return request<PaymentResponse>(`/checkout-sessions/${encodeURIComponent(sessionId)}/sync`, {
+    method: 'POST',
   });
+}
+
+export function getMyPayments() {
+  return request<PaymentResponse[] | null>('/patient/me', {
+    method: 'GET',
+  }).then((payload) => (Array.isArray(payload) ? payload : []));
 }
 
 export function getMyDoctorPayments() {
@@ -132,6 +148,10 @@ export function getPaymentByAppointmentId(appointmentId: number) {
   return request<PaymentResponse>(`/appointment/${appointmentId}`, {
     method: 'GET',
   });
+}
+
+export function isPaymentNotFoundError(error: unknown) {
+  return error instanceof PaymentApiError && error.status === 404;
 }
 
 export function getPaymentById(paymentId: number) {
