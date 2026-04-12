@@ -1,4 +1,4 @@
-import { BarChart3, Settings, ShieldCheck, UserCog, Users, X, LogOut } from 'lucide-react';
+import { BarChart3, Settings, ShieldCheck, UserCog, Users, X, LogOut, Video } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { clearAuthSession } from '../../services/authSession';
 
@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { label: 'Doctor Verification', to: '/admin/verification', icon: <UserCog className="h-5 w-5" /> },
   { label: 'Users', to: '/admin/users', icon: <Users className="h-5 w-5" /> },
   { label: 'Analytics', to: '/admin/analytics', icon: <BarChart3 className="h-5 w-5" /> },
+  { label: 'Telemedicine', to: '/admin/telemedicine', icon: <Video className="h-5 w-5" /> },
   { label: 'System Settings', to: '/admin/settings', icon: <Settings className="h-5 w-5" /> },
 ];
 

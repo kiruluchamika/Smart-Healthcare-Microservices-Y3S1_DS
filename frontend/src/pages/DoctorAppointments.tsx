@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { Calendar, Clock, Loader2, MapPin, Video } from 'lucide-react';
 import {
   acceptAppointmentWithFee,
@@ -8,7 +9,13 @@ import {
   rejectAppointment,
   type AppointmentResponse,
 } from '../services/appointmentsApi';
+import { getAuthUser } from '../services/authSession';
+import {
+  getMyDoctorTelemedicineSessions,
+  type TelemedicineSessionResponse,
+} from '../services/telemedicineApi';
 import { formatDisplayAmount } from '../utils/currency';
+import { getConsultationAccessState } from '../utils/telemedicine/telemedicineFlow';
 
 const VIDEO_FIXED_FEE = 15;
 const PHYSICAL_FIXED_FEE = 20;
@@ -57,6 +64,7 @@ type AppointmentGroup = {
 
 export default function DoctorAppointments() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [telemedicineMap, setTelemedicineMap] = useState<Record<number, TelemedicineSessionResponse>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
@@ -83,6 +91,45 @@ export default function DoctorAppointments() {
   useEffect(() => {
     void loadAppointments();
   }, []);
+
+  useEffect(() => {
+    const authUser = getAuthUser();
+    const doctorProfileId = localStorage.getItem('doctorProfileId');
+    const doctorId = doctorProfileId || (authUser?.id ? String(authUser.id) : null);
+
+    if (!doctorId) {
+      setTelemedicineMap({});
+      return;
+    }
+
+    let isActive = true;
+
+    const loadTelemedicineSessions = async () => {
+      try {
+        const sessions = await getMyDoctorTelemedicineSessions(doctorId);
+        if (!isActive) {
+          return;
+        }
+
+        setTelemedicineMap(
+          sessions.reduce<Record<number, TelemedicineSessionResponse>>((acc, session) => {
+            acc[session.appointmentId] = session;
+            return acc;
+          }, {}),
+        );
+      } catch {
+        if (isActive) {
+          setTelemedicineMap({});
+        }
+      }
+    };
+
+    void loadTelemedicineSessions();
+
+    return () => {
+      isActive = false;
+    };
+  }, [appointments]);
 
   const groupedAppointments = useMemo<AppointmentGroup[]>(() => {
     const pending = appointments.filter((appointment) => appointment.status === 'PENDING');
@@ -268,6 +315,17 @@ export default function DoctorAppointments() {
                     const paymentAmount =
                       appointment.finalFee ?? appointment.fixedFeeSnapshot ?? appointment.doctorExtraFee ?? null;
                     const paymentCurrency = appointment.feeCurrency || 'USD';
+                    const telemedicineSession = telemedicineMap[appointment.id];
+                    const consultationState =
+                      appointment.appointmentType === 'VIDEO'
+                        ? getConsultationAccessState(appointment, telemedicineSession, 'DOCTOR')
+                        : null;
+                    const showConsultationLink =
+                      appointment.appointmentType === 'VIDEO' &&
+                      appointment.status !== 'PENDING' &&
+                      consultationState?.canOpenPage;
+                    const showPhysicalComplete =
+                      appointment.appointmentType !== 'VIDEO' && canComplete;
 
                     return (
                       <motion.div
@@ -382,6 +440,39 @@ export default function DoctorAppointments() {
                               </p>
                               <p className="mt-1 text-sm text-gray-700">{appointment.reasonForVisit}</p>
                             </div>
+
+                            {consultationState && (
+                              <div className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">
+                                      Consultation Flow
+                                    </p>
+                                    <h4 className="mt-1 text-sm font-bold text-slate-900">
+                                      {consultationState.primaryLabel}
+                                    </h4>
+                                    <p className="mt-1 text-sm text-slate-700">{consultationState.message}</p>
+                                    {telemedicineSession?.consultationSummary && (
+                                      <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                                          Recorded Summary
+                                        </p>
+                                        <p className="mt-1">{telemedicineSession.consultationSummary}</p>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {showConsultationLink && (
+                                    <Link
+                                      to={`/consultation/${encodeURIComponent(String(appointment.id))}`}
+                                      className="inline-flex shrink-0 items-center justify-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
+                                    >
+                                      {consultationState.primaryLabel}
+                                    </Link>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col">
@@ -401,14 +492,16 @@ export default function DoctorAppointments() {
                             >
                               Reject
                             </button>
-                            <button
-                              type="button"
-                              disabled={!canComplete || isBusy || !isPaymentSettled}
-                              onClick={() => void handleAction(appointment.id, completeAppointment)}
-                              className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              Complete
-                            </button>
+                            {showPhysicalComplete && (
+                              <button
+                                type="button"
+                                disabled={isBusy || !isPaymentSettled}
+                                onClick={() => void handleAction(appointment.id, completeAppointment)}
+                                className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                Complete
+                              </button>
+                            )}
                           </div>
                         </div>
                       </motion.div>

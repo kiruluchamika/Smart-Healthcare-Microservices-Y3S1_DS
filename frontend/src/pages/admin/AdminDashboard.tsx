@@ -108,6 +108,9 @@ export default function AdminDashboard() {
             <Link to="/admin/analytics" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700">
               View analytics
             </Link>
+            <Link to="/admin/telemedicine" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700">
+              Telemedicine sessions
+            </Link>
             <Link to="/admin/settings" className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:text-blue-700">
               System settings
             </Link>

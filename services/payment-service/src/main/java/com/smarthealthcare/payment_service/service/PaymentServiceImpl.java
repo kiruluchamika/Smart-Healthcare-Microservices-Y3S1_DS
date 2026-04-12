@@ -54,21 +54,21 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentTransactionRepository repository;
     private final AppointmentClient appointmentClient;
     private final DoctorClient doctorClient;
-    private final TelemedicineClient telemedicineClient;
     private final NotificationClient notificationClient;
+    private final TelemedicineClient telemedicineClient;
     private final SmartHealthcareProperties properties;
 
     public PaymentServiceImpl(PaymentTransactionRepository repository,
                               AppointmentClient appointmentClient,
                               DoctorClient doctorClient,
-                              TelemedicineClient telemedicineClient,
                               NotificationClient notificationClient,
+                              TelemedicineClient telemedicineClient,
                               SmartHealthcareProperties properties) {
         this.repository = repository;
         this.appointmentClient = appointmentClient;
         this.doctorClient = doctorClient;
-        this.telemedicineClient = telemedicineClient;
         this.notificationClient = notificationClient;
+        this.telemedicineClient = telemedicineClient;
         this.properties = properties;
         Stripe.apiKey = properties.getStripe().getSecretKey();
     }
@@ -234,6 +234,7 @@ public class PaymentServiceImpl implements PaymentService {
         transaction.setStatus(PaymentStatus.COMPLETED);
         transaction.setCompletedAt(LocalDateTime.now());
         PaymentTransaction saved = repository.save(transaction);
+        syncAppointmentPaymentStatus(saved, "COMPLETED", saved.getPaidAt(), saved.getTelemedicineSessionUrl());
         publishNotification("CONSULTATION_COMPLETED", saved, "Consultation completed successfully", saved.getPatientId());
         return PaymentMapper.toResponse(saved);
     }
@@ -297,31 +298,7 @@ public class PaymentServiceImpl implements PaymentService {
         transaction.setStripePaymentIntentId(session.getPaymentIntent());
         transaction.setPaidAt(LocalDateTime.now());
 
-        TelemedicineSessionResponse telemedicineSession;
-        try {
-            telemedicineSession = telemedicineClient.createSession(new TelemedicineSessionRequest(
-                    transaction.getId(),
-                    transaction.getAppointmentId(),
-                    transaction.getPatientId(),
-                    transaction.getDoctorId(),
-                    transaction.getAppointmentDate(),
-                    transaction.getStartTime(),
-                    transaction.getEndTime(),
-                    transaction.getAppointmentType(),
-                    transaction.getAmount(),
-                    transaction.getCurrency(),
-                    "Paid consultation"));
-        } catch (Exception ex) {
-            log.warn("Telemedicine service unavailable, generating fallback session link for payment {}", transaction.getId());
-            telemedicineSession = new TelemedicineSessionResponse(
-                    "fallback-" + transaction.getId(),
-                    buildFallbackTelemedicineLink(transaction),
-                    "JITSI",
-                    "READY");
-        }
-
-        transaction.setTelemedicineSessionId(telemedicineSession.sessionId());
-        transaction.setTelemedicineSessionUrl(telemedicineSession.sessionUrl());
+        prepareTelemedicineAccess(transaction);
         PaymentTransaction saved = repository.save(transaction);
         syncAppointmentPaymentStatus(saved, "PAID", saved.getPaidAt(), saved.getTelemedicineSessionUrl());
         publishNotification("PAYMENT_CONFIRMED", saved, "Payment confirmed and consultation ready", saved.getPatientId());
@@ -438,6 +415,48 @@ public class PaymentServiceImpl implements PaymentService {
         return amount.multiply(BigDecimal.valueOf(100)).longValueExact();
     }
 
+    private void prepareTelemedicineAccess(PaymentTransaction transaction) {
+        transaction.setTelemedicineSessionId(null);
+        transaction.setTelemedicineSessionUrl(null);
+
+        if (!"VIDEO".equalsIgnoreCase(transaction.getAppointmentType())) {
+            return;
+        }
+
+        try {
+            AppointmentSnapshot appointment = appointmentClient.getAppointmentById(transaction.getAppointmentId());
+            TelemedicineSessionResponse telemedicineSession = telemedicineClient.createSession(
+                    new TelemedicineSessionRequest(
+                            transaction.getId(),
+                            transaction.getAppointmentId(),
+                            transaction.getPatientId(),
+                            transaction.getDoctorId(),
+                            transaction.getAppointmentDate(),
+                            transaction.getStartTime(),
+                            transaction.getEndTime(),
+                            transaction.getAppointmentType(),
+                            transaction.getAmount(),
+                            transaction.getCurrency(),
+                            appointment.reasonForVisit()));
+            transaction.setTelemedicineSessionId(telemedicineSession.sessionId());
+            transaction.setTelemedicineSessionUrl(telemedicineSession.sessionUrl());
+        } catch (Exception ex) {
+            log.warn("Unable to create telemedicine session for appointment {}: {}", transaction.getAppointmentId(), ex.getMessage());
+            transaction.setTelemedicineSessionUrl(buildTelemedicineFallbackUrl(transaction.getAppointmentId()));
+        }
+    }
+
+    private String buildTelemedicineFallbackUrl(Long appointmentId) {
+        String baseUrl = properties.getIntegrations().getTelemedicineFallbackBaseUrl();
+        if (!StringUtils.hasText(baseUrl)) {
+            return null;
+        }
+
+        return baseUrl.endsWith("/")
+                ? baseUrl + "appointment-" + appointmentId
+                : baseUrl + "/appointment-" + appointmentId;
+    }
+
     private void publishNotification(String eventType, PaymentTransaction transaction, String message, Long targetUserId) {
         try {
             notificationClient.sendEvent(new NotificationEventRequest(
@@ -462,12 +481,6 @@ public class PaymentServiceImpl implements PaymentService {
             return "DOCTOR";
         }
         return "SYSTEM";
-    }
-
-    private String buildFallbackTelemedicineLink(PaymentTransaction transaction) {
-        String baseUrl = properties.getIntegrations().getTelemedicineFallbackBaseUrl();
-        String roomCode = "smart-healthcare-" + transaction.getAppointmentId() + "-" + transaction.getId();
-        return baseUrl.endsWith("/") ? baseUrl + roomCode : baseUrl + "/" + roomCode;
     }
 
     private <T extends StripeObject> T extractStripeObject(Event event, Class<T> type) {

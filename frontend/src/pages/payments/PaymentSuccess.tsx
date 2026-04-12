@@ -21,7 +21,7 @@ export default function PaymentSuccess() {
     }
 
     if (appointmentType === 'VIDEO') {
-      return 'Video consultation phase: your link will be available before the appointment start time.';
+      return 'Video consultation phase: open your appointment to see room access, waiting status, and join guidance.';
     }
 
     if (appointmentType === 'PHYSICAL') {
@@ -155,6 +155,14 @@ export default function PaymentSuccess() {
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
+          {appointmentId && paymentDetails?.appointmentType?.toUpperCase() === 'VIDEO' && (
+            <Link
+              to={`/consultation/${encodeURIComponent(appointmentId)}`}
+              className="rounded-lg bg-cyan-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700"
+            >
+              View Consultation Access
+            </Link>
+          )}
           <Link
             to={appointmentsLink}
             className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
