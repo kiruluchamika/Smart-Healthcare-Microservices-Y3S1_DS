@@ -65,6 +65,14 @@ spring:
             - RewritePath=/api/ai/(?<segment>.*), /api/v1/ai/${segment}
             - PreserveHostHeader
 
+        - id: ai-symptom-service
+          uri: ${AI_SYMPTOM_SERVICE_URL:http://localhost:8093}
+          predicates:
+            - Path=/api/ai-symptoms/**
+          filters:
+            - RewritePath=/api/ai-symptoms/(?<segment>.*), /api/v1/ai-symptoms/${segment}
+            - PreserveHostHeader
+
 server:
   port: ${SERVER_PORT:8088}
 
