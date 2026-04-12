@@ -1,10 +1,13 @@
 package com.smarthealthcare.payment_service.service;
 
 import com.smarthealthcare.payment_service.client.AppointmentClient;
+import com.smarthealthcare.payment_service.client.DoctorClient;
 import com.smarthealthcare.payment_service.client.NotificationClient;
 import com.smarthealthcare.payment_service.client.TelemedicineClient;
 import com.smarthealthcare.payment_service.config.SmartHealthcareProperties;
 import com.smarthealthcare.payment_service.dto.integration.AppointmentSnapshot;
+import com.smarthealthcare.payment_service.dto.integration.AppointmentPaymentStatusUpdateRequest;
+import com.smarthealthcare.payment_service.dto.integration.DoctorSnapshot;
 import com.smarthealthcare.payment_service.dto.integration.NotificationEventRequest;
 import com.smarthealthcare.payment_service.dto.integration.TelemedicineSessionRequest;
 import com.smarthealthcare.payment_service.dto.integration.TelemedicineSessionResponse;
@@ -26,11 +29,9 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
 import com.stripe.model.Charge;
 import com.stripe.model.PaymentIntent;
-import com.stripe.model.Refund;
 import com.stripe.model.StripeObject;
 import com.stripe.model.checkout.Session;
 import com.stripe.net.Webhook;
-import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -52,17 +53,20 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentTransactionRepository repository;
     private final AppointmentClient appointmentClient;
+    private final DoctorClient doctorClient;
     private final TelemedicineClient telemedicineClient;
     private final NotificationClient notificationClient;
     private final SmartHealthcareProperties properties;
 
     public PaymentServiceImpl(PaymentTransactionRepository repository,
                               AppointmentClient appointmentClient,
+                              DoctorClient doctorClient,
                               TelemedicineClient telemedicineClient,
                               NotificationClient notificationClient,
                               SmartHealthcareProperties properties) {
         this.repository = repository;
         this.appointmentClient = appointmentClient;
+        this.doctorClient = doctorClient;
         this.telemedicineClient = telemedicineClient;
         this.notificationClient = notificationClient;
         this.properties = properties;
@@ -78,7 +82,7 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentTransaction existing = repository.findByAppointmentId(appointment.id()).orElse(null);
         if (existing != null) {
             if (existing.getStatus() == PaymentStatus.PAID || existing.getStatus() == PaymentStatus.COMPLETED) {
-                return PaymentMapper.toCheckoutResponse(existing);
+                throw new ConflictException("Appointment is already paid");
             }
 
             if (StringUtils.hasText(existing.getStripeCheckoutSessionId()) && existing.getStatus() == PaymentStatus.CHECKOUT_CREATED) {
@@ -86,8 +90,10 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
-        BigDecimal amount = resolveFee(appointment.appointmentType());
-        String currency = properties.getPayment().getDefaultCurrency();
+        BigDecimal amount = resolveFee(appointment);
+        String currency = StringUtils.hasText(appointment.feeCurrency())
+            ? appointment.feeCurrency()
+            : properties.getPayment().getDefaultCurrency();
         String successUrl = StringUtils.hasText(request.successUrl()) ? request.successUrl() : properties.getPayment().getCheckoutSuccessUrl();
         String cancelUrl = StringUtils.hasText(request.cancelUrl()) ? request.cancelUrl() : properties.getPayment().getCheckoutCancelUrl();
 
@@ -182,33 +188,39 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponse requestRefund(Long paymentId, RefundRequest request) {
-        PaymentTransaction transaction = findPayment(paymentId);
-        if (transaction.getStatus() != PaymentStatus.PAID && transaction.getStatus() != PaymentStatus.COMPLETED) {
-            throw new ConflictException("Only paid or completed transactions can be refunded");
+    public PaymentResponse syncCheckoutSession(String sessionId) {
+        if (!StringUtils.hasText(sessionId)) {
+            throw new ConflictException("Checkout session id is required");
         }
 
         try {
-            RefundCreateParams.Builder refundBuilder = RefundCreateParams.builder()
-                    .setPaymentIntent(transaction.getStripePaymentIntentId());
-            if (request.amount() != null) {
-                refundBuilder.setAmount(resolveStripeAmount(request.amount()));
-            }
-            if (StringUtils.hasText(request.reason())) {
-                refundBuilder.setReason(RefundCreateParams.Reason.REQUESTED_BY_CUSTOMER);
+            Session session = Session.retrieve(sessionId);
+            PaymentTransaction transaction = findByCheckoutSessionId(sessionId);
+
+            if (transaction.getStatus() == PaymentStatus.PAID || transaction.getStatus() == PaymentStatus.COMPLETED) {
+                return PaymentMapper.toResponse(transaction);
             }
 
-            Refund refund = Refund.create(refundBuilder.build());
-            transaction.setStripeRefundId(refund.getId());
-            transaction.setStatus(PaymentStatus.REFUNDED);
-            transaction.setRefundReason(StringUtils.hasText(request.reason()) ? request.reason() : "Refund requested");
-            transaction.setRefundedAt(LocalDateTime.now());
-            PaymentTransaction saved = repository.save(transaction);
-            publishNotification("PAYMENT_REFUNDED", saved, "Refund processed successfully", saved.getPatientId());
-            return PaymentMapper.toResponse(saved);
+            String paymentStatus = session.getPaymentStatus();
+            boolean isPaid = "paid".equalsIgnoreCase(paymentStatus) || "complete".equalsIgnoreCase(paymentStatus);
+            if (!isPaid) {
+                throw new ConflictException("Payment has not been confirmed by Stripe yet");
+            }
+
+            if (StringUtils.hasText(session.getPaymentIntent())) {
+                transaction.setStripePaymentIntentId(session.getPaymentIntent());
+            }
+
+            return handleCheckoutCompleted(session);
         } catch (StripeException ex) {
-            throw new ConflictException("Unable to create refund: " + ex.getMessage());
+            throw new ConflictException("Unable to verify Stripe checkout session: " + ex.getMessage());
         }
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponse requestRefund(Long paymentId, RefundRequest request) {
+        throw new ConflictException("Refunds are not allowed. Channeling payments are non-refundable.");
     }
 
     @Override
@@ -277,6 +289,10 @@ public class PaymentServiceImpl implements PaymentService {
 
     private PaymentResponse handleCheckoutCompleted(Session session) {
         PaymentTransaction transaction = findByCheckoutSessionId(session.getId());
+        if (transaction.getStatus() == PaymentStatus.PAID || transaction.getStatus() == PaymentStatus.COMPLETED) {
+            return PaymentMapper.toResponse(transaction);
+        }
+
         transaction.setStatus(PaymentStatus.PAID);
         transaction.setStripePaymentIntentId(session.getPaymentIntent());
         transaction.setPaidAt(LocalDateTime.now());
@@ -307,6 +323,7 @@ public class PaymentServiceImpl implements PaymentService {
         transaction.setTelemedicineSessionId(telemedicineSession.sessionId());
         transaction.setTelemedicineSessionUrl(telemedicineSession.sessionUrl());
         PaymentTransaction saved = repository.save(transaction);
+        syncAppointmentPaymentStatus(saved, "PAID", saved.getPaidAt(), saved.getTelemedicineSessionUrl());
         publishNotification("PAYMENT_CONFIRMED", saved, "Payment confirmed and consultation ready", saved.getPatientId());
         publishNotification("PAYMENT_CONFIRMED_DOCTOR", saved, "A consultation payment has been confirmed", saved.getDoctorId());
         return PaymentMapper.toResponse(saved);
@@ -319,6 +336,7 @@ public class PaymentServiceImpl implements PaymentService {
                 ? paymentIntent.getLastPaymentError().getMessage()
                 : "Stripe payment failed");
         PaymentTransaction saved = repository.save(transaction);
+        syncAppointmentPaymentStatus(saved, "FAILED", null, null);
         publishNotification("PAYMENT_FAILED", saved, "Payment failed", saved.getPatientId());
         return PaymentMapper.toResponse(saved);
     }
@@ -330,6 +348,7 @@ public class PaymentServiceImpl implements PaymentService {
         transaction.setRefundedAt(LocalDateTime.now());
         transaction.setStripeRefundId(extractRefundId(event));
         PaymentTransaction saved = repository.save(transaction);
+        syncAppointmentPaymentStatus(saved, "REFUNDED", null, null);
         publishNotification("PAYMENT_REFUNDED", saved, "Payment refunded", saved.getPatientId());
         return PaymentMapper.toResponse(saved);
     }
@@ -374,16 +393,45 @@ public class PaymentServiceImpl implements PaymentService {
             throw new ConflictException("Appointment does not belong to the signed-in patient");
         }
 
-        if (appointment.status() == null || (!"PENDING".equalsIgnoreCase(appointment.status()) && !"CONFIRMED".equalsIgnoreCase(appointment.status()))) {
-            throw new ConflictException("Only pending or confirmed appointments can be paid for");
+        if (appointment.status() == null || !"CONFIRMED".equalsIgnoreCase(appointment.status())) {
+            throw new ConflictException("Payment is available only after doctor approval");
         }
     }
 
-    private BigDecimal resolveFee(String appointmentType) {
+    private BigDecimal resolveFee(AppointmentSnapshot appointment) {
+        if (appointment.finalFee() != null && appointment.finalFee().compareTo(BigDecimal.ZERO) > 0) {
+            return appointment.finalFee().setScale(2, RoundingMode.HALF_UP);
+        }
+
+        Long doctorId = appointment.doctorId();
+        String appointmentType = appointment.appointmentType();
+        try {
+            DoctorSnapshot doctor = doctorClient.getDoctorById(doctorId);
+            if (doctor != null && doctor.consultationFee() != null && doctor.consultationFee().compareTo(BigDecimal.ZERO) > 0) {
+                return doctor.consultationFee().setScale(2, RoundingMode.HALF_UP);
+            }
+        } catch (Exception ex) {
+            log.warn("Using fixed channeling price for doctor {} due to pricing lookup issue: {}", doctorId, ex.getMessage());
+        }
+
         if (appointmentType != null && appointmentType.equalsIgnoreCase("VIDEO")) {
             return properties.getPayment().getVideoConsultationFee().setScale(2, RoundingMode.HALF_UP);
         }
         return properties.getPayment().getPhysicalConsultationFee().setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private void syncAppointmentPaymentStatus(
+            PaymentTransaction transaction,
+            String paymentStatus,
+            LocalDateTime paidAt,
+            String telemedicineSessionUrl) {
+        try {
+            appointmentClient.updateAppointmentPaymentStatus(
+                    transaction.getAppointmentId(),
+                    new AppointmentPaymentStatusUpdateRequest(paymentStatus, paidAt, telemedicineSessionUrl));
+        } catch (Exception ex) {
+            log.warn("Unable to sync payment status to appointment {}: {}", transaction.getAppointmentId(), ex.getMessage());
+        }
     }
 
     private Long resolveStripeAmount(BigDecimal amount) {
