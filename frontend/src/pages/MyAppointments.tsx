@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import {
+  AlertCircle,
   Calendar,
   Clock,
+  CreditCard,
   Loader2,
   MapPin,
   RefreshCw,
   Video,
 } from 'lucide-react';
+import {
+  createCheckoutSession,
+  getMyPayments,
+  type PaymentResponse,
+} from '../services/paymentApi';
 import {
   cancelAppointment,
   getDoctorAvailability,
@@ -76,7 +84,9 @@ type AppointmentGroup = {
 };
 
 export default function MyAppointments() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [paymentMap, setPaymentMap] = useState<Record<number, PaymentResponse>>({});
   const [doctorMap, setDoctorMap] = useState<Record<number, DoctorServiceDoctor>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -87,6 +97,7 @@ export default function MyAppointments() {
   const [rescheduleError, setRescheduleError] = useState('');
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+  const [paymentLoadingId, setPaymentLoadingId] = useState<number | null>(null);
 
   const dateOptions = useMemo(() => getNextSevenDates(), []);
   const doctorIds = useMemo(
@@ -99,8 +110,18 @@ export default function MyAppointments() {
     setError('');
 
     try {
-      const response = await getMyAppointments();
-      setAppointments(response);
+      const [appointmentResponse, paymentsResponse] = await Promise.all([
+        getMyAppointments(),
+        getMyPayments(),
+      ]);
+      setAppointments(appointmentResponse);
+      const safePayments = Array.isArray(paymentsResponse) ? paymentsResponse : [];
+      setPaymentMap(
+        safePayments.reduce<Record<number, PaymentResponse>>((acc, payment) => {
+          acc[payment.appointmentId] = payment;
+          return acc;
+        }, {}),
+      );
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load appointments');
     } finally {
@@ -111,6 +132,18 @@ export default function MyAppointments() {
   useEffect(() => {
     void loadAppointments();
   }, []);
+
+  useEffect(() => {
+    const refreshPaymentFor = searchParams.get('refreshPaymentFor');
+    if (!refreshPaymentFor) {
+      return;
+    }
+
+    void loadAppointments();
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('refreshPaymentFor');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const missingDoctorIds = doctorIds.filter((doctorId) => !doctorMap[doctorId]);
@@ -311,6 +344,37 @@ export default function MyAppointments() {
     }
   };
 
+  const handlePayNow = async (appointment: AppointmentResponse) => {
+    const warningAccepted = window.confirm(
+      'This channeling payment is non-refundable. Do you want to continue to payment?',
+    );
+    if (!warningAccepted) {
+      return;
+    }
+
+    setPaymentLoadingId(appointment.id);
+    setError('');
+
+    try {
+      const origin = window.location.origin;
+      const response = await createCheckoutSession({
+        appointmentId: appointment.id,
+        successUrl: `${origin}/payments/success?appointmentId=${appointment.id}&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${origin}/payments/cancel?appointmentId=${appointment.id}`,
+      });
+
+      if (!response.checkoutUrl) {
+        throw new Error('Checkout URL is unavailable. Please try again.');
+      }
+
+      window.location.assign(response.checkoutUrl);
+    } catch (paymentError) {
+      setError(paymentError instanceof Error ? paymentError.message : 'Failed to start payment flow');
+    } finally {
+      setPaymentLoadingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-blue-50 to-white">
       <div className="max-w-6xl mx-auto">
@@ -359,6 +423,25 @@ export default function MyAppointments() {
                       appointment.status === 'PENDING' || appointment.status === 'CONFIRMED';
                     const isRescheduling = activeRescheduleId === appointment.id;
                     const isBusy = actionLoadingId === appointment.id;
+                    const isPaying = paymentLoadingId === appointment.id;
+                    const payment = paymentMap[appointment.id];
+                    const paymentHint = (appointment.paymentStatusHint || '').toUpperCase();
+                    const isPaidByHint = paymentHint === 'PAID' || paymentHint === 'COMPLETED';
+                    const isPaidByRecord =
+                      payment?.status === 'PAID' || payment?.status === 'COMPLETED';
+                    const isPaid = isPaidByHint || isPaidByRecord;
+                    const paymentFailed = payment?.status === 'FAILED';
+                    const checkoutCreated = payment?.status === 'CHECKOUT_CREATED';
+                    const canPayNow = appointment.status === 'CONFIRMED' && !isPaid;
+                    const amountDue =
+                      appointment.finalFee ?? (payment?.amount ? Number(payment.amount) : null);
+                    const amountCurrency =
+                      appointment.feeCurrency || payment?.currency || 'USD';
+                    const paymentStateLabel = isPaid
+                      ? 'PAID'
+                      : appointment.status === 'CONFIRMED'
+                        ? 'PAYMENT DUE'
+                        : 'NOT AVAILABLE YET';
 
                     return (
                       <motion.div
@@ -388,6 +471,33 @@ export default function MyAppointments() {
                               >
                                 {appointment.status}
                               </span>
+                              <span
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                  isPaid
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : appointment.status === 'CONFIRMED'
+                                      ? 'bg-orange-100 text-orange-700'
+                                      : 'bg-slate-100 text-slate-700'
+                                }`}
+                              >
+                                {paymentStateLabel}
+                              </span>
+                            </div>
+
+                            <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                              <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                Amount to Pay
+                              </p>
+                              <p className="mt-1 text-lg font-bold text-slate-900">
+                                {amountDue != null ? `${amountCurrency.toUpperCase()} ${amountDue.toFixed(2)}` : 'TBD'}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {isPaid
+                                  ? 'This appointment has been paid successfully.'
+                                  : appointment.status === 'CONFIRMED'
+                                    ? 'Payment is now required before consultation.'
+                                    : 'Payment will appear after doctor approval.'}
+                              </p>
                             </div>
 
                             <p className="mb-3 text-sm text-gray-600">
@@ -422,9 +532,59 @@ export default function MyAppointments() {
                               </p>
                               <p className="mt-1 text-sm text-gray-700">{appointment.reasonForVisit}</p>
                             </div>
+
+                            {appointment.status === 'PENDING' && (
+                              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                                Payment will be available after doctor approval.
+                              </div>
+                            )}
+
+                            {canPayNow && !paymentFailed && !checkoutCreated && (
+                              <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800">
+                                Payment required: complete payment before consultation. This channeling payment is non-refundable.
+                              </div>
+                            )}
+
+                            {checkoutCreated && (
+                              <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+                                Checkout session already exists. Click Pay Now to continue securely.
+                              </div>
+                            )}
+
+                            {paymentFailed && (
+                              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                Previous payment attempt failed. You can retry using Pay Now.
+                              </div>
+                            )}
+
+                            {appointment.status === 'COMPLETED' && !isPaid && (
+                              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                <div className="flex items-start gap-2">
+                                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                  <span>
+                                    This completed appointment has no successful payment recorded. Please contact support.
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {isPaid && (
+                              <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                                Payment successful ({payment?.currency} {payment?.amount}). Non-refundable policy applies.
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col">
+                            <button
+                              type="button"
+                              disabled={!canPayNow || isPaying}
+                              onClick={() => void handlePayNow(appointment)}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              <CreditCard className="h-4 w-4" />
+                              {isPaying ? 'Redirecting...' : 'Pay Now'}
+                            </button>
                             <button
                               type="button"
                               disabled={!canReschedule || isBusy}
