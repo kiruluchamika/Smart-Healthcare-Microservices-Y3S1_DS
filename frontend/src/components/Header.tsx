@@ -148,6 +148,7 @@ export default function Header() {
     { label: 'My Appointments', href: '/appointments' },
     { label: 'Reports', href: '/reports' },
     { label: 'History', href: '/history' },
+    { label: 'AI Symptom', href: '/ai-symptom' },
     { label: 'Discover Doctors', href: '/doctors' },
   ];
 
@@ -196,6 +197,7 @@ export default function Header() {
     { label: 'My Appointments', href: '/appointments' },
     { label: 'MedicalReports', href: '/reports' },
     { label: 'MedicalHistory', href: '/history' },
+    { label: 'AI Symptom', href: '/ai-symptom' },
     { label: 'Prescription', href: '/prescriptions' },
     { label: 'Discover Doctors', href: '/doctors' },
   ];
