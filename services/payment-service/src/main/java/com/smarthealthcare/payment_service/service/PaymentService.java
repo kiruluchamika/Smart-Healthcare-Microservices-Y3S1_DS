@@ -24,6 +24,8 @@ public interface PaymentService {
 
     PaymentResponse handleStripeWebhook(String payload, String signatureHeader);
 
+    PaymentResponse syncCheckoutSession(String sessionId);
+
     PaymentResponse requestRefund(Long paymentId, RefundRequest request);
 
     PaymentResponse completeConsultation(Long paymentId, ConsultationCompletionRequest request);
