@@ -38,6 +38,9 @@ public class SmartHealthcareProperties {
     @Data
     public static class Integrations {
         private String appointmentBaseUrl = "http://localhost:8082";
+        private String doctorBaseUrl = "http://localhost:8083/api/v1/doctors";
+        private String doctorServiceUsername = "doctor";
+        private String doctorServicePassword = "doctor123";
         private String telemedicineBaseUrl = "http://localhost:8087";
         private String notificationBaseUrl = "http://localhost:8084";
         private String telemedicineFallbackBaseUrl = "https://meet.jit.si";
