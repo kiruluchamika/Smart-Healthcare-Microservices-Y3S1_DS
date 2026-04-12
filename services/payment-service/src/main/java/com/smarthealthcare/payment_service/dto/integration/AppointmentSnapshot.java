@@ -1,6 +1,7 @@
 package com.smarthealthcare.payment_service.dto.integration;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -16,6 +17,13 @@ public record AppointmentSnapshot(
         String appointmentType,
         String status,
         String reasonForVisit,
+        BigDecimal fixedFeeSnapshot,
+        BigDecimal doctorExtraFee,
+        BigDecimal finalFee,
+        String feeCurrency,
+        String paymentStatusHint,
+        LocalDateTime paymentPaidAt,
+        String telemedicineSessionUrl,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
 }
