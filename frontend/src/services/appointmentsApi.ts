@@ -35,8 +35,22 @@ export interface AppointmentResponse {
   appointmentType: 'VIDEO' | 'PHYSICAL';
   status: 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED';
   reasonForVisit: string;
+  fixedFeeSnapshot?: number | null;
+  doctorExtraFee?: number | null;
+  finalFee?: number | null;
+  feeCurrency?: string | null;
+  feeLockedAt?: string | null;
+  extraFeeReason?: string | null;
+  paymentStatusHint?: 'UNPAID' | 'PAID' | 'FAILED' | 'REFUNDED' | 'COMPLETED' | string | null;
+  paymentPaidAt?: string | null;
+  telemedicineSessionUrl?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AcceptAppointmentPayload {
+  extraFee?: number;
+  extraFeeReason?: string;
 }
 
 export interface RescheduleAppointmentPayload {
@@ -174,10 +188,11 @@ export async function getMyDoctorAppointments() {
   return payload as AppointmentResponse[];
 }
 
-async function doctorAction(path: string) {
+async function doctorAction(path: string, bodyPayload?: unknown) {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'PATCH',
     headers: buildDoctorHeaders(),
+    body: bodyPayload ? JSON.stringify(bodyPayload) : undefined,
   });
 
   const payload = await response.json().catch(() => null);
@@ -192,6 +207,13 @@ async function doctorAction(path: string) {
 
 export function acceptAppointment(appointmentId: number) {
   return doctorAction(`/${appointmentId}/accept`);
+}
+
+export function acceptAppointmentWithFee(
+  appointmentId: number,
+  payload: AcceptAppointmentPayload,
+) {
+  return doctorAction(`/${appointmentId}/accept`, payload);
 }
 
 export function rejectAppointment(appointmentId: number) {
