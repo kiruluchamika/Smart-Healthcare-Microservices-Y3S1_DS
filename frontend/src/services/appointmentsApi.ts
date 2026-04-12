@@ -1,16 +1,6 @@
 import { getAuthToken, getAuthUser } from './authSession';
 
-export interface DoctorOption {
-  id: number;
-  name: string;
-  specialty: string;
-  rating: number;
-  reviews: number;
-  location: string;
-  availability: string;
-  image: string;
-  price: string;
-}
+const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
 
 export interface BookedSlot {
   appointmentId: number;
@@ -57,53 +47,6 @@ export interface RescheduleAppointmentPayload {
 
 const API_BASE = import.meta.env.VITE_APPOINTMENTS_API_BASE || '/api/appointments';
 
-export const TEMP_DOCTORS: DoctorOption[] = [
-  {
-    id: 1,
-    name: 'Dr. Sarah Johnson',
-    specialty: 'Cardiologist',
-    rating: 4.9,
-    reviews: 234,
-    location: 'San Francisco, CA',
-    availability: 'Availability from live schedule',
-    image: '👩‍⚕️',
-    price: '$150',
-  },
-  {
-    id: 2,
-    name: 'Dr. Michael Chen',
-    specialty: 'General Practitioner',
-    rating: 4.8,
-    reviews: 512,
-    location: 'San Francisco, CA',
-    availability: 'Availability from live schedule',
-    image: '👨‍⚕️',
-    price: '$100',
-  },
-  {
-    id: 3,
-    name: 'Dr. Emily Rodriguez',
-    specialty: 'Dermatologist',
-    rating: 4.7,
-    reviews: 189,
-    location: 'San Francisco, CA',
-    availability: 'Availability from live schedule',
-    image: '👩‍⚕️',
-    price: '$120',
-  },
-  {
-    id: 4,
-    name: 'Dr. James Wilson',
-    specialty: 'Neurologist',
-    rating: 4.9,
-    reviews: 267,
-    location: 'San Francisco, CA',
-    availability: 'Availability from live schedule',
-    image: '👨‍⚕️',
-    price: '$180',
-  },
-];
-
 function buildHeaders(includeJson = true) {
   const token = getAuthToken();
   const user = getAuthUser();
@@ -118,11 +61,13 @@ function buildHeaders(includeJson = true) {
 function buildDoctorHeaders(includeJson = true) {
   const token = getAuthToken();
   const user = getAuthUser();
+  const storedDoctorProfileId = localStorage.getItem(DOCTOR_PROFILE_ID_KEY);
+  const doctorId = storedDoctorProfileId || (user?.id ? String(user.id) : null);
 
   return {
     ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(user?.id ? { 'X-Doctor-Id': String(user.id) } : {}),
+    ...(doctorId ? { 'X-Doctor-Id': doctorId } : {}),
   };
 }
 

@@ -27,6 +27,18 @@ export interface DoctorServiceDoctor {
   updatedAt: string;
 }
 
+export interface AppointmentBookingDoctor {
+  id: number;
+  fullName: string;
+  specialty: string;
+  qualifications: string;
+  experienceYears: number;
+  location: string;
+  availabilityLabel: string;
+  profileCompletenessScore: number;
+  initials: string;
+}
+
 export interface DoctorListParams {
   page?: number;
   size?: number;

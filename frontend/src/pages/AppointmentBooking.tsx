@@ -1,23 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Search,
-  MapPin,
-  Clock,
-  Star,
+  AlertCircle,
   CheckCircle,
   ChevronRight,
+  Clock,
   LayoutDashboard,
   Loader2,
+  MapPin,
+  Search,
+  ShieldCheck,
+  Star,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
-  TEMP_DOCTORS,
   createAppointment,
   getDoctorAvailability,
   type AppointmentResponse,
-  type DoctorOption,
 } from '../services/appointmentsApi';
+import { getBookableDoctors } from '../services/doctor/doctorApi';
+import type { AppointmentBookingDoctor } from '../types/doctor';
 
 const APPOINTMENT_DURATION_MINUTES = 60;
 
@@ -59,6 +61,30 @@ function getDefaultTimeSlots() {
   return ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
 }
 
+function resetBookingState(
+  setSelectedDoctor: (value: number | null) => void,
+  setSelectedDate: (value: string | null) => void,
+  setSelectedTime: (value: string | null) => void,
+  setReasonForVisit: (value: string) => void,
+  setAvailabilityTimes: (value: string[]) => void,
+  setAvailabilityMessage: (value: string) => void,
+  setAvailabilityError: (value: string) => void,
+  setSubmitError: (value: string) => void,
+  setCreatedAppointment: (value: AppointmentResponse | null) => void,
+  setStep: (value: number) => void,
+) {
+  setStep(1);
+  setSelectedDoctor(null);
+  setSelectedDate(null);
+  setSelectedTime(null);
+  setReasonForVisit('');
+  setAvailabilityTimes([]);
+  setAvailabilityMessage('');
+  setAvailabilityError('');
+  setSubmitError('');
+  setCreatedAppointment(null);
+}
+
 export default function AppointmentBooking() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
@@ -73,9 +99,44 @@ export default function AppointmentBooking() {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdAppointment, setCreatedAppointment] = useState<AppointmentResponse | null>(null);
+  const [doctors, setDoctors] = useState<AppointmentBookingDoctor[]>([]);
+  const [isLoadingDoctors, setIsLoadingDoctors] = useState(true);
+  const [doctorsError, setDoctorsError] = useState('');
 
-  const doctors = TEMP_DOCTORS;
   const dateOptions = useMemo(() => getNextSevenDates(), []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadDoctors = async () => {
+      setIsLoadingDoctors(true);
+      setDoctorsError('');
+
+      try {
+        const response = await getBookableDoctors();
+
+        if (isActive) {
+          setDoctors(response);
+        }
+      } catch (error) {
+        if (isActive) {
+          setDoctors([]);
+          setDoctorsError(error instanceof Error ? error.message : 'Failed to load doctors');
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingDoctors(false);
+        }
+      }
+    };
+
+    void loadDoctors();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   const filteredDoctors = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
@@ -84,7 +145,15 @@ export default function AppointmentBooking() {
     }
 
     return doctors.filter((doctor) =>
-      `${doctor.name} ${doctor.specialty}`.toLowerCase().includes(normalizedSearch),
+      [
+        doctor.fullName,
+        doctor.specialty,
+        doctor.qualifications,
+        doctor.location,
+      ]
+        .join(' ')
+        .toLowerCase()
+        .includes(normalizedSearch),
     );
   }, [doctors, searchTerm]);
 
@@ -164,7 +233,7 @@ export default function AppointmentBooking() {
     }
   };
 
-  const handleDoctorSelect = (doctor: DoctorOption) => {
+  const handleDoctorSelect = (doctor: AppointmentBookingDoctor) => {
     setSelectedDoctor(doctor.id);
     setSelectedDate(null);
     setSelectedTime(null);
@@ -284,53 +353,102 @@ export default function AppointmentBooking() {
               </div>
             </div>
 
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="grid grid-cols-1 md:grid-cols-2 gap-6"
-            >
-              {filteredDoctors.map((doctor) => (
-                <motion.div
-                  key={doctor.id}
-                  variants={itemVariants}
-                  whileHover={{ y: -4 }}
-                  onClick={() => handleDoctorSelect(doctor)}
-                  className={`cursor-pointer rounded-xl border-2 p-6 transition-all ${
-                    selectedDoctor === doctor.id
-                      ? 'border-blue-600 bg-blue-50/50'
-                      : 'border-gray-200/30 hover:border-blue-200'
-                  } bg-white`}
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="text-4xl">{doctor.image}</div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{doctor.name}</h3>
-                        <p className="text-sm text-gray-600">{doctor.specialty}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          <span className="text-sm font-medium text-gray-900">{doctor.rating}</span>
-                          <span className="text-sm text-gray-500">({doctor.reviews})</span>
+            {isLoadingDoctors && (
+              <div className="rounded-2xl border border-gray-200/40 bg-white p-10 text-center shadow-lg">
+                <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-blue-600" />
+                <p className="text-gray-600">Loading doctors from doctor-service...</p>
+              </div>
+            )}
+
+            {!isLoadingDoctors && doctorsError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 text-red-600" />
+                  <div>
+                    <p className="font-semibold text-red-700">Unable to load doctors</p>
+                    <p className="mt-1 text-sm text-red-600">{doctorsError}</p>
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="mt-4 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!isLoadingDoctors && !doctorsError && filteredDoctors.length === 0 && (
+              <div className="rounded-2xl border border-gray-200/40 bg-white p-10 text-center shadow-lg">
+                <ShieldCheck className="mx-auto mb-4 h-10 w-10 text-blue-600" />
+                <h3 className="text-2xl font-bold text-gray-900">
+                  {doctors.length === 0 ? 'No doctors available right now' : 'No matching doctors found'}
+                </h3>
+                <p className="mt-2 text-gray-600">
+                  {doctors.length === 0
+                    ? 'Doctor-service did not return any approved active doctors for booking.'
+                    : 'Try a different name, specialty, or clinic location.'}
+                </p>
+              </div>
+            )}
+
+            {!isLoadingDoctors && !doctorsError && filteredDoctors.length > 0 && (
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid grid-cols-1 md:grid-cols-2 gap-6"
+              >
+                {filteredDoctors.map((doctor) => (
+                  <motion.div
+                    key={doctor.id}
+                    variants={itemVariants}
+                    whileHover={{ y: -4 }}
+                    onClick={() => handleDoctorSelect(doctor)}
+                    className={`cursor-pointer rounded-xl border-2 p-6 transition-all ${
+                      selectedDoctor === doctor.id
+                        ? 'border-blue-600 bg-blue-50/50'
+                        : 'border-gray-200/30 hover:border-blue-200'
+                    } bg-white`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-lg font-bold text-white">
+                          {doctor.initials}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{doctor.fullName}</h3>
+                          <p className="text-sm text-gray-600">{doctor.specialty}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            <span className="text-sm font-medium text-gray-900">
+                              {doctor.profileCompletenessScore}% profile complete
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <span className="text-lg font-bold text-blue-600">{doctor.experienceYears}+ yrs</span>
                     </div>
-                    <span className="text-lg font-bold text-blue-600">{doctor.price}</span>
-                  </div>
 
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      {doctor.location}
+                    <div className="mb-4">
+                      <p className="text-sm text-gray-600">{doctor.qualifications}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-green-600" />
-                      <span className="text-green-600 font-medium">{doctor.availability}</span>
+
+                    <div className="space-y-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        {doctor.location}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-green-600" />
+                        <span className="text-green-600 font-medium">{doctor.availabilityLabel}</span>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
           </motion.div>
         )}
 
@@ -387,7 +505,7 @@ export default function AppointmentBooking() {
               <div className="flex flex-col gap-2 text-sm text-gray-600">
                 <p>
                   <span className="font-semibold text-gray-900">Doctor:</span>{' '}
-                  {selectedDoctorDetails?.name || 'Not selected'}
+                  {selectedDoctorDetails?.fullName || 'Not selected'}
                 </p>
                 <p>
                   <span className="font-semibold text-gray-900">Date:</span>{' '}
@@ -519,7 +637,7 @@ export default function AppointmentBooking() {
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-gray-600">Doctor</p>
-                    <p className="font-semibold text-gray-900">{selectedDoctorDetails?.name}</p>
+                    <p className="font-semibold text-gray-900">{selectedDoctorDetails?.fullName}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Date & Time</p>
@@ -553,18 +671,20 @@ export default function AppointmentBooking() {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setStep(1);
-                    setSelectedDoctor(null);
-                    setSelectedDate(null);
-                    setSelectedTime(null);
-                    setReasonForVisit('');
-                    setAvailabilityTimes([]);
-                    setAvailabilityMessage('');
-                    setAvailabilityError('');
-                    setSubmitError('');
-                    setCreatedAppointment(null);
-                  }}
+                  onClick={() =>
+                    resetBookingState(
+                      setSelectedDoctor,
+                      setSelectedDate,
+                      setSelectedTime,
+                      setReasonForVisit,
+                      setAvailabilityTimes,
+                      setAvailabilityMessage,
+                      setAvailabilityError,
+                      setSubmitError,
+                      setCreatedAppointment,
+                      setStep,
+                    )
+                  }
                   className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold py-3 rounded-lg hover:shadow-lg hover:shadow-blue-500/30 transition-all"
                 >
                   Book Another Appointment

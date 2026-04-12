@@ -144,7 +144,8 @@ export default function Header() {
   const patientNavItems = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Profile', href: '/profile' },
-    { label: 'Appointments', href: '/appointments' },
+    { label: 'Book Appointment', href: '/appointments/book' },
+    { label: 'My Appointments', href: '/appointments' },
     { label: 'Reports', href: '/reports' },
     { label: 'History', href: '/history' },
     { label: 'Discover Doctors', href: '/doctors' },
@@ -153,7 +154,7 @@ export default function Header() {
   const doctorNavItems = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Doctor Profile', href: '/doctors/profile' },
-    { label: 'Appointments', href: '/appointments' },
+    { label: 'Appointments', href: '/doctor/appointments' },
   ];
 
   const adminNavItems = [
@@ -191,7 +192,8 @@ export default function Header() {
   const patientServiceLinks = [
     { label: 'Profile', href: '/profile' },
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Appointments', href: '/appointments' },
+    { label: 'Book Appointment', href: '/appointments/book' },
+    { label: 'My Appointments', href: '/appointments' },
     { label: 'MedicalReports', href: '/reports' },
     { label: 'MedicalHistory', href: '/history' },
     { label: 'Prescription', href: '/prescriptions' },

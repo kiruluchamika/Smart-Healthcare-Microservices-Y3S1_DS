@@ -9,13 +9,18 @@ import {
   Video,
 } from 'lucide-react';
 import {
-  TEMP_DOCTORS,
   cancelAppointment,
   getDoctorAvailability,
   getMyAppointments,
   rescheduleAppointment,
   type AppointmentResponse,
 } from '../services/appointmentsApi';
+import { getDoctorById } from '../services/doctor/doctorApi';
+import type { DoctorServiceDoctor } from '../types/doctor';
+import {
+  getDoctorFullName,
+  getPrimaryClinicLocation,
+} from '../utils/doctor/doctorFormatters';
 
 const APPOINTMENT_DURATION_MINUTES = 60;
 
@@ -72,6 +77,7 @@ type AppointmentGroup = {
 
 export default function MyAppointments() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+  const [doctorMap, setDoctorMap] = useState<Record<number, DoctorServiceDoctor>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeRescheduleId, setActiveRescheduleId] = useState<number | null>(null);
@@ -83,6 +89,10 @@ export default function MyAppointments() {
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
   const dateOptions = useMemo(() => getNextSevenDates(), []);
+  const doctorIds = useMemo(
+    () => [...new Set(appointments.map((appointment) => appointment.doctorId))],
+    [appointments],
+  );
 
   const loadAppointments = async () => {
     setIsLoading(true);
@@ -101,6 +111,54 @@ export default function MyAppointments() {
   useEffect(() => {
     void loadAppointments();
   }, []);
+
+  useEffect(() => {
+    const missingDoctorIds = doctorIds.filter((doctorId) => !doctorMap[doctorId]);
+
+    if (!missingDoctorIds.length) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadDoctors = async () => {
+      const doctorEntries = await Promise.all(
+        missingDoctorIds.map(async (doctorId) => {
+          try {
+            const doctor = await getDoctorById(doctorId);
+            return [doctorId, doctor] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (!isActive) {
+        return;
+      }
+
+      setDoctorMap((currentMap) => {
+        const nextMap = { ...currentMap };
+
+        doctorEntries.forEach((entry) => {
+          if (!entry) {
+            return;
+          }
+
+          const [doctorId, doctor] = entry;
+          nextMap[doctorId] = doctor;
+        });
+
+        return nextMap;
+      });
+    };
+
+    void loadDoctors();
+
+    return () => {
+      isActive = false;
+    };
+  }, [doctorIds, doctorMap]);
 
   const groupedAppointments = useMemo<AppointmentGroup[]>(() => {
     const today = new Date();
@@ -147,8 +205,7 @@ export default function MyAppointments() {
     ].filter((group) => group.appointments.length > 0);
   }, [appointments]);
 
-  const getDoctorDetails = (doctorId: number) =>
-    TEMP_DOCTORS.find((doctor) => doctor.id === doctorId) || null;
+  const getDoctorDetails = (doctorId: number) => doctorMap[doctorId] || null;
 
   const openReschedule = (appointment: AppointmentResponse) => {
     setActiveRescheduleId(appointment.id);
@@ -314,7 +371,7 @@ export default function MyAppointments() {
                           <div className="min-w-0">
                             <div className="mb-2 flex flex-wrap items-center gap-2">
                               <h3 className="text-xl font-semibold text-gray-900">
-                                {doctor?.name || `Doctor #${appointment.doctorId}`}
+                                {doctor ? getDoctorFullName(doctor) : `Doctor #${appointment.doctorId}`}
                               </h3>
                               <span
                                 className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -334,7 +391,7 @@ export default function MyAppointments() {
                             </div>
 
                             <p className="mb-3 text-sm text-gray-600">
-                              {doctor?.specialty || 'Specialty unavailable'}
+                              {doctor?.specialization || 'Specialty unavailable'}
                             </p>
 
                             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-600">
@@ -355,7 +412,7 @@ export default function MyAppointments() {
                                 )}
                                 {appointment.appointmentType === 'VIDEO'
                                   ? 'Video Consultation'
-                                  : 'In-Person Visit'}
+                                  : getPrimaryClinicLocation(doctor?.clinicLocations)}
                               </span>
                             </div>
 
