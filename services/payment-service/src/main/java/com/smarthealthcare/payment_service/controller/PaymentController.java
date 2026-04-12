@@ -46,6 +46,16 @@ public class PaymentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(paymentService.createCheckoutSession(authenticatedPatientId, request));
     }
 
+    @PostMapping("/checkout-sessions/{sessionId}/sync")
+    @Operation(summary = "Synchronize a Stripe checkout session after redirect")
+    public ResponseEntity<PaymentResponse> syncCheckoutSession(
+            @PathVariable String sessionId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestHeader(value = "X-Patient-Id", required = false) Long patientId) {
+        accessControlService.requirePatientAccess(authorizationHeader, patientId);
+        return ResponseEntity.ok(paymentService.syncCheckoutSession(sessionId));
+    }
+
     @GetMapping("/{paymentId}")
     @Operation(summary = "Get payment by id")
     public ResponseEntity<PaymentResponse> getPaymentById(
