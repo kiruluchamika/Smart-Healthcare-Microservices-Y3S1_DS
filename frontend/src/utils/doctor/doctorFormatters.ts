@@ -24,6 +24,11 @@ export function getPrimaryClinicLocation(value?: string | null) {
 }
 
 export function toAppointmentBookingDoctor(doctor: DoctorServiceDoctor): AppointmentBookingDoctor {
+  const hasCustomFee = doctor.consultationFee !== null && doctor.consultationFee !== undefined && doctor.consultationFee !== '';
+  const pricingLabel = hasCustomFee
+    ? `Doctor price: USD ${doctor.consultationFee}`
+    : 'Fixed channeling price applies (USD 15 video / USD 20 physical)';
+
   return {
     id: doctor.id,
     fullName: getDoctorFullName(doctor),
@@ -32,6 +37,8 @@ export function toAppointmentBookingDoctor(doctor: DoctorServiceDoctor): Appoint
     experienceYears: doctor.experienceYears,
     location: getPrimaryClinicLocation(doctor.clinicLocations),
     availabilityLabel: doctor.active ? 'Availability from live schedule' : 'Currently unavailable',
+    consultationFee: doctor.consultationFee,
+    pricingLabel,
     profileCompletenessScore: doctor.profileCompletenessScore,
     initials: getDoctorInitials(doctor),
   };
