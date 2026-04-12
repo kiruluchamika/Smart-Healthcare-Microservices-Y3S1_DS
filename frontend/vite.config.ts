@@ -31,6 +31,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/payments/, '/api/v1/payments'),
       },
+      '/api/telemedicine': {
+        target: 'http://localhost:8087',
+        changeOrigin: true,
+      },
       '/api/ai-symptoms': {
         target: 'http://localhost:8088',
         changeOrigin: true,

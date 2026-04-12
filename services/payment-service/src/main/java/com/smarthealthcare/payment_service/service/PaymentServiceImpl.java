@@ -3,14 +3,11 @@ package com.smarthealthcare.payment_service.service;
 import com.smarthealthcare.payment_service.client.AppointmentClient;
 import com.smarthealthcare.payment_service.client.DoctorClient;
 import com.smarthealthcare.payment_service.client.NotificationClient;
-import com.smarthealthcare.payment_service.client.TelemedicineClient;
 import com.smarthealthcare.payment_service.config.SmartHealthcareProperties;
 import com.smarthealthcare.payment_service.dto.integration.AppointmentSnapshot;
 import com.smarthealthcare.payment_service.dto.integration.AppointmentPaymentStatusUpdateRequest;
 import com.smarthealthcare.payment_service.dto.integration.DoctorSnapshot;
 import com.smarthealthcare.payment_service.dto.integration.NotificationEventRequest;
-import com.smarthealthcare.payment_service.dto.integration.TelemedicineSessionRequest;
-import com.smarthealthcare.payment_service.dto.integration.TelemedicineSessionResponse;
 import com.smarthealthcare.payment_service.dto.request.ConsultationCompletionRequest;
 import com.smarthealthcare.payment_service.dto.request.CreateCheckoutSessionRequest;
 import com.smarthealthcare.payment_service.dto.request.RefundRequest;
@@ -54,20 +51,17 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentTransactionRepository repository;
     private final AppointmentClient appointmentClient;
     private final DoctorClient doctorClient;
-    private final TelemedicineClient telemedicineClient;
     private final NotificationClient notificationClient;
     private final SmartHealthcareProperties properties;
 
     public PaymentServiceImpl(PaymentTransactionRepository repository,
                               AppointmentClient appointmentClient,
                               DoctorClient doctorClient,
-                              TelemedicineClient telemedicineClient,
                               NotificationClient notificationClient,
                               SmartHealthcareProperties properties) {
         this.repository = repository;
         this.appointmentClient = appointmentClient;
         this.doctorClient = doctorClient;
-        this.telemedicineClient = telemedicineClient;
         this.notificationClient = notificationClient;
         this.properties = properties;
         Stripe.apiKey = properties.getStripe().getSecretKey();
@@ -297,33 +291,10 @@ public class PaymentServiceImpl implements PaymentService {
         transaction.setStripePaymentIntentId(session.getPaymentIntent());
         transaction.setPaidAt(LocalDateTime.now());
 
-        TelemedicineSessionResponse telemedicineSession;
-        try {
-            telemedicineSession = telemedicineClient.createSession(new TelemedicineSessionRequest(
-                    transaction.getId(),
-                    transaction.getAppointmentId(),
-                    transaction.getPatientId(),
-                    transaction.getDoctorId(),
-                    transaction.getAppointmentDate(),
-                    transaction.getStartTime(),
-                    transaction.getEndTime(),
-                    transaction.getAppointmentType(),
-                    transaction.getAmount(),
-                    transaction.getCurrency(),
-                    "Paid consultation"));
-        } catch (Exception ex) {
-            log.warn("Telemedicine service unavailable, generating fallback session link for payment {}", transaction.getId());
-            telemedicineSession = new TelemedicineSessionResponse(
-                    "fallback-" + transaction.getId(),
-                    buildFallbackTelemedicineLink(transaction),
-                    "JITSI",
-                    "READY");
-        }
-
-        transaction.setTelemedicineSessionId(telemedicineSession.sessionId());
-        transaction.setTelemedicineSessionUrl(telemedicineSession.sessionUrl());
+        transaction.setTelemedicineSessionId(null);
+        transaction.setTelemedicineSessionUrl(null);
         PaymentTransaction saved = repository.save(transaction);
-        syncAppointmentPaymentStatus(saved, "PAID", saved.getPaidAt(), saved.getTelemedicineSessionUrl());
+        syncAppointmentPaymentStatus(saved, "PAID", saved.getPaidAt(), null);
         publishNotification("PAYMENT_CONFIRMED", saved, "Payment confirmed and consultation ready", saved.getPatientId());
         publishNotification("PAYMENT_CONFIRMED_DOCTOR", saved, "A consultation payment has been confirmed", saved.getDoctorId());
         return PaymentMapper.toResponse(saved);
@@ -462,12 +433,6 @@ public class PaymentServiceImpl implements PaymentService {
             return "DOCTOR";
         }
         return "SYSTEM";
-    }
-
-    private String buildFallbackTelemedicineLink(PaymentTransaction transaction) {
-        String baseUrl = properties.getIntegrations().getTelemedicineFallbackBaseUrl();
-        String roomCode = "smart-healthcare-" + transaction.getAppointmentId() + "-" + transaction.getId();
-        return baseUrl.endsWith("/") ? baseUrl + roomCode : baseUrl + "/" + roomCode;
     }
 
     private <T extends StripeObject> T extractStripeObject(Event event, Class<T> type) {

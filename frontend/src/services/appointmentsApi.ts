@@ -59,6 +59,12 @@ export interface RescheduleAppointmentPayload {
   endTime: string;
 }
 
+export interface UpdateAppointmentPaymentStatusPayload {
+  paymentStatus: string;
+  paidAt?: string | null;
+  telemedicineSessionUrl?: string | null;
+}
+
 const API_BASE = import.meta.env.VITE_APPOINTMENTS_API_BASE || '/api/appointments';
 
 function buildHeaders(includeJson = true) {
@@ -222,4 +228,14 @@ export function rejectAppointment(appointmentId: number) {
 
 export function completeAppointment(appointmentId: number) {
   return doctorAction(`/${appointmentId}/complete`);
+}
+
+export function updateAppointmentPaymentStatus(
+  appointmentId: number,
+  payload: UpdateAppointmentPaymentStatusPayload,
+) {
+  return request<AppointmentResponse>(`/${appointmentId}/payment-status`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }

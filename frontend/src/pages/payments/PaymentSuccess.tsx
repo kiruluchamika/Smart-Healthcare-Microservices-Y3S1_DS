@@ -155,6 +155,14 @@ export default function PaymentSuccess() {
         </p>
 
         <div className="mt-8 flex flex-wrap gap-3">
+          {appointmentId && paymentDetails?.appointmentType?.toUpperCase() === 'VIDEO' && (
+            <Link
+              to={`/consultation/${encodeURIComponent(appointmentId)}`}
+              className="rounded-lg bg-cyan-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-700"
+            >
+              Open Video Consultation
+            </Link>
+          )}
           <Link
             to={appointmentsLink}
             className="rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
