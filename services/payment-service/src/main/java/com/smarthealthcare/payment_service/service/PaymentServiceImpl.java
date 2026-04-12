@@ -3,11 +3,14 @@ package com.smarthealthcare.payment_service.service;
 import com.smarthealthcare.payment_service.client.AppointmentClient;
 import com.smarthealthcare.payment_service.client.DoctorClient;
 import com.smarthealthcare.payment_service.client.NotificationClient;
+import com.smarthealthcare.payment_service.client.TelemedicineClient;
 import com.smarthealthcare.payment_service.config.SmartHealthcareProperties;
 import com.smarthealthcare.payment_service.dto.integration.AppointmentSnapshot;
 import com.smarthealthcare.payment_service.dto.integration.AppointmentPaymentStatusUpdateRequest;
 import com.smarthealthcare.payment_service.dto.integration.DoctorSnapshot;
 import com.smarthealthcare.payment_service.dto.integration.NotificationEventRequest;
+import com.smarthealthcare.payment_service.dto.integration.TelemedicineSessionRequest;
+import com.smarthealthcare.payment_service.dto.integration.TelemedicineSessionResponse;
 import com.smarthealthcare.payment_service.dto.request.ConsultationCompletionRequest;
 import com.smarthealthcare.payment_service.dto.request.CreateCheckoutSessionRequest;
 import com.smarthealthcare.payment_service.dto.request.RefundRequest;
@@ -52,17 +55,20 @@ public class PaymentServiceImpl implements PaymentService {
     private final AppointmentClient appointmentClient;
     private final DoctorClient doctorClient;
     private final NotificationClient notificationClient;
+    private final TelemedicineClient telemedicineClient;
     private final SmartHealthcareProperties properties;
 
     public PaymentServiceImpl(PaymentTransactionRepository repository,
                               AppointmentClient appointmentClient,
                               DoctorClient doctorClient,
                               NotificationClient notificationClient,
+                              TelemedicineClient telemedicineClient,
                               SmartHealthcareProperties properties) {
         this.repository = repository;
         this.appointmentClient = appointmentClient;
         this.doctorClient = doctorClient;
         this.notificationClient = notificationClient;
+        this.telemedicineClient = telemedicineClient;
         this.properties = properties;
         Stripe.apiKey = properties.getStripe().getSecretKey();
     }
@@ -228,6 +234,7 @@ public class PaymentServiceImpl implements PaymentService {
         transaction.setStatus(PaymentStatus.COMPLETED);
         transaction.setCompletedAt(LocalDateTime.now());
         PaymentTransaction saved = repository.save(transaction);
+        syncAppointmentPaymentStatus(saved, "COMPLETED", saved.getPaidAt(), saved.getTelemedicineSessionUrl());
         publishNotification("CONSULTATION_COMPLETED", saved, "Consultation completed successfully", saved.getPatientId());
         return PaymentMapper.toResponse(saved);
     }
@@ -291,10 +298,9 @@ public class PaymentServiceImpl implements PaymentService {
         transaction.setStripePaymentIntentId(session.getPaymentIntent());
         transaction.setPaidAt(LocalDateTime.now());
 
-        transaction.setTelemedicineSessionId(null);
-        transaction.setTelemedicineSessionUrl(null);
+        prepareTelemedicineAccess(transaction);
         PaymentTransaction saved = repository.save(transaction);
-        syncAppointmentPaymentStatus(saved, "PAID", saved.getPaidAt(), null);
+        syncAppointmentPaymentStatus(saved, "PAID", saved.getPaidAt(), saved.getTelemedicineSessionUrl());
         publishNotification("PAYMENT_CONFIRMED", saved, "Payment confirmed and consultation ready", saved.getPatientId());
         publishNotification("PAYMENT_CONFIRMED_DOCTOR", saved, "A consultation payment has been confirmed", saved.getDoctorId());
         return PaymentMapper.toResponse(saved);
@@ -407,6 +413,48 @@ public class PaymentServiceImpl implements PaymentService {
 
     private Long resolveStripeAmount(BigDecimal amount) {
         return amount.multiply(BigDecimal.valueOf(100)).longValueExact();
+    }
+
+    private void prepareTelemedicineAccess(PaymentTransaction transaction) {
+        transaction.setTelemedicineSessionId(null);
+        transaction.setTelemedicineSessionUrl(null);
+
+        if (!"VIDEO".equalsIgnoreCase(transaction.getAppointmentType())) {
+            return;
+        }
+
+        try {
+            AppointmentSnapshot appointment = appointmentClient.getAppointmentById(transaction.getAppointmentId());
+            TelemedicineSessionResponse telemedicineSession = telemedicineClient.createSession(
+                    new TelemedicineSessionRequest(
+                            transaction.getId(),
+                            transaction.getAppointmentId(),
+                            transaction.getPatientId(),
+                            transaction.getDoctorId(),
+                            transaction.getAppointmentDate(),
+                            transaction.getStartTime(),
+                            transaction.getEndTime(),
+                            transaction.getAppointmentType(),
+                            transaction.getAmount(),
+                            transaction.getCurrency(),
+                            appointment.reasonForVisit()));
+            transaction.setTelemedicineSessionId(telemedicineSession.sessionId());
+            transaction.setTelemedicineSessionUrl(telemedicineSession.sessionUrl());
+        } catch (Exception ex) {
+            log.warn("Unable to create telemedicine session for appointment {}: {}", transaction.getAppointmentId(), ex.getMessage());
+            transaction.setTelemedicineSessionUrl(buildTelemedicineFallbackUrl(transaction.getAppointmentId()));
+        }
+    }
+
+    private String buildTelemedicineFallbackUrl(Long appointmentId) {
+        String baseUrl = properties.getIntegrations().getTelemedicineFallbackBaseUrl();
+        if (!StringUtils.hasText(baseUrl)) {
+            return null;
+        }
+
+        return baseUrl.endsWith("/")
+                ? baseUrl + "appointment-" + appointmentId
+                : baseUrl + "/appointment-" + appointmentId;
     }
 
     private void publishNotification(String eventType, PaymentTransaction transaction, String message, Long targetUserId) {

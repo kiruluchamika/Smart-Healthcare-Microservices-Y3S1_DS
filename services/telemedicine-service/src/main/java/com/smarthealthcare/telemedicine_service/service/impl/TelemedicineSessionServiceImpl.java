@@ -1,5 +1,6 @@
 package com.smarthealthcare.telemedicine_service.service.impl;
 
+import com.smarthealthcare.telemedicine_service.dto.request.CompleteTelemedicineSessionRequest;
 import com.smarthealthcare.telemedicine_service.dto.request.CreateTelemedicineSessionRequest;
 import com.smarthealthcare.telemedicine_service.dto.response.TelemedicineSessionResponse;
 import com.smarthealthcare.telemedicine_service.entity.TelemedicineSession;
@@ -8,6 +9,8 @@ import com.smarthealthcare.telemedicine_service.exception.ConflictException;
 import com.smarthealthcare.telemedicine_service.exception.ResourceNotFoundException;
 import com.smarthealthcare.telemedicine_service.repository.TelemedicineSessionRepository;
 import com.smarthealthcare.telemedicine_service.service.TelemedicineSessionService;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -34,7 +37,8 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
 
         TelemedicineSession existingSession = repository.findByAppointmentId(appointmentId).orElse(null);
         if (existingSession != null) {
-            return TelemedicineSessionResponse.fromEntity(existingSession);
+            mergeSessionMetadata(existingSession, request);
+            return TelemedicineSessionResponse.fromEntity(repository.save(existingSession));
         }
 
         TelemedicineSession session = new TelemedicineSession();
@@ -42,6 +46,7 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
         session.setRoomId(buildRoomId(appointmentId));
         session.setMeetingUrl(buildMeetingUrl(session.getRoomId()));
         session.setStatus(TelemedicineSessionStatus.CREATED);
+        mergeSessionMetadata(session, request);
 
         return TelemedicineSessionResponse.fromEntity(repository.save(session));
     }
@@ -50,6 +55,42 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
     @Transactional(readOnly = true)
     public TelemedicineSessionResponse getSessionByAppointmentId(Long appointmentId) {
         return TelemedicineSessionResponse.fromEntity(findSessionByAppointmentId(appointmentId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TelemedicineSessionResponse> getSessionsByPatientId(Long patientId) {
+        if (patientId == null) {
+            throw new ConflictException("Patient ID is required");
+        }
+
+        return repository.findByPatientIdOrderByCreatedAtDesc(patientId)
+                .stream()
+                .map(TelemedicineSessionResponse::fromEntity)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TelemedicineSessionResponse> getSessionsByDoctorId(Long doctorId) {
+        if (doctorId == null) {
+            throw new ConflictException("Doctor ID is required");
+        }
+
+        return repository.findByDoctorIdOrderByCreatedAtDesc(doctorId)
+                .stream()
+                .map(TelemedicineSessionResponse::fromEntity)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TelemedicineSessionResponse> getAllSessions() {
+        return repository.findAll()
+                .stream()
+                .sorted((left, right) -> right.getCreatedAt().compareTo(left.getCreatedAt()))
+                .map(TelemedicineSessionResponse::fromEntity)
+                .toList();
     }
 
     @Override
@@ -64,12 +105,15 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
         }
 
         session.setStatus(TelemedicineSessionStatus.STARTED);
+        if (session.getStartedAt() == null) {
+            session.setStartedAt(LocalDateTime.now());
+        }
         return TelemedicineSessionResponse.fromEntity(repository.save(session));
     }
 
     @Override
     @Transactional
-    public TelemedicineSessionResponse completeSession(Long sessionId) {
+    public TelemedicineSessionResponse completeSession(Long sessionId, CompleteTelemedicineSessionRequest request) {
         TelemedicineSession session = findSessionById(sessionId);
         if (session.getStatus() == TelemedicineSessionStatus.COMPLETED) {
             return TelemedicineSessionResponse.fromEntity(session);
@@ -79,6 +123,10 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
         }
 
         session.setStatus(TelemedicineSessionStatus.COMPLETED);
+        session.setCompletedAt(LocalDateTime.now());
+        if (request != null && StringUtils.hasText(request.consultationSummary())) {
+            session.setConsultationSummary(request.consultationSummary().trim());
+        }
         return TelemedicineSessionResponse.fromEntity(repository.save(session));
     }
 
@@ -109,5 +157,38 @@ public class TelemedicineSessionServiceImpl implements TelemedicineSessionServic
             throw new ConflictException("Room ID is required");
         }
         return MEETING_BASE_URL + "/" + roomId;
+    }
+
+    private void mergeSessionMetadata(TelemedicineSession session, CreateTelemedicineSessionRequest request) {
+        if (request.paymentId() != null) {
+            session.setPaymentId(request.paymentId());
+        }
+        if (request.patientId() != null) {
+            session.setPatientId(request.patientId());
+        }
+        if (request.doctorId() != null) {
+            session.setDoctorId(request.doctorId());
+        }
+        if (request.appointmentDate() != null) {
+            session.setAppointmentDate(request.appointmentDate());
+        }
+        if (request.startTime() != null) {
+            session.setStartTime(request.startTime());
+        }
+        if (request.endTime() != null) {
+            session.setEndTime(request.endTime());
+        }
+        if (StringUtils.hasText(request.appointmentType())) {
+            session.setAppointmentType(request.appointmentType().trim().toUpperCase());
+        }
+        if (request.amount() != null) {
+            session.setAmount(request.amount());
+        }
+        if (StringUtils.hasText(request.currency())) {
+            session.setCurrency(request.currency().trim().toUpperCase());
+        }
+        if (StringUtils.hasText(request.reasonForVisit())) {
+            session.setReasonForVisit(request.reasonForVisit().trim());
+        }
     }
 }
