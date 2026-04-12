@@ -14,6 +14,7 @@ public class SymptomHistoryItemResponse {
     private List<String> redFlagWarningSigns;
     private String nextStepRecommendation;
     private String disclaimer;
+    private String correlationId;
     private Instant createdAt;
 
     public Long getId() {
@@ -86,6 +87,14 @@ public class SymptomHistoryItemResponse {
 
     public void setDisclaimer(String disclaimer) {
         this.disclaimer = disclaimer;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    public void setCorrelationId(String correlationId) {
+        this.correlationId = correlationId;
     }
 
     public Instant getCreatedAt() {

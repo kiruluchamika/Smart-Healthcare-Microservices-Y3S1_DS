@@ -17,6 +17,7 @@ public class AnalyzeSymptomResponse {
     private Instant generatedAt;
     private String provider;
     private String model;
+    private String correlationId;
     private boolean fallbackUsed;
 
     public Long getAnalysisId() {
@@ -113,6 +114,14 @@ public class AnalyzeSymptomResponse {
 
     public void setModel(String model) {
         this.model = model;
+    }
+
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    public void setCorrelationId(String correlationId) {
+        this.correlationId = correlationId;
     }
 
     public boolean isFallbackUsed() {

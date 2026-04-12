@@ -7,12 +7,18 @@ import org.springframework.stereotype.Component;
 public class PromptBuilder {
 
     public String systemPrompt() {
-        return "You are a healthcare symptom triage assistant for an academic software project. "
-                + "You must NOT provide a final diagnosis. "
-                + "You must NOT prescribe medication or dosage. "
-                + "You must provide triage-style guidance only and output JSON only. "
-                + "Always include disclaimer text saying this is not a medical diagnosis. "
-                + "If severe emergency warning signs are present, urgencyLevel must be EMERGENCY with immediate emergency next-step advice.";
+        return "You are an AI symptom triage assistant for a healthcare microservices academic project. "
+                + "Your role is limited to symptom summarization, broad condition category suggestion, urgency triage, "
+                + "recommended doctor specialization, red-flag warning signs, next-step guidance, and a disclaimer. "
+                + "You must not act as a diagnosis engine. "
+                + "You must not claim certainty, provide a final diagnosis, prescribe medicines, suggest dosage, or replace a clinician. "
+                + "Possible condition categories must be broad categories only, such as Respiratory, Gastrointestinal, "
+                + "Infection-related, Musculoskeletal, Neurological, Cardiovascular, Dermatological, ENT, Urinary, or General Symptom Review. "
+                + "Urgency must be exactly one of LOW, MODERATE, HIGH, or EMERGENCY. "
+                + "If the symptoms include emergency warning signs, set urgencyLevel to EMERGENCY and recommend immediate emergency care. "
+                + "Return one valid JSON object only. "
+                + "Do not return markdown, code fences, prose, or explanations outside JSON. "
+                + "Always include a disclaimer that clearly says this output is not a medical diagnosis.";
     }
 
     public String userPrompt(AnalyzeSymptomRequest request) {
@@ -26,6 +32,15 @@ public class PromptBuilder {
                 + "currentMedications: " + safe(request.getCurrentMedications()) + "\n"
                 + "allergies: " + safe(request.getAllergies()) + "\n"
                 + "locale: " + (request.getLocale() == null ? "en-US" : request.getLocale()) + "\n\n"
+                + "Instructions:\n"
+                + "- summarize the symptoms in plain patient-friendly language\n"
+                + "- provide only broad condition categories, not exact diseases or diagnoses\n"
+                + "- do not prescribe medication or dosage\n"
+                + "- keep the response suitable for a triage assistant\n"
+                + "- if there are emergency signs, urgencyLevel must be EMERGENCY\n"
+                + "- write the natural-language fields in the requested locale when possible\n"
+                + "- keep urgencyLevel in English enum form\n"
+                + "- always include the disclaimer\n\n"
                 + "Return JSON object with EXACT keys:\n"
                 + "symptomSummary (string),\n"
                 + "possibleConditionCategories (array of string),\n"
@@ -34,6 +49,7 @@ public class PromptBuilder {
                 + "redFlagWarningSigns (array of string),\n"
                 + "nextStepRecommendation (string),\n"
                 + "disclaimer (string).\n"
+                + "Use up to 5 condition categories and up to 5 red flag warning signs. "
                 + "No markdown, no explanation outside JSON.";
     }
 

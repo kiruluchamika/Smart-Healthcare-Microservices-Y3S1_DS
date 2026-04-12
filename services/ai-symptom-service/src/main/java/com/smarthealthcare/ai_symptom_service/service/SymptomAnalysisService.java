@@ -8,6 +8,7 @@ import com.smarthealthcare.ai_symptom_service.dto.provider.GeminiTriageResult;
 import com.smarthealthcare.ai_symptom_service.entity.SymptomAnalysisHistory;
 import com.smarthealthcare.ai_symptom_service.mapper.SymptomAnalysisMapper;
 import com.smarthealthcare.ai_symptom_service.repository.SymptomAnalysisHistoryRepository;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,7 +56,11 @@ public class SymptomAnalysisService {
         } catch (RuntimeException ex) {
             fallbackUsed = true;
             triageResult = safetyRuleService.fallbackResult(request, geminiProperties.getModel());
-            rawAiJson = "{\"fallback\":true,\"reason\":\"" + ex.getMessage() + "\"}";
+            rawAiJson = mapper.writeObject(Map.of(
+                    "fallback", true,
+                    "reason", ex.getMessage(),
+                    "provider", PROVIDER,
+                    "correlationId", correlationId));
         }
 
         triageResult = safetyRuleService.applySafetyRules(request, triageResult);

@@ -39,6 +39,16 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request.getRequestURI(), null);
     }
 
+    @ExceptionHandler(InvalidAiResponseException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidAi(InvalidAiResponseException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.BAD_GATEWAY, ex.getMessage(), request.getRequestURI(), null);
+    }
+
+    @ExceptionHandler(ExternalAiException.class)
+    public ResponseEntity<ApiErrorResponse> handleExternalAi(ExternalAiException ex, HttpServletRequest request) {
+        return buildResponse(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request.getRequestURI(), null);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), request.getRequestURI(), null);

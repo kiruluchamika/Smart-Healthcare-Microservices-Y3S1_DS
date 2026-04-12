@@ -32,6 +32,7 @@ public class SymptomAnalysisMapper {
         response.setGeneratedAt(entity.getCreatedAt());
         response.setProvider(entity.getAiProvider());
         response.setModel(entity.getAiModel());
+        response.setCorrelationId(entity.getCorrelationId());
         return response;
     }
 
@@ -46,12 +47,17 @@ public class SymptomAnalysisMapper {
         item.setRedFlagWarningSigns(readList(entity.getRedFlagsJson()));
         item.setNextStepRecommendation(entity.getNextStepRecommendation());
         item.setDisclaimer(entity.getDisclaimer());
+        item.setCorrelationId(entity.getCorrelationId());
         item.setCreatedAt(entity.getCreatedAt());
         return item;
     }
 
     public String writeList(List<String> values) {
         return objectMapper.writeValueAsString(values == null ? Collections.emptyList() : values);
+    }
+
+    public String writeObject(Object value) {
+        return objectMapper.writeValueAsString(value);
     }
 
     private List<String> readList(String json) {

@@ -29,8 +29,8 @@ server:
   port: ${SERVER_PORT:8093}
 
 gemini:
-  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
-  api-key: ${GEMINI_API_KEY:}
+  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent}
+  api-key: ${GEMINI_API_KEY:AIzaSyDUmzRefsWeBCIUmha0HCNz2vgwMGP1aDQ}
   model: ${GEMINI_MODEL:gemini-1.5-pro}
   timeout-ms: ${GEMINI_TIMEOUT_MS:15000}
 
