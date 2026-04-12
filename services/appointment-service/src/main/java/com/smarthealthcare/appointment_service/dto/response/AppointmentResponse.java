@@ -3,6 +3,7 @@ package com.smarthealthcare.appointment_service.dto.response;
 import com.smarthealthcare.appointment_service.entity.Appointment;
 import com.smarthealthcare.appointment_service.enums.AppointmentStatus;
 import com.smarthealthcare.appointment_service.enums.AppointmentType;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -18,6 +19,15 @@ public class AppointmentResponse {
     private AppointmentType appointmentType;
     private AppointmentStatus status;
     private String reasonForVisit;
+    private BigDecimal fixedFeeSnapshot;
+    private BigDecimal doctorExtraFee;
+    private BigDecimal finalFee;
+    private String feeCurrency;
+    private LocalDateTime feeLockedAt;
+    private String extraFeeReason;
+    private String paymentStatusHint;
+    private LocalDateTime paymentPaidAt;
+    private String telemedicineSessionUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -32,6 +42,15 @@ public class AppointmentResponse {
         response.setAppointmentType(appointment.getAppointmentType());
         response.setStatus(appointment.getStatus());
         response.setReasonForVisit(appointment.getReasonForVisit());
+        response.setFixedFeeSnapshot(appointment.getFixedFeeSnapshot());
+        response.setDoctorExtraFee(appointment.getDoctorExtraFee());
+        response.setFinalFee(appointment.getFinalFee());
+        response.setFeeCurrency(appointment.getFeeCurrency());
+        response.setFeeLockedAt(appointment.getFeeLockedAt());
+        response.setExtraFeeReason(appointment.getExtraFeeReason());
+        response.setPaymentStatusHint(appointment.getPaymentStatusHint());
+        response.setPaymentPaidAt(appointment.getPaymentPaidAt());
+        response.setTelemedicineSessionUrl(appointment.getTelemedicineSessionUrl());
         response.setCreatedAt(appointment.getCreatedAt());
         response.setUpdatedAt(appointment.getUpdatedAt());
         return response;
@@ -107,6 +126,78 @@ public class AppointmentResponse {
 
     public void setReasonForVisit(String reasonForVisit) {
         this.reasonForVisit = reasonForVisit;
+    }
+
+    public BigDecimal getFixedFeeSnapshot() {
+        return fixedFeeSnapshot;
+    }
+
+    public void setFixedFeeSnapshot(BigDecimal fixedFeeSnapshot) {
+        this.fixedFeeSnapshot = fixedFeeSnapshot;
+    }
+
+    public BigDecimal getDoctorExtraFee() {
+        return doctorExtraFee;
+    }
+
+    public void setDoctorExtraFee(BigDecimal doctorExtraFee) {
+        this.doctorExtraFee = doctorExtraFee;
+    }
+
+    public BigDecimal getFinalFee() {
+        return finalFee;
+    }
+
+    public void setFinalFee(BigDecimal finalFee) {
+        this.finalFee = finalFee;
+    }
+
+    public String getFeeCurrency() {
+        return feeCurrency;
+    }
+
+    public void setFeeCurrency(String feeCurrency) {
+        this.feeCurrency = feeCurrency;
+    }
+
+    public LocalDateTime getFeeLockedAt() {
+        return feeLockedAt;
+    }
+
+    public void setFeeLockedAt(LocalDateTime feeLockedAt) {
+        this.feeLockedAt = feeLockedAt;
+    }
+
+    public String getExtraFeeReason() {
+        return extraFeeReason;
+    }
+
+    public void setExtraFeeReason(String extraFeeReason) {
+        this.extraFeeReason = extraFeeReason;
+    }
+
+    public String getPaymentStatusHint() {
+        return paymentStatusHint;
+    }
+
+    public void setPaymentStatusHint(String paymentStatusHint) {
+        this.paymentStatusHint = paymentStatusHint;
+    }
+
+    public LocalDateTime getPaymentPaidAt() {
+        return paymentPaidAt;
+    }
+
+    public void setPaymentPaidAt(LocalDateTime paymentPaidAt) {
+        this.paymentPaidAt = paymentPaidAt;
+    }
+
+    public String getTelemedicineSessionUrl() {
+        return telemedicineSessionUrl;
+    }
+
+    public void setTelemedicineSessionUrl(String telemedicineSessionUrl) {
+        this.telemedicineSessionUrl = telemedicineSessionUrl;
     }
 
     public LocalDateTime getCreatedAt() {
