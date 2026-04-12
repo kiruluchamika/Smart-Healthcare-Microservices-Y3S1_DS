@@ -1,3 +1,41 @@
 spring:
   application:
     name: ai-symptom-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3313/ai_symptom_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      initialization-fail-timeout: 60000
+      connection-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+  docker:
+    compose:
+      enabled: ${SPRING_DOCKER_COMPOSE_ENABLED:true}
+      file: services/ai-symptom-service/docker-compose.yaml
+      lifecycle-management: start-and-stop
+      stop:
+        command: down
+
+server:
+  port: ${SERVER_PORT:8093}
+
+gemini:
+  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-1.5-pro}
+  timeout-ms: ${GEMINI_TIMEOUT_MS:15000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
