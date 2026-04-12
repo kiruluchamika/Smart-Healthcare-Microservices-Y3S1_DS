@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getAdminOverview } from '../../services/adminApi';
 import type { AdminOverviewResponse } from '../../types/admin';
+import { formatAdminMetricValue } from '../../utils/admin/adminMetricFormatter';
 
 export default function AdminAnalytics() {
   const [overview, setOverview] = useState<AdminOverviewResponse | null>(null);
@@ -73,11 +74,15 @@ export default function AdminAnalytics() {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Active Accounts</h3>
-          <p className="mt-2 text-3xl font-black text-slate-900">{isLoading || !overview ? '...' : overview.enabledUsers}</p>
+          <p className="mt-2 text-3xl font-black text-slate-900">
+            {isLoading || !overview ? '...' : formatAdminMetricValue('enabledUsers', overview.enabledUsers)}
+          </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Disabled Accounts</h3>
-          <p className="mt-2 text-3xl font-black text-slate-900">{isLoading || !overview ? '...' : overview.disabledUsers}</p>
+          <p className="mt-2 text-3xl font-black text-slate-900">
+            {isLoading || !overview ? '...' : formatAdminMetricValue('disabledUsers', overview.disabledUsers)}
+          </p>
         </div>
       </div>
     </div>
