@@ -1,3 +1,52 @@
 spring:
   application:
     name: payment-service
+  docker:
+    compose:
+      enabled: true
+      file: services/payment-service/docker-compose.yaml
+      lifecycle-management: start-and-stop
+      stop:
+        command: down
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3312/payment_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+
+server:
+  port: ${SERVER_PORT:8086}
+
+app:
+  security:
+    allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:*,http://127.0.0.1:*}
+  payment:
+    default-currency: ${PAYMENT_DEFAULT_CURRENCY:usd}
+    video-consultation-fee: ${PAYMENT_VIDEO_CONSULTATION_FEE:15.00}
+    physical-consultation-fee: ${PAYMENT_PHYSICAL_CONSULTATION_FEE:20.00}
+    reminder-lead-hours: ${PAYMENT_REMINDER_LEAD_HOURS:24}
+    reminder-scan-interval-ms: ${PAYMENT_REMINDER_SCAN_INTERVAL_MS:900000}
+    checkout-success-url: ${PAYMENT_CHECKOUT_SUCCESS_URL:http://localhost:5173/payments/success}
+    checkout-cancel-url: ${PAYMENT_CHECKOUT_CANCEL_URL:http://localhost:5173/payments/cancel}
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:sk_test_51TLMRpCGA0JD4ImVPMYgDNTy4inhxaPP5YHr3GWnxuGbZ3fHwQGqACHj4QNyVl1rH5o29wfbsxKMFJa8bdWG9HrI00kVxBOq9e}
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_change_me}
+  integrations:
+    appointment-base-url: ${APPOINTMENT_SERVICE_BASE_URL:http://localhost:8082}
+    telemedicine-base-url: ${TELEMEDICINE_SERVICE_BASE_URL:http://localhost:8087}
+    notification-base-url: ${NOTIFICATION_SERVICE_BASE_URL:http://localhost:8084}
+    telemedicine-fallback-base-url: ${TELEMEDICINE_FALLBACK_BASE_URL:https://meet.jit.si}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
