@@ -150,6 +150,19 @@ services:
     ports:
       - "8092:8092"
 
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    environment:
+      SERVER_PORT: 8081
+      AI_SUGGESTION_SERVICE_BASE_URL: http://ai-doctor-suggestion-service:8092
+    depends_on:
+      - ai-doctor-suggestion-service
+    ports:
+      - "8081:8081"
+
 volumes:
   mysql-auth-data:
   mysql-doctor-data:
