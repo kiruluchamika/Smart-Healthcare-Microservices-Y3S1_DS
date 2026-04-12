@@ -20,6 +20,7 @@ import {
 } from '../services/appointmentsApi';
 import { getBookableDoctors } from '../services/doctor/doctorApi';
 import type { AppointmentBookingDoctor } from '../types/doctor';
+import { formatDisplayAmount } from '../utils/currency';
 
 const APPOINTMENT_DURATION_MINUTES = 60;
 const FIXED_VIDEO_PRICE = 15;
@@ -541,7 +542,7 @@ export default function AppointmentBooking() {
                 </p>
                 <p>
                   <span className="font-semibold text-gray-900">Estimated Channeling Fee:</span>{' '}
-                  USD {resolvedPrice.toFixed(2)} ({pricingSourceLabel})
+                  {formatDisplayAmount(resolvedPrice, 'USD')} ({pricingSourceLabel})
                 </p>
               </div>
             </div>
@@ -715,7 +716,9 @@ export default function AppointmentBooking() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Estimated Channeling Fee</p>
-                    <p className="font-semibold text-gray-900">USD {resolvedPrice.toFixed(2)} ({pricingSourceLabel})</p>
+                    <p className="font-semibold text-gray-900">
+                      {formatDisplayAmount(resolvedPrice, 'USD')} ({pricingSourceLabel})
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Reason for Visit</p>

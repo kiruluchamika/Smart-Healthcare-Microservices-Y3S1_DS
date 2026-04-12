@@ -29,6 +29,7 @@ import {
   getDoctorFullName,
   getPrimaryClinicLocation,
 } from '../utils/doctor/doctorFormatters';
+import { formatDisplayAmount } from '../utils/currency';
 
 const APPOINTMENT_DURATION_MINUTES = 60;
 
@@ -489,7 +490,7 @@ export default function MyAppointments() {
                                 Amount to Pay
                               </p>
                               <p className="mt-1 text-lg font-bold text-slate-900">
-                                {amountDue != null ? `${amountCurrency.toUpperCase()} ${amountDue.toFixed(2)}` : 'TBD'}
+                                {amountDue != null ? formatDisplayAmount(amountDue, amountCurrency) : 'TBD'}
                               </p>
                               <p className="mt-1 text-xs text-slate-500">
                                 {isPaid
@@ -570,7 +571,10 @@ export default function MyAppointments() {
 
                             {isPaid && (
                               <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                                Payment successful ({payment?.currency} {payment?.amount}). Non-refundable policy applies.
+                                Payment successful ({formatDisplayAmount(
+                                  Number(payment?.amount ?? amountDue ?? 0),
+                                  payment?.currency || amountCurrency,
+                                )}). Non-refundable policy applies.
                               </div>
                             )}
                           </div>

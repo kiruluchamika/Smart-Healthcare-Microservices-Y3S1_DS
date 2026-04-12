@@ -8,6 +8,7 @@ import {
   rejectAppointment,
   type AppointmentResponse,
 } from '../services/appointmentsApi';
+import { formatDisplayAmount } from '../utils/currency';
 
 const VIDEO_FIXED_FEE = 15;
 const PHYSICAL_FIXED_FEE = 20;
@@ -31,9 +32,9 @@ function formatTimeLabel(time: string) {
 
 function formatMoney(amount?: number | null, currency = 'USD') {
   if (amount == null || Number.isNaN(amount)) {
-    return `${currency.toUpperCase()} 0.00`;
+    return formatDisplayAmount(0, currency);
   }
-  return `${currency.toUpperCase()} ${amount.toFixed(2)}`;
+  return formatDisplayAmount(amount, currency);
 }
 
 function resolveBaseFee(appointment: AppointmentResponse) {

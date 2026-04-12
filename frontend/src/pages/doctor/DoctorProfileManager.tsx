@@ -294,7 +294,7 @@ export default function DoctorProfileManager() {
             </label>
 
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Channeling price (USD)</span>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Channeling price (LKR)</span>
               <input
                 type="number"
                 min={1}

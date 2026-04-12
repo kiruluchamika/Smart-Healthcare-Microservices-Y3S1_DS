@@ -3,6 +3,7 @@ import type {
   DoctorServiceDoctor,
   DoctorVerificationStatus,
 } from '../../types/doctor';
+import { formatDisplayAmount } from '../currency';
 
 export function getDoctorFullName(doctor?: Pick<DoctorServiceDoctor, 'firstName' | 'lastName'> | null) {
   if (!doctor) {
@@ -25,9 +26,15 @@ export function getPrimaryClinicLocation(value?: string | null) {
 
 export function toAppointmentBookingDoctor(doctor: DoctorServiceDoctor): AppointmentBookingDoctor {
   const hasCustomFee = doctor.consultationFee !== null && doctor.consultationFee !== undefined && doctor.consultationFee !== '';
+  const doctorFee = Number(doctor.consultationFee);
+  const doctorFeeLabel = Number.isFinite(doctorFee)
+    ? formatDisplayAmount(doctorFee, 'USD')
+    : 'LKR 0.00';
+  const fixedVideoLabel = formatDisplayAmount(15, 'USD');
+  const fixedPhysicalLabel = formatDisplayAmount(20, 'USD');
   const pricingLabel = hasCustomFee
-    ? `Doctor price: USD ${doctor.consultationFee}`
-    : 'Fixed channeling price applies (USD 15 video / USD 20 physical)';
+    ? `Doctor price: ${doctorFeeLabel}`
+    : `Fixed channeling price applies (${fixedVideoLabel} video / ${fixedPhysicalLabel} physical)`;
 
   return {
     id: doctor.id,
