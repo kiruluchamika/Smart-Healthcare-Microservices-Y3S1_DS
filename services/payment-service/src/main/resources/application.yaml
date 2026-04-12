@@ -34,13 +34,16 @@ app:
     physical-consultation-fee: ${PAYMENT_PHYSICAL_CONSULTATION_FEE:20.00}
     reminder-lead-hours: ${PAYMENT_REMINDER_LEAD_HOURS:24}
     reminder-scan-interval-ms: ${PAYMENT_REMINDER_SCAN_INTERVAL_MS:900000}
-    checkout-success-url: ${PAYMENT_CHECKOUT_SUCCESS_URL:http://localhost:5173/payments/success}
+    checkout-success-url: ${PAYMENT_CHECKOUT_SUCCESS_URL:http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}}
     checkout-cancel-url: ${PAYMENT_CHECKOUT_CANCEL_URL:http://localhost:5173/payments/cancel}
   stripe:
     secret-key: ${STRIPE_SECRET_KEY:sk_test_51TLMRpCGA0JD4ImVPMYgDNTy4inhxaPP5YHr3GWnxuGbZ3fHwQGqACHj4QNyVl1rH5o29wfbsxKMFJa8bdWG9HrI00kVxBOq9e}
     webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_change_me}
   integrations:
     appointment-base-url: ${APPOINTMENT_SERVICE_BASE_URL:http://localhost:8082}
+    doctor-base-url: ${DOCTOR_SERVICE_BASE_URL:http://localhost:8083/api/v1/doctors}
+    doctor-service-username: ${DOCTOR_SERVICE_USERNAME:doctor}
+    doctor-service-password: ${DOCTOR_SERVICE_PASSWORD:doctor123}
     telemedicine-base-url: ${TELEMEDICINE_SERVICE_BASE_URL:http://localhost:8087}
     notification-base-url: ${NOTIFICATION_SERVICE_BASE_URL:http://localhost:8084}
     telemedicine-fallback-base-url: ${TELEMEDICINE_FALLBACK_BASE_URL:https://meet.jit.si}
