@@ -29,6 +29,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminTelemedicine from './pages/admin/AdminTelemedicine';
 import AIChat from './components/AIChat';
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
@@ -135,6 +136,14 @@ function App() {
           }
         />
         <Route
+          path="/admin/telemedicine"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout><AdminTelemedicine /></AdminLayout>
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/verification"
           element={
             <AdminProtectedRoute>
@@ -148,7 +157,14 @@ function App() {
         <Route path="/payments/success" element={<ProtectedRoute><Layout><PaymentSuccess /></Layout></ProtectedRoute>} />
         <Route path="/payments/cancel" element={<ProtectedRoute><Layout><PaymentCancel /></Layout></ProtectedRoute>} />
         <Route path="/doctor/appointments" element={<ProtectedRoute><Layout><DoctorAppointments /></Layout></ProtectedRoute>} />
-        <Route path="/consultation/:id" element={<ProtectedRoute><Layout><Telemedicine /></Layout></ProtectedRoute>} />
+        <Route
+          path="/consultation/:id"
+          element={
+            <ProtectedRoleRoute allowedRoles={['PATIENT', 'DOCTOR']}>
+              <Layout><Telemedicine /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
         <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
 
         <Route path="/reports" element={<ProtectedRoute><Layout><MedicalReports /></Layout></ProtectedRoute>} />
