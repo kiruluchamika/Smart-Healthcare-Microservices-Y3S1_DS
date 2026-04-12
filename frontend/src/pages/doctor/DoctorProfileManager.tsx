@@ -25,6 +25,7 @@ const defaultForm: FormState = {
   clinicLocations: '',
   insuranceProviders: '',
   licenseExpiryDate: '',
+  consultationFee: undefined,
 };
 
 export default function DoctorProfileManager() {
@@ -72,6 +73,7 @@ export default function DoctorProfileManager() {
     clinicLocations: doctor.clinicLocations || '',
     insuranceProviders: doctor.insuranceProviders || '',
     licenseExpiryDate: doctor.licenseExpiryDate || '',
+    consultationFee: doctor.consultationFee ? Number(doctor.consultationFee) : undefined,
   });
 
   const updateField = (key: keyof FormState, value: string | number | boolean) => {
@@ -80,7 +82,12 @@ export default function DoctorProfileManager() {
 
   const buildPayload = () => ({
     ...form,
-    licenseExpiryDate: form.licenseExpiryDate.trim() ? form.licenseExpiryDate : undefined,
+    licenseExpiryDate:
+      typeof form.licenseExpiryDate === 'string' && form.licenseExpiryDate.trim()
+        ? form.licenseExpiryDate
+        : undefined,
+    consultationFee:
+      form.consultationFee && Number(form.consultationFee) > 0 ? Number(form.consultationFee) : undefined,
   });
 
   const loadDoctor = async () => {
@@ -284,6 +291,25 @@ export default function DoctorProfileManager() {
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
               />
               {fieldErrors.licenseExpiryDate && <span className="mt-1 block text-xs text-rose-600">{fieldErrors.licenseExpiryDate}</span>}
+            </label>
+
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Channeling price (USD)</span>
+              <input
+                type="number"
+                min={1}
+                step="0.01"
+                value={form.consultationFee ?? ''}
+                onChange={(e) =>
+                  updateField('consultationFee', e.target.value ? Number(e.target.value) : undefined)
+                }
+                placeholder="Leave empty to use fixed system price"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
+              />
+              <span className="mt-1 block text-xs text-slate-500">
+                Leave blank to skip custom pricing and use fixed channeling fee.
+              </span>
+              {fieldErrors.consultationFee && <span className="mt-1 block text-xs text-rose-600">{fieldErrors.consultationFee}</span>}
             </label>
 
           </div>
