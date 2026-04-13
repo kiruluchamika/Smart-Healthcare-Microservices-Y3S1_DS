@@ -1,4 +1,5 @@
 import type {
+  AppointmentBookingDoctor,
   ApiErrorResponse,
   DoctorAvailability,
   DoctorAvailabilityPayload,
@@ -13,6 +14,7 @@ import type {
   DoctorVerificationStatusUpdatePayload,
   PagedResponse,
 } from '../../types/doctor';
+import { toAppointmentBookingDoctor } from '../../utils/doctor/doctorFormatters';
 
 const DOCTOR_API_BASE = import.meta.env.VITE_DOCTOR_API_BASE || '/api/doctors';
 
@@ -113,6 +115,16 @@ export function searchDoctors(params: DoctorSearchParams = {}) {
   });
 
   return request<DoctorServiceDoctor[]>(`/search${query}`);
+}
+
+export async function getBookableDoctors(params: Omit<DoctorSearchParams, 'verified' | 'active'> = {}) {
+  const doctors = await searchDoctors({
+    ...params,
+    verified: true,
+    active: true,
+  });
+
+  return doctors.map<AppointmentBookingDoctor>(toAppointmentBookingDoctor);
 }
 
 export function getDoctorById(doctorId: number) {

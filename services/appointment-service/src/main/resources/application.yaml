@@ -1,3 +1,35 @@
 spring:
   application:
     name: appointment-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3311/appointment_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  docker:
+    compose:
+      enabled: true
+      file: services/appointment-service/docker-compose.yaml
+      lifecycle-management: start-and-stop
+      stop:
+        command: down
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+server:
+  port: ${SERVER_PORT:8082}
+
+logging:
+  level:
+    root: INFO
+    com.smarthealthcare.appointment_service: DEBUG
+
+app:
+  security:
+    allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:80}

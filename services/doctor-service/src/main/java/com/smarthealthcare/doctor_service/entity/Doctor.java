@@ -14,6 +14,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
@@ -79,6 +80,9 @@ public class Doctor {
 
     @Column(name = "license_expiry_date")
     private LocalDate licenseExpiryDate;
+
+    @Column(name = "consultation_fee", precision = 19, scale = 2)
+    private BigDecimal consultationFee;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)

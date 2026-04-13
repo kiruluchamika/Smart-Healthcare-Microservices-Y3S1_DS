@@ -6,11 +6,17 @@ import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import AppointmentBooking from './pages/AppointmentBooking';
+import MyAppointments from './pages/MyAppointments';
+import DoctorAppointments from './pages/DoctorAppointments';
 import Telemedicine from './pages/Telemedicine';
 import Profile from './pages/Profile';
+import PaymentCancel from './pages/payments/PaymentCancel';
+import PaymentSuccess from './pages/payments/PaymentSuccess';
 import MedicalReports from './pages/patient/MedicalReports';
 import MedicalHistoryPage from './pages/patient/MedicalHistory';
 import PrescriptionsPage from './pages/patient/Prescriptions';
+import AIDoctorSuggestion from './pages/patient/AIDoctorSuggestion';
+import AISymptomPage from './pages/patient/AISymptomPage';
 import DoctorsDirectory from './pages/doctor/DoctorsDirectory';
 import DoctorDetail from './pages/doctor/DoctorDetail';
 import DoctorProfileManager from './pages/doctor/DoctorProfileManager';
@@ -23,6 +29,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminTelemedicine from './pages/admin/AdminTelemedicine';
 import AIChat from './components/AIChat';
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
@@ -129,6 +136,14 @@ function App() {
           }
         />
         <Route
+          path="/admin/telemedicine"
+          element={
+            <AdminProtectedRoute>
+              <AdminLayout><AdminTelemedicine /></AdminLayout>
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/verification"
           element={
             <AdminProtectedRoute>
@@ -137,13 +152,40 @@ function App() {
           }
         />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-        <Route path="/appointments" element={<ProtectedRoute><Layout><AppointmentBooking /></Layout></ProtectedRoute>} />
-        <Route path="/consultation/:id" element={<ProtectedRoute><Layout><Telemedicine /></Layout></ProtectedRoute>} />
+        <Route path="/appointments" element={<ProtectedRoute><Layout><MyAppointments /></Layout></ProtectedRoute>} />
+        <Route path="/appointments/book" element={<ProtectedRoute><Layout><AppointmentBooking /></Layout></ProtectedRoute>} />
+        <Route path="/payments/success" element={<ProtectedRoute><Layout><PaymentSuccess /></Layout></ProtectedRoute>} />
+        <Route path="/payments/cancel" element={<ProtectedRoute><Layout><PaymentCancel /></Layout></ProtectedRoute>} />
+        <Route path="/doctor/appointments" element={<ProtectedRoute><Layout><DoctorAppointments /></Layout></ProtectedRoute>} />
+        <Route
+          path="/consultation/:id"
+          element={
+            <ProtectedRoleRoute allowedRoles={['PATIENT', 'DOCTOR']}>
+              <Layout><Telemedicine /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
         <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
 
         <Route path="/reports" element={<ProtectedRoute><Layout><MedicalReports /></Layout></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><Layout><MedicalHistoryPage /></Layout></ProtectedRoute>} />
         <Route path="/prescriptions" element={<ProtectedRoute><Layout><PrescriptionsPage /></Layout></ProtectedRoute>} />
+        <Route
+          path="/ai-doctor-suggestion"
+          element={
+            <ProtectedRoleRoute allowedRoles={['PATIENT']}>
+              <Layout><AIDoctorSuggestion /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
+        <Route
+          path="/ai-symptom"
+          element={
+            <ProtectedRoleRoute allowedRoles={['PATIENT']}>
+              <Layout><AISymptomPage /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
 
         <Route
           path="/doctors"

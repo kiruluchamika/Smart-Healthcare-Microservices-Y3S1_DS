@@ -3,22 +3,40 @@ import { patientApi } from '../../services/patientApi';
 import { PatientProfile } from '../../types/patient';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Activity, FileText, Clock, Heart, AlertCircle, Droplet, User as UserIcon, Phone, Calendar, Stethoscope, Video } from 'lucide-react';
+import { Activity, FileText, Clock, Heart, AlertCircle, Droplet, User as UserIcon, Phone, Calendar, Stethoscope, Video, Sparkles } from 'lucide-react';
 import { getAuthUser } from '../../services/authSession';
 import { getDisplayName } from '../../utils/name';
 
 const topNavItems = [
   {
-    label: 'Appointments',
-    href: '/appointments',
+    label: 'Book Appointment',
+    href: '/appointments/book',
     icon: Calendar,
     color: 'from-teal-600 to-cyan-500',
+  },
+  {
+    label: 'My Appointments',
+    href: '/appointments',
+    icon: Clock,
+    color: 'from-sky-600 to-blue-500',
   },
   {
     label: 'Discover Doctors',
     href: '/doctors',
     icon: Stethoscope,
     color: 'from-cyan-600 to-blue-500',
+  },
+  {
+    label: 'AI Doctor Suggestion',
+    href: '/ai-doctor-suggestion',
+    icon: Sparkles,
+    color: 'from-orange-500 to-amber-500',
+  },
+  {
+    label: 'AI Symptom',
+    href: '/ai-symptom',
+    icon: Sparkles,
+    color: 'from-teal-600 to-sky-500',
   },
   {
     label: 'Medical Reports',
@@ -39,8 +57,8 @@ const topNavItems = [
     color: 'from-emerald-500 to-cyan-500',
   },
   {
-    label: 'Telemedicine',
-    href: '/consultation/1',
+    label: 'Video Sessions',
+    href: '/appointments',
     icon: Video,
     color: 'from-blue-600 to-cyan-500',
   },
@@ -142,7 +160,7 @@ const PatientDashboard: React.FC = () => {
               </span>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-3">
               {topNavItems.map((item, index) => (
                 <motion.div
                   key={item.label}
@@ -186,7 +204,7 @@ const PatientDashboard: React.FC = () => {
               </p>
             </div>
             <div className="mt-8 md:mt-0 flex gap-4">
-               <Link to="/appointments" className="px-6 py-3 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:bg-teal-50 transition-all transform hover:-translate-y-1">
+               <Link to="/appointments/book" className="px-6 py-3 bg-white text-teal-700 font-bold rounded-xl shadow-lg hover:bg-teal-50 transition-all transform hover:-translate-y-1">
                  Book Appointment
                </Link>
             </div>
@@ -250,7 +268,7 @@ const PatientDashboard: React.FC = () => {
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10"
+          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-10"
         >
           <motion.div variants={itemVariants}>
             <Link to="/reports" className="block h-full rounded-3xl p-8 border border-slate-200 bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
@@ -279,6 +297,16 @@ const PatientDashboard: React.FC = () => {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">My Prescriptions</h3>
               <p className="text-slate-500">Check active medication orders, dosage instructions, and refill options.</p>
+            </Link>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <Link to="/ai-symptom" className="block h-full rounded-3xl p-8 border border-slate-200 bg-white shadow-sm hover:shadow-xl transition-all duration-300 group">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-600 to-sky-500 text-white flex items-center justify-center mb-6 shadow-lg shadow-teal-200 group-hover:scale-110 transition-transform">
+                <Sparkles className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">AI Symptom Triage</h3>
+              <p className="text-slate-500">Analyze symptoms, review urgency guidance, and browse structured symptom history.</p>
             </Link>
           </motion.div>
         </motion.div>

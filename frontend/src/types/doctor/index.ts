@@ -19,12 +19,27 @@ export interface DoctorServiceDoctor {
   clinicLocations?: string;
   insuranceProviders?: string;
   licenseExpiryDate?: string | null;
+  consultationFee?: string | null;
   verificationStatus: DoctorVerificationStatus;
   active: boolean;
   profileCompletenessScore: number;
   onboardingState: DoctorOnboardingState;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AppointmentBookingDoctor {
+  id: number;
+  fullName: string;
+  specialty: string;
+  qualifications: string;
+  experienceYears: number;
+  location: string;
+  availabilityLabel: string;
+  consultationFee?: string | null;
+  pricingLabel: string;
+  profileCompletenessScore: number;
+  initials: string;
 }
 
 export interface DoctorListParams {
@@ -65,6 +80,7 @@ export interface DoctorCreatePayload {
   clinicLocations?: string;
   insuranceProviders?: string;
   licenseExpiryDate?: string | null;
+  consultationFee?: number;
 }
 
 export interface DoctorUpdatePayload extends DoctorCreatePayload { }

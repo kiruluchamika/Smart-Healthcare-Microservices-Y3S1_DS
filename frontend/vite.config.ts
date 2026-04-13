@@ -11,6 +11,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/auth/, '/auth'),
       },
+      '/api/appointments': {
+        target: 'http://localhost:8082',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/appointments/, '/appointments'),
+      },
       '/api/patients': {
         target: 'http://localhost:8085',
         changeOrigin: true,
@@ -20,6 +25,23 @@ export default defineConfig({
         target: 'http://localhost:8083',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/doctors/, '/api/v1/doctors'),
+      },
+      '/api/payments': {
+        target: 'http://localhost:8086',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/payments/, '/api/v1/payments'),
+      },
+      '/api/telemedicine': {
+        target: 'http://localhost:8087',
+        changeOrigin: true,
+      },
+      '/api/ai-symptoms': {
+        target: 'http://localhost:8088',
+        changeOrigin: true,
+      },
+      '/api/ai': {
+        target: 'http://localhost:8088',
+        changeOrigin: true,
       },
     },
   },

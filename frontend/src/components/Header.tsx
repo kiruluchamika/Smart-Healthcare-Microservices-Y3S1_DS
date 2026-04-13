@@ -144,16 +144,18 @@ export default function Header() {
   const patientNavItems = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Profile', href: '/profile' },
-    { label: 'Appointments', href: '/appointments' },
+    { label: 'Book Appointment', href: '/appointments/book' },
+    { label: 'My Appointments', href: '/appointments' },
     { label: 'Reports', href: '/reports' },
     { label: 'History', href: '/history' },
+    { label: 'AI Symptom', href: '/ai-symptom' },
     { label: 'Discover Doctors', href: '/doctors' },
   ];
 
   const doctorNavItems = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Doctor Profile', href: '/doctors/profile' },
-    { label: 'Appointments', href: '/appointments' },
+    { label: 'Appointments', href: '/doctor/appointments' },
   ];
 
   const adminNavItems = [
@@ -171,11 +173,19 @@ export default function Header() {
           ? adminNavItems
           : [];
 
-  const displayItems = isAuthPage ? [] : isAuthenticated && role === 'PATIENT' ? guestNavItems : isAuthenticated ? authNavItems : guestNavItems;
+  const displayItems = isAuthPage
+    ? []
+    : isAuthenticated && role === 'PATIENT'
+      ? guestNavItems
+      : isAuthenticated
+        ? authNavItems
+        : guestNavItems;
 
   const patientUser = role === 'PATIENT' ? getAuthUser() : null;
   const patientDisplayName = patientUser
-    ? `${patientUser.firstName || ''} ${patientUser.lastName || ''}`.trim() || patientUser.email || 'Patient'
+    ? `${patientUser.firstName || ''} ${patientUser.lastName || ''}`.trim() ||
+      patientUser.email ||
+      'Patient'
     : 'Patient';
   const patientEmail = patientUser?.email || '';
   const patientInitial = patientDisplayName.charAt(0).toUpperCase() || 'P';
@@ -183,9 +193,11 @@ export default function Header() {
   const patientServiceLinks = [
     { label: 'Profile', href: '/profile' },
     { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Appointments', href: '/appointments' },
+    { label: 'Book Appointment', href: '/appointments/book' },
+    { label: 'My Appointments', href: '/appointments' },
     { label: 'MedicalReports', href: '/reports' },
     { label: 'MedicalHistory', href: '/history' },
+    { label: 'AI Symptom', href: '/ai-symptom' },
     { label: 'Prescription', href: '/prescriptions' },
     { label: 'Discover Doctors', href: '/doctors' },
   ];
@@ -211,11 +223,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <Link to="/" className="flex items-center gap-2 group">
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center justify-center"
-            >
+            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }} className="flex items-center justify-center">
               <img src="/fav.png" alt="Clinexa" className="h-10 w-10" />
             </motion.div>
             <span className={`text-xl font-bold hidden sm:inline transition-colors ${
@@ -269,75 +277,73 @@ export default function Header() {
                   </Link>
                 </>
               )
-            ) : (
-              role === 'PATIENT' ? (
-                <div className="relative" ref={profileMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() => setIsProfileOpen((prev) => !prev)}
-                    className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-colors ${
-                      isLandingPage && !scrolled
-                        ? 'bg-white/10 text-white hover:bg-white/20'
-                        : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    {patientAvatarUrl ? (
-                      <img src={patientAvatarUrl} alt="Patient avatar" className="h-9 w-9 rounded-full object-cover" />
-                    ) : (
-                      <div className="h-9 w-9 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-semibold flex items-center justify-center">
-                        {patientInitial}
-                      </div>
-                    )}
-                    <div className="text-left">
-                      <p className="text-sm font-semibold leading-tight">{patientDisplayName}</p>
-                      {patientEmail && <p className="text-xs opacity-80 leading-tight">{patientEmail}</p>}
-                    </div>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {isProfileOpen && (
-                    <div className="absolute right-0 mt-2 w-60 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
-                      {patientServiceLinks.map((item) => (
-                        <Link
-                          key={item.label}
-                          to={item.href}
-                          onClick={() => setIsProfileOpen(false)}
-                          className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-                        >
-                          {item.label}
-                        </Link>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50"
-                      >
-                        Logout
-                      </button>
+            ) : role === 'PATIENT' ? (
+              <div className="relative" ref={profileMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsProfileOpen((prev) => !prev)}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 transition-colors ${
+                    isLandingPage && !scrolled
+                      ? 'bg-white/10 text-white hover:bg-white/20'
+                      : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {patientAvatarUrl ? (
+                    <img src={patientAvatarUrl} alt="Patient avatar" className="h-9 w-9 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-sm font-semibold flex items-center justify-center">
+                      {patientInitial}
                     </div>
                   )}
-                </div>
-              ) : (
-                <>
-                  <Link
-                    to={role === 'ADMIN' ? '/admin/dashboard' : '/dashboard'}
-                    className={`px-4 py-2 font-medium transition-colors ${
-                      isLandingPage && !scrolled
-                        ? 'text-white hover:text-cyan-400'
-                        : 'text-gray-700 hover:text-blue-600'
-                    }`}
-                  >
-                    Dashboard
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-blue-500/30 transition-all"
-                  >
-                    Logout
-                  </button>
-                </>
-              )
+                  <div className="text-left">
+                    <p className="text-sm font-semibold leading-tight">{patientDisplayName}</p>
+                    {patientEmail && <p className="text-xs opacity-80 leading-tight">{patientEmail}</p>}
+                  </div>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {isProfileOpen && (
+                  <div className="absolute right-0 mt-2 w-60 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
+                    {patientServiceLinks.map((item) => (
+                      <Link
+                        key={item.label}
+                        to={item.href}
+                        onClick={() => setIsProfileOpen(false)}
+                        className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <Link
+                  to={role === 'ADMIN' ? '/admin/dashboard' : '/dashboard'}
+                  className={`px-4 py-2 font-medium transition-colors ${
+                    isLandingPage && !scrolled
+                      ? 'text-white hover:text-cyan-400'
+                      : 'text-gray-700 hover:text-blue-600'
+                  }`}
+                >
+                  Dashboard
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-blue-500/30 transition-all"
+                >
+                  Logout
+                </button>
+              </>
             )}
           </div>
 
@@ -396,68 +402,66 @@ export default function Header() {
                   Sign Up
                 </Link>
               </div>
-            ) : (
-              role === 'PATIENT' ? (
-                <div className="pt-4 border-t border-gray-200/20 space-y-2">
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between rounded-lg bg-gray-100 px-4 py-3 text-left text-gray-800"
-                    onClick={() => setIsPatientMobileMenuOpen((prev) => !prev)}
-                  >
-                    <span className="flex items-center gap-2 font-semibold">
-                      {patientAvatarUrl ? (
-                        <img src={patientAvatarUrl} alt="Patient avatar" className="h-6 w-6 rounded-full object-cover" />
-                      ) : (
-                        <UserCircle2 className="h-5 w-5" />
-                      )}
-                      {patientDisplayName}
-                    </span>
-                    <ChevronDown className={`h-4 w-4 transition-transform ${isPatientMobileMenuOpen ? 'rotate-180' : ''}`} />
-                  </button>
+            ) : role === 'PATIENT' ? (
+              <div className="pt-4 border-t border-gray-200/20 space-y-2">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-lg bg-gray-100 px-4 py-3 text-left text-gray-800"
+                  onClick={() => setIsPatientMobileMenuOpen((prev) => !prev)}
+                >
+                  <span className="flex items-center gap-2 font-semibold">
+                    {patientAvatarUrl ? (
+                      <img src={patientAvatarUrl} alt="Patient avatar" className="h-6 w-6 rounded-full object-cover" />
+                    ) : (
+                      <UserCircle2 className="h-5 w-5" />
+                    )}
+                    {patientDisplayName}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${isPatientMobileMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-                  {isPatientMobileMenuOpen && (
-                    <div className="space-y-1 rounded-lg border border-gray-200 bg-white p-2">
-                      {patientServiceLinks.map((item) => (
-                        <Link
-                          key={item.label}
-                          to={item.href}
-                          className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
-                          onClick={() => {
-                            setIsOpen(false);
-                            setIsPatientMobileMenuOpen(false);
-                          }}
-                        >
-                          {item.label}
-                        </Link>
-                      ))}
-                      <button
-                        type="button"
-                        className="block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                {isPatientMobileMenuOpen && (
+                  <div className="space-y-1 rounded-lg border border-gray-200 bg-white p-2">
+                    {patientServiceLinks.map((item) => (
+                      <Link
+                        key={item.label}
+                        to={item.href}
+                        className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
                         onClick={() => {
                           setIsOpen(false);
                           setIsPatientMobileMenuOpen(false);
-                          handleLogout();
                         }}
                       >
-                        Logout
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="pt-4 border-t border-gray-200/20 space-y-2">
-                  <button
-                    type="button"
-                    className="block w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg text-center font-medium"
-                    onClick={() => {
-                      setIsOpen(false);
-                      handleLogout();
-                    }}
-                  >
-                    Logout
-                  </button>
-                </div>
-              )
+                        {item.label}
+                      </Link>
+                    ))}
+                    <button
+                      type="button"
+                      className="block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                      onClick={() => {
+                        setIsOpen(false);
+                        setIsPatientMobileMenuOpen(false);
+                        handleLogout();
+                      }}
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="pt-4 border-t border-gray-200/20 space-y-2">
+                <button
+                  type="button"
+                  className="block w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg text-center font-medium"
+                  onClick={() => {
+                    setIsOpen(false);
+                    handleLogout();
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
             )}
           </div>
         </motion.nav>
