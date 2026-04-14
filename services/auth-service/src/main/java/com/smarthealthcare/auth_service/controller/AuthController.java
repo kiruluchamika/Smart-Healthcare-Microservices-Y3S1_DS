@@ -3,6 +3,7 @@ package com.smarthealthcare.auth_service.controller;
 import com.smarthealthcare.auth_service.dto.AuthResponse;
 import com.smarthealthcare.auth_service.dto.LoginRequest;
 import com.smarthealthcare.auth_service.dto.RegisterRequest;
+import com.smarthealthcare.auth_service.dto.UserResponse;
 import com.smarthealthcare.auth_service.dto.admin.AdminOverviewResponse;
 import com.smarthealthcare.auth_service.dto.admin.AdminSystemSettingsResponse;
 import com.smarthealthcare.auth_service.dto.admin.AdminSystemSettingsUpdateRequest;
@@ -57,6 +58,11 @@ public class AuthController {
     public ResponseEntity<AuthResponse> adminLogin(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.adminLogin(request);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<UserResponse> getUserById(@PathVariable Long userId) {
+        return ResponseEntity.ok(authService.getUserById(userId));
     }
 
     @GetMapping("/admin/overview")

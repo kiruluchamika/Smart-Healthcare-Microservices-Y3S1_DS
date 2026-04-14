@@ -5,6 +5,7 @@ import com.smarthealthcare.appointment_service.dto.request.RescheduleAppointment
 import com.smarthealthcare.appointment_service.dto.request.AcceptAppointmentRequest;
 import com.smarthealthcare.appointment_service.dto.request.UpdateAppointmentPaymentStatusRequest;
 import com.smarthealthcare.appointment_service.dto.response.ApiMessageResponse;
+import com.smarthealthcare.appointment_service.dto.response.AppointmentAccessResponse;
 import com.smarthealthcare.appointment_service.dto.response.AppointmentResponse;
 import com.smarthealthcare.appointment_service.dto.response.AvailabilityResponse;
 import com.smarthealthcare.appointment_service.service.AppointmentService;
@@ -122,5 +123,13 @@ public class AppointmentController {
             @RequestParam @Positive Long doctorId,
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate appointmentDate) {
         return ResponseEntity.ok(appointmentService.getDoctorAvailability(doctorId, appointmentDate));
+    }
+
+    @GetMapping("/internal/access-check")
+    public ResponseEntity<AppointmentAccessResponse> hasDoctorCompletedAppointmentWithPatient(
+            @RequestParam(name = "doctorId") @Positive Long doctorId,
+            @RequestParam(name = "patientId") @Positive Long patientId) {
+        boolean hasAccess = appointmentService.hasDoctorCompletedAppointmentWithPatient(doctorId, patientId);
+        return ResponseEntity.ok(new AppointmentAccessResponse(hasAccess));
     }
 }

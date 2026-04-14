@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import AppointmentBooking from './pages/AppointmentBooking';
 import MyAppointments from './pages/MyAppointments';
 import DoctorAppointments from './pages/DoctorAppointments';
+import DoctorPatientReports from './pages/doctor/DoctorPatientReports';
 import Telemedicine from './pages/Telemedicine';
 import Profile from './pages/Profile';
 import PaymentCancel from './pages/payments/PaymentCancel';
@@ -165,6 +166,14 @@ function App() {
         <Route path="/payments/success" element={<PatientProtectedRoute><Layout><PaymentSuccess /></Layout></PatientProtectedRoute>} />
         <Route path="/payments/cancel" element={<PatientProtectedRoute><Layout><PaymentCancel /></Layout></PatientProtectedRoute>} />
         <Route path="/doctor/appointments" element={<ProtectedRoute><Layout><DoctorAppointments /></Layout></ProtectedRoute>} />
+        <Route
+          path="/doctor/reports"
+          element={
+            <ProtectedRoleRoute allowedRoles={['DOCTOR']}>
+              <Layout><DoctorPatientReports /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
         <Route
           path="/consultation/:id"
           element={
