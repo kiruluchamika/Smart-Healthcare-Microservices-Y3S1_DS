@@ -40,6 +40,14 @@ function ProtectedRoute({ children }: { children: JSX.Element }) {
   return isUserAuthenticated() ? children : <Navigate to="/login" replace />;
 }
 
+function PatientProtectedRoute({ children }: { children: JSX.Element }) {
+  return (
+    <ProtectedRoleRoute allowedRoles={['PATIENT']}>
+      {children}
+    </ProtectedRoleRoute>
+  );
+}
+
 function PublicOnlyRoute({ children }: { children: JSX.Element }) {
   return isUserAuthenticated() ? <Navigate to="/dashboard" replace /> : children;
 }
@@ -153,10 +161,10 @@ function App() {
           }
         />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-        <Route path="/appointments" element={<ProtectedRoute><Layout><MyAppointments /></Layout></ProtectedRoute>} />
-        <Route path="/appointments/book" element={<ProtectedRoute><Layout><AppointmentBooking /></Layout></ProtectedRoute>} />
-        <Route path="/payments/success" element={<ProtectedRoute><Layout><PaymentSuccess /></Layout></ProtectedRoute>} />
-        <Route path="/payments/cancel" element={<ProtectedRoute><Layout><PaymentCancel /></Layout></ProtectedRoute>} />
+        <Route path="/appointments" element={<PatientProtectedRoute><Layout><MyAppointments /></Layout></PatientProtectedRoute>} />
+        <Route path="/appointments/book" element={<PatientProtectedRoute><Layout><AppointmentBooking /></Layout></PatientProtectedRoute>} />
+        <Route path="/payments/success" element={<PatientProtectedRoute><Layout><PaymentSuccess /></Layout></PatientProtectedRoute>} />
+        <Route path="/payments/cancel" element={<PatientProtectedRoute><Layout><PaymentCancel /></Layout></PatientProtectedRoute>} />
         <Route path="/doctor/appointments" element={<ProtectedRoute><Layout><DoctorAppointments /></Layout></ProtectedRoute>} />
         <Route
           path="/doctor/reports"
@@ -174,34 +182,34 @@ function App() {
             </ProtectedRoleRoute>
           }
         />
-        <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+        <Route path="/profile" element={<PatientProtectedRoute><Layout><Profile /></Layout></PatientProtectedRoute>} />
 
-        <Route path="/reports" element={<ProtectedRoute><Layout><MedicalReports /></Layout></ProtectedRoute>} />
-        <Route path="/history" element={<ProtectedRoute><Layout><MedicalHistoryPage /></Layout></ProtectedRoute>} />
-        <Route path="/prescriptions" element={<ProtectedRoute><Layout><PrescriptionsPage /></Layout></ProtectedRoute>} />
+        <Route path="/reports" element={<PatientProtectedRoute><Layout><MedicalReports /></Layout></PatientProtectedRoute>} />
+        <Route path="/history" element={<PatientProtectedRoute><Layout><MedicalHistoryPage /></Layout></PatientProtectedRoute>} />
+        <Route path="/prescriptions" element={<PatientProtectedRoute><Layout><PrescriptionsPage /></Layout></PatientProtectedRoute>} />
         <Route
           path="/ai-doctor-suggestion"
           element={
-            <ProtectedRoleRoute allowedRoles={['PATIENT']}>
+            <PatientProtectedRoute>
               <Layout><AIDoctorSuggestion /></Layout>
-            </ProtectedRoleRoute>
+            </PatientProtectedRoute>
           }
         />
         <Route
           path="/ai-symptom"
           element={
-            <ProtectedRoleRoute allowedRoles={['PATIENT']}>
+            <PatientProtectedRoute>
               <Layout><AISymptomPage /></Layout>
-            </ProtectedRoleRoute>
+            </PatientProtectedRoute>
           }
         />
 
         <Route
           path="/doctors"
           element={
-            <ProtectedRoleRoute allowedRoles={['PATIENT']}>
+            <PatientProtectedRoute>
               <Layout><DoctorsDirectory /></Layout>
-            </ProtectedRoleRoute>
+            </PatientProtectedRoute>
           }
         />
         <Route
@@ -223,9 +231,9 @@ function App() {
         <Route
           path="/doctors/:id"
           element={
-            <ProtectedRoleRoute allowedRoles={['PATIENT']}>
+            <PatientProtectedRoute>
               <Layout><DoctorDetail /></Layout>
-            </ProtectedRoleRoute>
+            </PatientProtectedRoute>
           }
         />
         <Route

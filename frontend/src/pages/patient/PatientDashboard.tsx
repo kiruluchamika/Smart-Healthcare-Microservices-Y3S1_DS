@@ -30,7 +30,7 @@ const topNavItems = [
     label: 'AI Doctor Suggestion',
     href: '/ai-doctor-suggestion',
     icon: Sparkles,
-    color: 'from-orange-500 to-amber-500',
+    color: 'from-cyan-600 to-teal-500',
   },
   {
     label: 'AI Symptom',

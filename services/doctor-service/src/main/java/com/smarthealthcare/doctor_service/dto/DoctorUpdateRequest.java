@@ -72,4 +72,6 @@ public class DoctorUpdateRequest {
     @Min(value = 1, message = "Consultation fee must be at least 1")
     @Max(value = 100000, message = "Consultation fee must not exceed 100000")
     private BigDecimal consultationFee;
+
+    private String profilePictureUrl;
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronDown, Menu, UserCircle2, X } from 'lucide-react';
+import { getDoctorByEmail } from '../services/doctor/doctorApi';
 import { patientApi } from '../services/patientApi';
 import {
   AUTH_CHANGED_EVENT,
@@ -18,8 +19,10 @@ export default function Header() {
   const [isAuthenticated, setIsAuthenticated] = useState(isUserAuthenticated());
   const [role, setRole] = useState(getAuthUserRole());
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDoctorMenuOpen, setIsDoctorMenuOpen] = useState(false);
   const [isPatientMobileMenuOpen, setIsPatientMobileMenuOpen] = useState(false);
   const [patientAvatarUrl, setPatientAvatarUrl] = useState<string | null>(null);
+  const [doctorAvatarUrl, setDoctorAvatarUrl] = useState<string | null>(null);
   const [avatarVersion, setAvatarVersion] = useState(0);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const avatarObjectUrlRef = useRef<string | null>(null);
@@ -31,6 +34,14 @@ export default function Header() {
     location.pathname === '/register' ||
     location.pathname === '/admin/login';
   const isLandingPage = location.pathname === '/';
+  const isDoctorWorkspaceRoute =
+    location.pathname === '/dashboard' ||
+    location.pathname === '/doctor/appointments' ||
+    /^\/doctors\/profile(?:\/manage)?$/.test(location.pathname) ||
+    /^\/doctors\/\d+\/(?:dashboard|availability)$/.test(location.pathname);
+  const isDoctorCompactNavRoute =
+    /^\/doctors\/profile(?:\/manage)?$/.test(location.pathname) ||
+    /^\/doctors\/\d+\/(?:dashboard|availability)$/.test(location.pathname);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -43,6 +54,7 @@ export default function Header() {
       setIsAuthenticated(isUserAuthenticated());
       setRole(getAuthUserRole());
       setIsProfileOpen(false);
+      setIsDoctorMenuOpen(false);
       setIsPatientMobileMenuOpen(false);
     };
 
@@ -64,6 +76,7 @@ export default function Header() {
   useEffect(() => {
     setIsOpen(false);
     setIsProfileOpen(false);
+    setIsDoctorMenuOpen(false);
     setIsPatientMobileMenuOpen(false);
     setIsAuthenticated(isUserAuthenticated());
     setRole(getAuthUserRole());
@@ -77,6 +90,7 @@ export default function Header() {
 
       if (!profileMenuRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
+        setIsDoctorMenuOpen(false);
       }
     };
 
@@ -134,6 +148,46 @@ export default function Header() {
     };
   }, [isAuthenticated, role, avatarVersion]);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const loadDoctorAvatar = async () => {
+      if (!isAuthenticated || role !== 'DOCTOR') {
+        if (mounted) {
+          setDoctorAvatarUrl(null);
+        }
+        return;
+      }
+
+      const authUser = getAuthUser();
+      const email = typeof authUser?.email === 'string' ? authUser.email.trim() : '';
+      if (!email) {
+        if (mounted) {
+          setDoctorAvatarUrl(null);
+        }
+        return;
+      }
+
+      try {
+        const doctor = await getDoctorByEmail(email);
+        if (!mounted) {
+          return;
+        }
+        setDoctorAvatarUrl(doctor.profilePictureUrl || null);
+      } catch {
+        if (mounted) {
+          setDoctorAvatarUrl(null);
+        }
+      }
+    };
+
+    void loadDoctorAvatar();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isAuthenticated, role, avatarVersion, location.pathname]);
+
   const guestNavItems = [
     { label: 'Home', href: '/' },
     { label: 'Services', href: '/#services' },
@@ -174,13 +228,23 @@ export default function Header() {
           ? adminNavItems
           : [];
 
-  const displayItems = isAuthPage
+  const baseDisplayItems = isAuthPage
     ? []
     : isAuthenticated && role === 'PATIENT'
       ? guestNavItems
       : isAuthenticated
         ? authNavItems
         : guestNavItems;
+
+  const displayItems = role === 'DOCTOR' && isDoctorCompactNavRoute ? [] : baseDisplayItems;
+
+  const currentUser = getAuthUser();
+  const doctorUser = role === 'DOCTOR' ? currentUser : null;
+  const doctorDisplayName = doctorUser
+    ? `${doctorUser.firstName || ''} ${doctorUser.lastName || ''}`.trim() || doctorUser.email || 'Doctor'
+    : 'Doctor';
+  const doctorEmail = doctorUser?.email || '';
+  const doctorInitial = doctorDisplayName.charAt(0).toUpperCase() || 'D';
 
   const patientUser = role === 'PATIENT' ? getAuthUser() : null;
   const patientDisplayName = patientUser
@@ -325,6 +389,68 @@ export default function Header() {
                   </div>
                 )}
               </div>
+            ) : role === 'DOCTOR' && (isDoctorWorkspaceRoute || isLandingPage) ? (
+              <div className="relative" ref={profileMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isLandingPage) {
+                      return;
+                    }
+                    setIsDoctorMenuOpen((prev) => !prev);
+                  }}
+                  aria-expanded={isDoctorMenuOpen}
+                  aria-haspopup="menu"
+                  className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  {doctorAvatarUrl ? (
+                    <img src={doctorAvatarUrl} alt="Doctor avatar" className="h-9 w-9 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-gradient-to-r from-teal-600 to-cyan-500 text-white text-sm font-semibold flex items-center justify-center">
+                      {doctorInitial}
+                    </div>
+                  )}
+                  <div className="text-left">
+                    <p className="text-sm font-semibold leading-tight">{doctorDisplayName}</p>
+                    <p className="text-xs text-gray-500 leading-tight">Doctor{doctorEmail ? ` · ${doctorEmail}` : ''}</p>
+                  </div>
+                  {!isLandingPage && (
+                    <ChevronDown className={`h-4 w-4 transition-transform ${isDoctorMenuOpen ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+
+                {!isLandingPage && isDoctorMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-52 rounded-xl border border-gray-200 bg-white p-2 shadow-xl" role="menu">
+                    <Link
+                      to="/dashboard"
+                      role="menuitem"
+                      onClick={() => setIsDoctorMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      to="/doctor/appointments"
+                      role="menuitem"
+                      onClick={() => setIsDoctorMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                    >
+                      Appointments
+                    </Link>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsDoctorMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <>
                 <Link
@@ -449,6 +575,41 @@ export default function Header() {
                     </button>
                   </div>
                 )}
+              </div>
+            ) : role === 'DOCTOR' && isDoctorWorkspaceRoute ? (
+              <div className="pt-4 border-t border-gray-200/20 space-y-2">
+                <div className="rounded-lg border border-gray-200 bg-white px-4 py-3 text-gray-800">
+                  <p className="text-sm font-semibold">{doctorDisplayName}</p>
+                  <p className="text-xs text-gray-500">Doctor{doctorEmail ? ` · ${doctorEmail}` : ''}</p>
+                </div>
+                <Link
+                  to="/dashboard"
+                  className="block w-full px-4 py-2 rounded-lg border border-gray-200 bg-white text-center font-medium text-gray-700 hover:bg-gray-50"
+                  onClick={() => {
+                    setIsOpen(false);
+                  }}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  to="/doctor/appointments"
+                  className="block w-full px-4 py-2 rounded-lg border border-gray-200 bg-white text-center font-medium text-gray-700 hover:bg-gray-50"
+                  onClick={() => {
+                    setIsOpen(false);
+                  }}
+                >
+                  Appointments
+                </Link>
+                <button
+                  type="button"
+                  className="block w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 text-white rounded-lg text-center font-medium"
+                  onClick={() => {
+                    setIsOpen(false);
+                    handleLogout();
+                  }}
+                >
+                  Logout
+                </button>
               </div>
             ) : (
               <div className="pt-4 border-t border-gray-200/20 space-y-2">

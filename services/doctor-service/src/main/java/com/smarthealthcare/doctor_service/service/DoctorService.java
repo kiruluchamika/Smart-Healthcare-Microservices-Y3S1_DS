@@ -1,5 +1,6 @@
 package com.smarthealthcare.doctor_service.service;
 
+import com.smarthealthcare.doctor_service.dto.ApiSuccessResponse;
 import com.smarthealthcare.doctor_service.dto.DoctorCreateRequest;
 import com.smarthealthcare.doctor_service.dto.DoctorDashboardSummaryResponse;
 import com.smarthealthcare.doctor_service.dto.DoctorResponse;
@@ -9,6 +10,7 @@ import com.smarthealthcare.doctor_service.dto.DoctorVerificationStatusUpdateRequ
 import com.smarthealthcare.doctor_service.dto.PagedResponse;
 import java.time.DayOfWeek;
 import java.util.List;
+import java.util.Map;
 
 public interface DoctorService {
 
@@ -36,4 +38,8 @@ public interface DoctorService {
     DoctorDashboardSummaryResponse getDashboardSummary(Long doctorId);
 
     List<DoctorVerificationHistoryResponse> getVerificationHistory(Long doctorId);
+
+    ApiSuccessResponse submitChangeRequest(Long doctorId, Map<String, Object> requestBody, String requestedBy);
+
+    ApiSuccessResponse decideChangeRequest(Long doctorId, Long requestId, Map<String, Object> requestBody, String reviewedBy);
 }

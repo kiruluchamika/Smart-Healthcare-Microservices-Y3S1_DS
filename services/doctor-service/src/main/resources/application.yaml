@@ -4,11 +4,21 @@ server:
 spring:
   application:
     name: doctor-service
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3308/doctor_service_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
     username: ${SPRING_DATASOURCE_USERNAME:doctor_user}
     password: ${SPRING_DATASOURCE_PASSWORD:doctor_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      max-lifetime: 600000
+      keepalive-time: 180000
+      idle-timeout: 300000
+      validation-timeout: 5000
+      connection-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: update
@@ -45,3 +55,7 @@ management:
 logging:
   level:
     com.smarthealthcare.doctor_service: INFO
+
+app:
+  upload:
+    dir: ${APP_UPLOAD_DIR:uploads}

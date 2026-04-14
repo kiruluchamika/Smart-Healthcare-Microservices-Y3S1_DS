@@ -51,7 +51,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleDataIntegrity(
             DataIntegrityViolationException ex,
             HttpServletRequest request) {
-        return buildErrorResponse(HttpStatus.CONFLICT, "Database integrity violation", request, Map.of());
+        return buildErrorResponse(HttpStatus.CONFLICT, mapDataIntegrityMessage(ex), request, Map.of());
     }
 
     @ExceptionHandler(Exception.class)
@@ -74,5 +74,31 @@ public class GlobalExceptionHandler {
                 .fieldErrors(fieldErrors)
                 .build();
         return ResponseEntity.status(status).body(error);
+    }
+
+    private String mapDataIntegrityMessage(DataIntegrityViolationException ex) {
+        String causeMessage = ex.getMostSpecificCause() != null
+                ? ex.getMostSpecificCause().getMessage()
+                : ex.getMessage();
+
+        if (causeMessage == null) {
+            return "Database integrity violation";
+        }
+
+        String normalized = causeMessage.toLowerCase();
+
+        if (normalized.contains("profile_picture_url") && normalized.contains("data too long")) {
+            return "Profile picture payload is too large for current database schema. Restart doctor-service and try again.";
+        }
+
+        if (normalized.contains("uk_doctor_email") || (normalized.contains("duplicate") && normalized.contains("email"))) {
+            return "Doctor email already exists";
+        }
+
+        if (normalized.contains("uk_doctor_license") || (normalized.contains("duplicate") && normalized.contains("license"))) {
+            return "Doctor license number already exists";
+        }
+
+        return "Database integrity violation";
     }
 }

@@ -69,90 +69,113 @@ export default function DoctorsDirectory() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_10%_10%,#99f6e4_0%,transparent_35%),radial-gradient(circle_at_90%_90%,#fed7aa_0%,transparent_40%),linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] px-4 pb-20 pt-28 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <div className="min-h-screen bg-slate-50 relative overflow-hidden px-4 pb-20 pt-28 sm:px-6 lg:px-8 text-slate-900 font-sans selection:bg-teal-500/30">
+      {/* Background Gradients */}
+      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-teal-200/40 rounded-full blur-[120px] pointer-events-none opacity-60" />
+      <div className="absolute bottom-0 left-[-10%] w-[600px] h-[600px] bg-blue-200/30 rounded-full blur-[100px] pointer-events-none opacity-60" />
+
+      <div className="relative z-10 mx-auto max-w-7xl">
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          className="mb-8"
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ duration: 0.5 }}
+           className="mb-10 text-center"
         >
-          <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-teal-700 ring-1 ring-teal-100">
-            <ListFilter className="h-3.5 w-3.5" />
-            Doctor Service
-          </p>
-          <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">Discover Doctors</h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600 sm:text-base">
-            Search verified professionals, filter by availability day, and explore profiles built from the doctor-service backend.
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-teal-100 backdrop-blur-sm shadow-sm mb-4">
+             <ListFilter className="h-4 w-4 text-teal-600" />
+             <span className="text-xs font-bold uppercase tracking-widest text-teal-700">Verified Specialists</span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 mb-2">Discover Doctors</h1>
+          <p className="text-base text-slate-500 max-w-2xl mx-auto">
+            Search verified professionals, filter by availability, and explore detailed profiles from our premium network.
           </p>
         </motion.div>
 
-        <div className="grid gap-6 lg:grid-cols-[290px_1fr]">
-          <DoctorFilters
-            filters={filters}
-            onChange={setFilters}
-            onApply={handleApplyFilters}
-            onReset={handleResetFilters}
-          />
+        <div className="grid gap-8 lg:grid-cols-[300px_1fr]">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <DoctorFilters
+              filters={filters}
+              onChange={setFilters}
+              onApply={handleApplyFilters}
+              onReset={handleResetFilters}
+            />
+          </motion.div>
 
           <section>
             {loading && (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                 {[...Array(6)].map((_, idx) => (
-                  <div key={idx} className="h-52 animate-pulse rounded-2xl border border-slate-200 bg-white/80" />
+                  <div key={idx} className="h-[320px] animate-pulse rounded-[2rem] border border-white bg-white/60 backdrop-blur-md shadow-sm" />
                 ))}
               </div>
             )}
 
             {!loading && error && (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-[2rem] border border-rose-200 bg-rose-50/80 backdrop-blur-sm p-6 shadow-sm">
                 <p className="text-sm font-semibold text-rose-700">{error}</p>
-              </div>
+              </motion.div>
             )}
 
             {!loading && !error && !doctors.length && (
-              <div className="rounded-2xl border border-dashed border-slate-300 bg-white/90 p-10 text-center">
-                <p className="text-lg font-semibold text-slate-800">No doctors found</p>
-                <p className="mt-2 text-sm text-slate-600">Try adjusting your filters and run the search again.</p>
-              </div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-[2.5rem] border border-white bg-white/70 p-16 text-center shadow-xl shadow-teal-900/[0.04] backdrop-blur-xl">
+                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-slate-200">
+                   <ListFilter className="w-8 h-8 text-slate-400" />
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 mb-2">No Specialists Found</h2>
+                <p className="text-base text-slate-500 mb-8 max-w-md mx-auto">We couldn't find any verified professionals matching your exact criteria right now.</p>
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="rounded-2xl bg-teal-600 px-8 py-4 text-sm font-bold text-white shadow-lg shadow-teal-600/30 transition-all hover:bg-teal-700 hover:shadow-teal-600/50 hover:-translate-y-0.5"
+                >
+                  Clear All Filters
+                </button>
+              </motion.div>
             )}
 
             {!loading && !error && doctors.length > 0 && (
-              <>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.2 }}>
+                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                   {doctors.map((doctor) => (
                     <DoctorCard key={doctor.id} doctor={doctor} />
                   ))}
                 </div>
 
                 {!isFilterMode && pageState && (
-                  <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
-                    <p className="text-sm text-slate-600">
-                      Page {pageState.page + 1} of {Math.max(pageState.totalPages, 1)} ({pageState.totalElements} total)
-                    </p>
+                  <div className="mt-10 flex flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-white bg-white/70 backdrop-blur-xl px-8 py-5 shadow-lg shadow-teal-900/[0.04]">
                     <div className="flex items-center gap-2">
+                       <span className="text-sm font-bold text-slate-900">Page {pageState.page + 1}</span>
+                       <span className="text-sm font-medium text-slate-500">of {Math.max(pageState.totalPages, 1)}</span>
+                       <span className="text-xs font-semibold px-2.5 py-1 bg-teal-50 text-teal-700 rounded-full ml-2">
+                         {pageState.totalElements} Total
+                       </span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
                       <button
                         type="button"
                         onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
                         disabled={pageState.page === 0}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+                        className="inline-flex items-center justify-center p-3 rounded-xl border border-slate-200 bg-white text-slate-700 disabled:opacity-40 disabled:hover:bg-white hover:bg-slate-50 hover:shadow-sm transition-all"
                       >
-                        <ChevronLeft className="h-4 w-4" />
-                        Previous
+                        <ChevronLeft className="h-5 w-5" />
                       </button>
                       <button
                         type="button"
                         onClick={() => setPage((prev) => prev + 1)}
                         disabled={pageState.page + 1 >= pageState.totalPages}
-                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+                        className="inline-flex items-center justify-center p-3 rounded-xl border border-slate-200 bg-white text-slate-700 disabled:opacity-40 disabled:hover:bg-white hover:bg-slate-50 hover:shadow-sm transition-all"
                       >
-                        Next
-                        <ChevronRight className="h-4 w-4" />
+                        <ChevronRight className="h-5 w-5" />
                       </button>
                     </div>
                   </div>
                 )}
-              </>
+              </motion.div>
             )}
           </section>
         </div>
