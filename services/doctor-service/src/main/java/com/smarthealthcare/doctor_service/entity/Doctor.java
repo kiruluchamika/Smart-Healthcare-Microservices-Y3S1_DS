@@ -84,6 +84,9 @@ public class Doctor {
     @Column(name = "consultation_fee", precision = 19, scale = 2)
     private BigDecimal consultationFee;
 
+    @Column(name = "profile_picture_url", columnDefinition = "LONGTEXT")
+    private String profilePictureUrl;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private VerificationStatus verificationStatus;

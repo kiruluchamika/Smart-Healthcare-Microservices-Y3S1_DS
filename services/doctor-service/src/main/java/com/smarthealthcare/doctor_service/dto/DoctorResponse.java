@@ -27,6 +27,7 @@ public class DoctorResponse {
     String insuranceProviders;
     LocalDate licenseExpiryDate;
     BigDecimal consultationFee;
+    String profilePictureUrl;
     VerificationStatus verificationStatus;
     Boolean active;
     Integer profileCompletenessScore;

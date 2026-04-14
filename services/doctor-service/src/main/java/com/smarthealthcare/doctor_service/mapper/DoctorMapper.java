@@ -28,6 +28,7 @@ public class DoctorMapper {
                 .insuranceProviders(request.getInsuranceProviders())
                 .licenseExpiryDate(request.getLicenseExpiryDate())
                 .consultationFee(request.getConsultationFee())
+                .profilePictureUrl(request.getProfilePictureUrl())
                 .verificationStatus(VerificationStatus.PENDING)
                 .onboardingState(OnboardingState.SUBMITTED)
                 .build();
@@ -49,6 +50,7 @@ public class DoctorMapper {
         doctor.setInsuranceProviders(request.getInsuranceProviders());
         doctor.setLicenseExpiryDate(request.getLicenseExpiryDate());
         doctor.setConsultationFee(request.getConsultationFee());
+        doctor.setProfilePictureUrl(request.getProfilePictureUrl());
     }
 
     public DoctorResponse toResponse(Doctor doctor) {
@@ -69,6 +71,7 @@ public class DoctorMapper {
                 .insuranceProviders(doctor.getInsuranceProviders())
                 .licenseExpiryDate(doctor.getLicenseExpiryDate())
                 .consultationFee(doctor.getConsultationFee())
+                .profilePictureUrl(doctor.getProfilePictureUrl())
                 .verificationStatus(doctor.getVerificationStatus())
                 .active(doctor.getActive())
                 .profileCompletenessScore(doctor.getProfileCompletenessScore())

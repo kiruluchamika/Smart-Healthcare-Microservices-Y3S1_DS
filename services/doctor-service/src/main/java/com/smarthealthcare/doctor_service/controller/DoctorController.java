@@ -12,13 +12,18 @@ import com.smarthealthcare.doctor_service.dto.DoctorVerificationHistoryResponse;
 import com.smarthealthcare.doctor_service.dto.DoctorVerificationStatusUpdateRequest;
 import com.smarthealthcare.doctor_service.dto.PagedResponse;
 import com.smarthealthcare.doctor_service.service.DoctorAvailabilityService;
+import com.smarthealthcare.doctor_service.service.DoctorProfilePictureService;
 import com.smarthealthcare.doctor_service.service.DoctorService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.time.DayOfWeek;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -32,6 +37,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/v1/doctors")
@@ -40,6 +46,7 @@ public class DoctorController {
 
     private final DoctorService doctorService;
     private final DoctorAvailabilityService availabilityService;
+    private final DoctorProfilePictureService doctorProfilePictureService;
 
     @PostMapping
     @Operation(summary = "Create doctor profile")
@@ -113,6 +120,27 @@ public class DoctorController {
         return ResponseEntity.ok(doctorService.getVerificationHistory(doctorId));
     }
 
+    @PostMapping("/{doctorId}/change-requests")
+    @Operation(summary = "Submit locked-field change request for admin review")
+    public ResponseEntity<ApiSuccessResponse> submitChangeRequest(
+            @PathVariable Long doctorId,
+            @RequestBody(required = false) Map<String, Object> requestBody,
+            @RequestHeader(value = "X-Requested-By", required = false) String requestedBy) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(doctorService.submitChangeRequest(doctorId, requestBody, requestedBy));
+    }
+
+    @PatchMapping("/{doctorId}/change-requests/{requestId}")
+    @Operation(summary = "Admin decision for doctor change request")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiSuccessResponse> decideChangeRequest(
+            @PathVariable Long doctorId,
+            @PathVariable Long requestId,
+            @RequestBody(required = false) Map<String, Object> requestBody,
+            @RequestHeader(value = "X-Reviewed-By", required = false) String reviewedBy) {
+        return ResponseEntity.ok(doctorService.decideChangeRequest(doctorId, requestId, requestBody, reviewedBy));
+    }
+
     @PostMapping("/{doctorId}/availability")
     @Operation(summary = "Create doctor availability slot")
     public ResponseEntity<DoctorAvailabilityResponse> createAvailability(
@@ -150,5 +178,32 @@ public class DoctorController {
     @Operation(summary = "Get doctor dashboard summary")
     public ResponseEntity<DoctorDashboardSummaryResponse> getDashboardSummary(@PathVariable Long doctorId) {
         return ResponseEntity.ok(doctorService.getDashboardSummary(doctorId));
+    }
+
+    @PostMapping(value = "/{doctorId}/profile-picture", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload doctor profile picture")
+    public ResponseEntity<DoctorResponse> uploadProfilePicture(
+            @PathVariable Long doctorId,
+            @RequestParam("file") MultipartFile file) {
+        return ResponseEntity.ok(doctorProfilePictureService.uploadProfilePicture(doctorId, file));
+    }
+
+    @GetMapping("/{doctorId}/profile-picture")
+    @Operation(summary = "Get doctor profile picture")
+    public ResponseEntity<Resource> getProfilePicture(@PathVariable Long doctorId) {
+        Resource resource = doctorProfilePictureService.getProfilePictureResource(doctorId);
+        String contentType = doctorProfilePictureService.getProfilePictureContentType(doctorId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"doctor-profile-picture\"")
+                .body(resource);
+    }
+
+    @DeleteMapping("/{doctorId}/profile-picture")
+    @Operation(summary = "Delete doctor profile picture")
+    public ResponseEntity<ApiSuccessResponse> deleteProfilePicture(@PathVariable Long doctorId) {
+        doctorProfilePictureService.deleteProfilePicture(doctorId);
+        return ResponseEntity.ok(ApiSuccessResponse.builder().message("Profile picture removed successfully").build());
     }
 }
