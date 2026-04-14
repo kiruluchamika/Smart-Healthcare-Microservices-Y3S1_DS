@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { CalendarRange, Trash2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { AvailabilitySlotEditor } from '../../components/doctor/AvailabilitySlotEditor';
+import { DoctorTopNav } from '../../components/doctor/DoctorTopNav';
 import {
   createAvailability,
   deleteAvailability,
@@ -89,91 +91,133 @@ export default function DoctorAvailabilityManager() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-cyan-50 via-white to-emerald-50 px-4 pb-20 pt-28 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-6">
-          <h1 className="text-3xl font-black text-slate-900 sm:text-4xl">Availability Manager</h1>
-          <p className="mt-2 text-sm text-slate-600">Create, update, and remove doctor availability slots.</p>
-        </div>
+    <div className="min-h-screen bg-slate-50 relative overflow-hidden px-4 pb-20 pt-28 sm:px-6 lg:px-8 text-slate-900 font-sans selection:bg-teal-500/30">
+      {/* Background Gradients */}
+      <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-teal-200/40 rounded-full blur-[120px] pointer-events-none opacity-60" />
+      <div className="absolute bottom-0 left-[-10%] w-[600px] h-[600px] bg-blue-200/30 rounded-full blur-[100px] pointer-events-none opacity-60" />
 
-        {error && <p className="mb-4 rounded-xl bg-rose-100 px-4 py-3 text-sm text-rose-700">{error}</p>}
+      <div className="relative z-10 mx-auto max-w-5xl">
+        <DoctorTopNav doctorId={doctorId} />
+        <motion.div
+           initial={{ opacity: 0, y: 20 }}
+           animate={{ opacity: 1, y: 0 }}
+           transition={{ duration: 0.5 }}
+           className="mb-10 text-center"
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 border border-teal-100 backdrop-blur-sm shadow-sm mb-4">
+             <CalendarRange className="h-4 w-4 text-teal-600" />
+             <span className="text-xs font-bold uppercase tracking-widest text-teal-700">Schedule Management</span>
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900 mb-2">Availability Settings</h1>
+          <p className="text-base text-slate-500 max-w-2xl mx-auto">Configure your standard working hours and recurring slots to allow patients to book appointments securely.</p>
+        </motion.div>
 
-        <section className="mb-6">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Add Slot</h2>
-          <AvailabilitySlotEditor onSubmit={handleCreate} isSubmitting={saving} submitLabel="Create slot" />
-        </section>
+        {error && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-8 rounded-[2rem] border border-rose-200 bg-rose-50/80 backdrop-blur-sm p-6 shadow-sm">
+             <p className="text-sm font-semibold text-rose-700">{error}</p>
+          </motion.div>
+        )}
 
-        <section>
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-slate-900">
-            <CalendarRange className="h-5 w-5 text-teal-600" />
-            Existing Slots
-          </h2>
-
-          {loading && <div className="h-36 animate-pulse rounded-2xl border border-slate-200 bg-white" />}
-
-          {!loading && slots.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-600">
-              No availability slots yet.
+        <div className="grid gap-8 lg:grid-cols-[1fr_1.3fr] items-start">
+          <motion.section 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="rounded-[2.5rem] border border-white bg-white/70 backdrop-blur-xl p-8 shadow-xl shadow-teal-900/[0.04] sticky top-28"
+          >
+            <h2 className="mb-6 text-sm font-bold uppercase tracking-widest text-teal-700 border-b border-slate-200/60 pb-4">Create New Slot</h2>
+            <div className="bg-white/50 rounded-2xl p-6 border border-white shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+               <AvailabilitySlotEditor onSubmit={handleCreate} isSubmitting={saving} submitLabel="Publish Slot" />
             </div>
-          )}
+          </motion.section>
 
-          {!loading && slots.length > 0 && (
-            <div className="space-y-3">
-              {slots.map((slot) => (
-                <article key={slot.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  {editingSlotId === slot.id ? (
-                    <AvailabilitySlotEditor
-                      initialValue={{
-                        dayOfWeek: slot.dayOfWeek,
-                        startTime: slot.startTime,
-                        endTime: slot.endTime,
-                        isAvailable: slot.isAvailable,
-                        effectiveFrom: slot.effectiveFrom,
-                        effectiveTo: slot.effectiveTo,
-                      }}
-                      onSubmit={(payload) => handleUpdate(slot.id, payload)}
-                      isSubmitting={saving}
-                      submitLabel="Save changes"
-                    />
-                  ) : (
-                    <>
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">
-                            {formatDayOfWeek(slot.dayOfWeek)} {formatTime(slot.startTime)} to {formatTime(slot.endTime)}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            Effective {formatDate(slot.effectiveFrom)} to {formatDate(slot.effectiveTo)}
-                          </p>
-                          <p className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${slot.isAvailable ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                            {slot.isAvailable ? 'Available' : 'Unavailable'}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setEditingSlotId(slot.id)}
-                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleDelete(slot.id)}
-                            className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </button>
-                        </div>
+          <motion.section
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="rounded-[2.5rem] border border-white bg-white/70 backdrop-blur-xl p-8 shadow-xl shadow-teal-900/[0.04]"
+          >
+            <div className="mb-6 flex items-center justify-between border-b border-slate-200/60 pb-4">
+              <h2 className="flex items-center gap-3 text-2xl font-black text-slate-900">
+                <span className="p-2 bg-teal-50 text-teal-600 rounded-xl"><CalendarRange className="h-5 w-5" /></span>
+                Active Slots
+              </h2>
+              <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold">{slots.length} Total</span>
+            </div>
+
+            {loading && <div className="h-48 animate-pulse rounded-[2rem] border border-white bg-white/60 backdrop-blur-md shadow-sm" />}
+
+            {!loading && slots.length === 0 && (
+              <div className="rounded-[2xl] border border-dashed border-slate-300 bg-white/40 p-12 text-center shadow-inner">
+                <CalendarRange className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <p className="text-sm font-semibold text-slate-600 mb-1">Schedule is empty.</p>
+                <p className="text-xs text-slate-500">Create your first availability slot from the panel on the left.</p>
+              </div>
+            )}
+
+            {!loading && slots.length > 0 && (
+              <div className="space-y-4">
+                {slots.map((slot) => (
+                  <article key={slot.id} className="relative overflow-hidden rounded-[2rem] border border-white bg-white/60 p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-white/80 group">
+                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-teal-400 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    
+                    {editingSlotId === slot.id ? (
+                      <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+                        <AvailabilitySlotEditor
+                          initialValue={{
+                            dayOfWeek: slot.dayOfWeek,
+                            startTime: slot.startTime,
+                            endTime: slot.endTime,
+                            isAvailable: slot.isAvailable,
+                            effectiveFrom: slot.effectiveFrom,
+                            effectiveTo: slot.effectiveTo,
+                          }}
+                          onSubmit={(payload) => handleUpdate(slot.id, payload)}
+                          isSubmitting={saving}
+                          submitLabel="Confirm Updates"
+                        />
                       </div>
-                    </>
-                  )}
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
+                    ) : (
+                      <>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <p className="text-lg font-bold text-slate-900 group-hover:text-teal-700 transition-colors">
+                              {formatDayOfWeek(slot.dayOfWeek)} <span className="text-slate-400 font-normal mx-1">from</span> {formatTime(slot.startTime)} <span className="text-slate-400 font-normal mx-1">to</span> {formatTime(slot.endTime)}
+                            </p>
+                            <p className="mt-1 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                              {formatDate(slot.effectiveFrom)} &mdash; {formatDate(slot.effectiveTo)}
+                            </p>
+                            <p className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold border shadow-sm ${slot.isAvailable ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                              <span className={`w-2 h-2 rounded-full ${slot.isAvailable ? 'bg-teal-500 animate-pulse' : 'bg-slate-400'}`}></span>
+                              {slot.isAvailable ? 'Status: Active Booking' : 'Status: Unavailable'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 self-start sm:self-center">
+                            <button
+                              type="button"
+                              onClick={() => setEditingSlotId(slot.id)}
+                              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:shadow-md"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleDelete(slot.id)}
+                              className="inline-flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-bold text-rose-700 shadow-sm transition-all hover:bg-rose-100 hover:shadow-md"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </article>
+                ))}
+              </div>
+            )}
+          </motion.section>
+        </div>
       </div>
     </div>
   );

@@ -3,12 +3,37 @@ import { ShieldAlert, CheckCircle, XCircle, Clock, Mail, Phone, Briefcase, Award
 import { Navigate } from 'react-router-dom';
 import { VerificationTimeline } from '../../components/doctor/VerificationTimeline';
 import { DOCTOR_VERIFICATION_STATUSES } from '../../constants/doctor';
-import { getDoctors, getVerificationHistory, updateVerificationStatus } from '../../services/doctor/doctorApi';
+import { decideDoctorChangeRequest, getDoctorById, getDoctors, getVerificationHistory, updateVerificationStatus } from '../../services/doctor/doctorApi';
 import { isAdminUser } from '../../services/authSession';
 import type { DoctorVerificationHistoryItem, DoctorVerificationStatus, DoctorServiceDoctor, PagedResponse } from '../../types/doctor';
 
+const CHANGE_REQUEST_PREFIX = 'PROFILE_CHANGE_REQUEST';
+
+function isChangeRequestEntry(item: DoctorVerificationHistoryItem) {
+  const reason = (item.reason || '').toUpperCase().trim();
+  return reason === CHANGE_REQUEST_PREFIX || reason.startsWith(`${CHANGE_REQUEST_PREFIX}:`);
+}
+
+function isChangeRequestDecisionEntry(item: DoctorVerificationHistoryItem) {
+  const reason = (item.reason || '').toUpperCase().trim();
+  return reason.startsWith(`${CHANGE_REQUEST_PREFIX}_DECISION`);
+}
+
+function cleanedChangeRequestReason(reason?: string) {
+  if (!reason) {
+    return '';
+  }
+  return reason.replace(/^PROFILE_CHANGE_REQUEST:\s*/i, '').replace(/^PROFILE_CHANGE_REQUEST\s*/i, '').trim();
+}
+
+function isResolvedChangeRequest(item: DoctorVerificationHistoryItem) {
+  const notes = item.notes || '';
+  return notes.includes('Resolution: APPROVE') || notes.includes('Resolution: REJECT');
+}
+
 export default function DoctorVerificationAdmin() {
   const [doctors, setDoctors] = useState<DoctorServiceDoctor[]>([]);
+  const [doctorPendingRequestCount, setDoctorPendingRequestCount] = useState<Record<number, number>>({});
   const [selectedDoctor, setSelectedDoctor] = useState<DoctorServiceDoctor | null>(null);
   const [history, setHistory] = useState<DoctorVerificationHistoryItem[]>([]);
   const [status, setStatus] = useState<DoctorVerificationStatus>('PENDING');
@@ -17,6 +42,7 @@ export default function DoctorVerificationAdmin() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('PENDING');
+  const [historyView, setHistoryView] = useState<'ALL' | 'CHANGE_REQUESTS' | 'STATUS_UPDATES'>('ALL');
   const [pageSize] = useState(20);
 
   if (!isAdminUser()) {
@@ -32,6 +58,26 @@ export default function DoctorVerificationAdmin() {
     try {
       const response = await getDoctors({ page: 0, size: pageSize, sortBy: 'createdAt', sortDir: 'desc' });
       setDoctors(response.content);
+
+      const pendingCounts = await Promise.all(
+        response.content.map(async (doctor) => {
+          try {
+            const items = await getVerificationHistory(doctor.id, 'admin');
+            const pendingCount = items.filter((entry) => isChangeRequestEntry(entry) && !isResolvedChangeRequest(entry)).length;
+            return [doctor.id, pendingCount] as const;
+          } catch {
+            return [doctor.id, 0] as const;
+          }
+        }),
+      );
+
+      setDoctorPendingRequestCount(
+        pendingCounts.reduce<Record<number, number>>((acc, [doctorId, count]) => {
+          acc[doctorId] = count;
+          return acc;
+        }, {}),
+      );
+
       setMessage('');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to load doctors.');
@@ -42,10 +88,46 @@ export default function DoctorVerificationAdmin() {
 
   const loadHistory = async (doctorId: number) => {
     try {
-      const result = await getVerificationHistory(doctorId);
+      const result = await getVerificationHistory(doctorId, 'admin');
       setHistory(result);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to load verification history.');
+    }
+  };
+
+  const handleChangeRequestDecision = async (
+    requestId: number,
+    action: 'APPROVE' | 'REJECT',
+  ) => {
+    if (!selectedDoctor) {
+      return;
+    }
+
+    const note = window.prompt(
+      action === 'APPROVE'
+        ? 'Optional admin note for approval:'
+        : 'Reason for rejection (recommended):',
+      '',
+    );
+
+    setLoading(true);
+    setMessage('');
+
+    try {
+      const result = await decideDoctorChangeRequest(selectedDoctor.id, requestId, {
+        action,
+        adminNotes: note?.trim() || undefined,
+      });
+
+      await loadHistory(selectedDoctor.id);
+      const refreshedDoctor = await getDoctorById(selectedDoctor.id);
+      setSelectedDoctor(refreshedDoctor);
+      await loadDoctors();
+      setMessage(result.message || `Change request ${action.toLowerCase()}d successfully.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Failed to process change request.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -87,6 +169,18 @@ export default function DoctorVerificationAdmin() {
   const filteredDoctors = doctors.filter(
     (doc) => filter === 'ALL' || doc.verificationStatus === filter
   );
+
+  const changeRequestItems = history.filter((entry) => isChangeRequestEntry(entry) && !isChangeRequestDecisionEntry(entry));
+
+  const visibleHistory = history.filter((item) => {
+    if (historyView === 'CHANGE_REQUESTS') {
+      return isChangeRequestEntry(item) && !isChangeRequestDecisionEntry(item);
+    }
+    if (historyView === 'STATUS_UPDATES') {
+      return !isChangeRequestEntry(item);
+    }
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-50 px-4 pb-20 pt-28 sm:px-6 lg:px-8">
@@ -157,6 +251,11 @@ export default function DoctorVerificationAdmin() {
                       <p className="font-bold text-slate-900">{doctor.firstName} {doctor.lastName}</p>
                       <p className="text-xs text-slate-600">{doctor.email}</p>
                       <p className="text-sm text-slate-700 mt-1">{doctor.specialization}</p>
+                      {(doctorPendingRequestCount[doctor.id] || 0) > 0 && (
+                        <p className="mt-2 inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                          {doctorPendingRequestCount[doctor.id]} new change request{doctorPendingRequestCount[doctor.id] > 1 ? 's' : ''}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       {doctor.verificationStatus === 'APPROVED' && <CheckCircle className="h-5 w-5 text-emerald-600" />}
@@ -253,6 +352,48 @@ export default function DoctorVerificationAdmin() {
                   {loading ? 'Updating...' : 'Update Status'}
                 </button>
               </form>
+
+              <div className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Change Requests</p>
+                {!changeRequestItems.length ? (
+                  <p className="mt-2 text-sm text-indigo-900">No change requests submitted by this doctor.</p>
+                ) : (
+                  <div className="mt-3 space-y-3">
+                    {changeRequestItems.slice(0, 3).map((item) => (
+                      <article key={item.id} className="rounded-lg border border-indigo-200 bg-white p-3">
+                        <p className="text-sm font-semibold text-slate-900">
+                          {cleanedChangeRequestReason(item.reason) || 'Profile change requested'}
+                        </p>
+                        {item.notes && <p className="mt-1 text-xs text-slate-600">{item.notes}</p>}
+                        <p className="mt-2 text-xs text-slate-500">Requested by {item.changedBy}</p>
+                        {!isResolvedChangeRequest(item) && !isChangeRequestDecisionEntry(item) && (
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleChangeRequestDecision(item.id, 'APPROVE')}
+                              disabled={loading}
+                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                            >
+                              Approve And Apply
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleChangeRequestDecision(item.id, 'REJECT')}
+                              disabled={loading}
+                              className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-60"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                        {isResolvedChangeRequest(item) && (
+                          <p className="mt-3 text-xs font-semibold text-slate-500">This request is already resolved.</p>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -260,8 +401,30 @@ export default function DoctorVerificationAdmin() {
         {/* Verification Timeline */}
         {selectedDoctor && (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-xl font-bold text-slate-900">Verification History</h2>
-            <VerificationTimeline items={history} />
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-xl font-bold text-slate-900">Verification History</h2>
+              <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                {([
+                  { key: 'ALL', label: 'All' },
+                  { key: 'CHANGE_REQUESTS', label: 'Change Requests' },
+                  { key: 'STATUS_UPDATES', label: 'Status Updates' },
+                ] as const).map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setHistoryView(item.key)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                      historyView === item.key
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <VerificationTimeline items={visibleHistory} />
           </div>
         )}
       </div>
