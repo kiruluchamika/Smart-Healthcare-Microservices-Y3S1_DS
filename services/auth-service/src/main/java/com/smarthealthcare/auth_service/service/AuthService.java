@@ -62,6 +62,13 @@ public class AuthService {
         return buildAuthResponse(user);
     }
 
+    @Transactional(readOnly = true)
+    public UserResponse getUserById(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return UserResponse.fromEntity(user);
+    }
+
     private User validateCredentials(LoginRequest request) {
         if (request == null) {
             throw new IllegalArgumentException("Invalid email or password");
