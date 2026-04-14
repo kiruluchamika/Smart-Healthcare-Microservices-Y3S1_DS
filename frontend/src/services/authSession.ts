@@ -6,6 +6,8 @@ const AUTH_TOKEN_EXPIRES_AT_KEY = 'authTokenExpiresAt';
 export const AUTH_CHANGED_EVENT = 'auth-state-changed';
 export const PROFILE_UPDATED_EVENT = 'patient-profile-updated';
 
+const authStorage = window.sessionStorage;
+
 function notifyAuthChanged() {
   window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
 }
@@ -16,21 +18,21 @@ export function notifyProfileUpdated() {
 
 export function setAuthSession(response: AuthResponse) {
   const expiresAt = Date.now() + (response.expiresInMs || 0);
-  localStorage.setItem(AUTH_TOKEN_KEY, response.accessToken);
-  localStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
-  localStorage.setItem(AUTH_TOKEN_EXPIRES_AT_KEY, String(expiresAt));
+  authStorage.setItem(AUTH_TOKEN_KEY, response.accessToken);
+  authStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
+  authStorage.setItem(AUTH_TOKEN_EXPIRES_AT_KEY, String(expiresAt));
   notifyAuthChanged();
 }
 
 export function clearAuthSession() {
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-  localStorage.removeItem(AUTH_USER_KEY);
-  localStorage.removeItem(AUTH_TOKEN_EXPIRES_AT_KEY);
+  authStorage.removeItem(AUTH_TOKEN_KEY);
+  authStorage.removeItem(AUTH_USER_KEY);
+  authStorage.removeItem(AUTH_TOKEN_EXPIRES_AT_KEY);
   notifyAuthChanged();
 }
 
 function isTokenExpired(token: string) {
-  const expiresAtRaw = localStorage.getItem(AUTH_TOKEN_EXPIRES_AT_KEY);
+  const expiresAtRaw = authStorage.getItem(AUTH_TOKEN_EXPIRES_AT_KEY);
   const expiresAt = expiresAtRaw ? Number(expiresAtRaw) : NaN;
 
   if (Number.isFinite(expiresAt) && expiresAt > 0) {
@@ -51,7 +53,7 @@ function isTokenExpired(token: string) {
 }
 
 export function getAuthToken() {
-  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const token = authStorage.getItem(AUTH_TOKEN_KEY);
   if (!token) {
     return null;
   }
@@ -65,7 +67,7 @@ export function getAuthToken() {
 }
 
 export function getAuthUser() {
-  const rawUser = localStorage.getItem(AUTH_USER_KEY);
+  const rawUser = authStorage.getItem(AUTH_USER_KEY);
   if (!rawUser) {
     return null;
   }
