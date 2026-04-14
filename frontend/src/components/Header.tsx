@@ -156,6 +156,7 @@ export default function Header() {
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Doctor Profile', href: '/doctors/profile' },
     { label: 'Appointments', href: '/doctor/appointments' },
+    { label: 'Patient Reports', href: '/doctor/reports' },
   ];
 
   const adminNavItems = [
