@@ -24,6 +24,7 @@ export interface DoctorServiceDoctor {
   active: boolean;
   profileCompletenessScore: number;
   onboardingState: DoctorOnboardingState;
+  profilePictureUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +41,7 @@ export interface AppointmentBookingDoctor {
   pricingLabel: string;
   profileCompletenessScore: number;
   initials: string;
+  profilePictureUrl?: string | null;
 }
 
 export interface DoctorListParams {
@@ -81,6 +83,7 @@ export interface DoctorCreatePayload {
   insuranceProviders?: string;
   licenseExpiryDate?: string | null;
   consultationFee?: number;
+  profilePictureUrl?: string | null;
 }
 
 export interface DoctorUpdatePayload extends DoctorCreatePayload { }
@@ -135,6 +138,18 @@ export interface DoctorVerificationStatusUpdatePayload {
   verificationStatus: DoctorVerificationStatus;
   reason?: string;
   notes?: string;
+}
+
+export interface DoctorChangeRequestPayload {
+  fields: string[];
+  reason: string;
+  notes?: string;
+  requestedValues?: Record<string, string | number>;
+}
+
+export interface DoctorChangeRequestDecisionPayload {
+  action: 'APPROVE' | 'REJECT';
+  adminNotes?: string;
 }
 
 export interface ApiErrorResponse {

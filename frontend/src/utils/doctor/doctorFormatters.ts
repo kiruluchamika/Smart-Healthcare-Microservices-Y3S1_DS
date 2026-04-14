@@ -48,6 +48,7 @@ export function toAppointmentBookingDoctor(doctor: DoctorServiceDoctor): Appoint
     pricingLabel,
     profileCompletenessScore: doctor.profileCompletenessScore,
     initials: getDoctorInitials(doctor),
+    profilePictureUrl: doctor.profilePictureUrl,
   };
 }
 

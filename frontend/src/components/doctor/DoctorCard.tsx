@@ -25,11 +25,20 @@ export function DoctorCard({ doctor }: DoctorCardProps) {
 
       <div className="relative">
         <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">
-              Dr. {doctor.firstName} {doctor.lastName}
-            </h3>
-            <p className="mt-1 text-sm text-slate-600">{doctor.specialization}</p>
+          <div className="flex gap-4">
+            {doctor.profilePictureUrl ? (
+              <img src={doctor.profilePictureUrl} alt={`Dr. ${doctor.lastName}`} className="w-12 h-12 rounded-full object-cover shadow-sm border-2 border-white" />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-lg shadow-sm border-2 border-white">
+                {doctor.firstName.charAt(0)}{doctor.lastName.charAt(0)}
+              </div>
+            )}
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">
+                Dr. {doctor.firstName} {doctor.lastName}
+              </h3>
+              <p className="mt-1 text-xs font-medium text-slate-500 uppercase tracking-wide">{doctor.specialization}</p>
+            </div>
           </div>
           <DoctorStatusBadge status={doctor.verificationStatus} />
         </div>

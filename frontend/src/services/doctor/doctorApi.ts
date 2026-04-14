@@ -3,6 +3,8 @@ import type {
   ApiErrorResponse,
   DoctorAvailability,
   DoctorAvailabilityPayload,
+  DoctorChangeRequestPayload,
+  DoctorChangeRequestDecisionPayload,
   DoctorCreatePayload,
   DoctorDashboardSummary,
   DoctorListParams,
@@ -196,8 +198,27 @@ export function updateVerificationStatus(
   });
 }
 
-export function getVerificationHistory(doctorId: number) {
+export function getVerificationHistory(doctorId: number, role: DoctorUserRole = 'doctor') {
   return request<DoctorVerificationHistoryItem[]>(`/${doctorId}/verification-history`, {
+    role,
+  });
+}
+
+export function submitDoctorChangeRequest(doctorId: number, payload: DoctorChangeRequestPayload) {
+  return request<{ message: string }>(`/${doctorId}/change-requests`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function decideDoctorChangeRequest(
+  doctorId: number,
+  requestId: number,
+  payload: DoctorChangeRequestDecisionPayload,
+) {
+  return request<{ message: string }>(`/${doctorId}/change-requests/${requestId}`, {
     role: 'admin',
+    method: 'PATCH',
+    body: JSON.stringify(payload),
   });
 }
