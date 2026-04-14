@@ -7,10 +7,12 @@ import {
   MedicalHistory,
   MedicalHistoryRequest
 } from '../types/patient';
-import { getAuthToken } from './authSession';
+import { getAuthToken, getAuthUser } from './authSession';
 
 // Uses NGINX proxy just like authApi
 const API_URL = '/api/patients/me';
+const DOCTOR_REPORTS_API_URL = '/api/patients/doctor/reports';
+const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -26,6 +28,22 @@ const getHeaders = () => {
 
   return {
     Authorization: `Bearer ${token}`,
+  };
+};
+
+const getDoctorHeaders = () => {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Session expired. Please login again.');
+  }
+
+  const user = getAuthUser();
+  const storedDoctorProfileId = localStorage.getItem(DOCTOR_PROFILE_ID_KEY);
+  const doctorId = storedDoctorProfileId || (user?.id ? String(user.id) : null);
+
+  return {
+    Authorization: `Bearer ${token}`,
+    ...(doctorId ? { 'X-Doctor-Id': doctorId } : {}),
   };
 };
 
@@ -79,6 +97,30 @@ export const patientApi = {
     return response.data;
   },
 
+  getReportsForDoctor: async (patientAuthUserId: number, type?: ReportType) => {
+    const params = new URLSearchParams();
+    if (type) {
+      params.set('type', type);
+    }
+
+    const query = params.toString();
+    const url = `${DOCTOR_REPORTS_API_URL}/patient/${patientAuthUserId}${query ? `?${query}` : ''}`;
+    const response = await axios.get<ApiResponse<MedicalReport[]>>(url, {
+      headers: getDoctorHeaders(),
+    });
+    return response.data;
+  },
+
+  getPatientProfileForDoctor: async (patientAuthUserId: number) => {
+    const response = await axios.get<ApiResponse<PatientProfile>>(
+      `${DOCTOR_REPORTS_API_URL}/patient/${patientAuthUserId}/profile`,
+      {
+        headers: getDoctorHeaders(),
+      },
+    );
+    return response.data;
+  },
+
   uploadReport: async (file: File, title: string, reportType: ReportType, description?: string, reportDate?: string) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -104,6 +146,14 @@ export const patientApi = {
     const response = await axios.get(`${API_URL}/reports/${id}/download`, {
       headers: getHeaders(),
       responseType: 'blob', // Important for file download
+    });
+    return response;
+  },
+
+  downloadPatientReportBlobForDoctor: async (patientAuthUserId: number, id: number) => {
+    const response = await axios.get(`${DOCTOR_REPORTS_API_URL}/patient/${patientAuthUserId}/${id}/download`, {
+      headers: getDoctorHeaders(),
+      responseType: 'blob',
     });
     return response;
   },

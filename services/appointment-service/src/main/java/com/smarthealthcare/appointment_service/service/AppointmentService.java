@@ -37,4 +37,6 @@ public interface AppointmentService {
     AppointmentResponse updatePaymentStatus(Long appointmentId, UpdateAppointmentPaymentStatusRequest request);
 
     AvailabilityResponse getDoctorAvailability(Long doctorId, LocalDate appointmentDate);
+
+    boolean hasDoctorCompletedAppointmentWithPatient(Long doctorId, Long patientId);
 }

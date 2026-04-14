@@ -39,6 +39,11 @@ server:
 app:
   jwt:
     secret: ${APP_JWT_SECRET:smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes}
+  services:
+    appointment:
+      base-url: ${APPOINTMENT_SERVICE_BASE_URL:http://localhost:8082}
+    auth:
+      base-url: ${AUTH_SERVICE_BASE_URL:http://localhost:8080/auth}
   security:
     allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:*,http://127.0.0.1:*}
   upload:

@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Locale;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +34,8 @@ public class AppointmentServiceImpl implements AppointmentService {
     private static final String DEFAULT_CURRENCY = "usd";
     private static final List<AppointmentStatus> ACTIVE_STATUSES =
             List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED);
+        private static final Set<AppointmentStatus> DOCTOR_REPORT_ACCESS_STATUSES =
+            Set.of(AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED);
 
     private final AppointmentRepository appointmentRepository;
 
@@ -292,6 +295,15 @@ public class AppointmentServiceImpl implements AppointmentService {
                 ? "No booked slots found for the selected doctor and date"
                 : "Booked slots retrieved successfully");
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean hasDoctorCompletedAppointmentWithPatient(Long doctorId, Long patientId) {
+        return appointmentRepository.existsByDoctorIdAndPatientIdAndStatusIn(
+                doctorId,
+                patientId,
+            DOCTOR_REPORT_ACCESS_STATUSES);
     }
 
     private Appointment findAppointment(Long appointmentId) {
