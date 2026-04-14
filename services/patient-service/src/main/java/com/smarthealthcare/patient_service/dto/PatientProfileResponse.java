@@ -45,9 +45,19 @@ public class PatientProfileResponse {
         PatientProfileResponse resp = new PatientProfileResponse();
         resp.setId(profile.getId());
         resp.setAuthUserId(profile.getAuthUserId());
-        resp.setFirstName(firstName == null ? "" : firstName.trim());
-        resp.setLastName(lastName == null ? "" : lastName.trim());
-        resp.setEmail(email == null ? "" : email.trim());
+        String resolvedFirstName = profile.getFirstName() != null && !profile.getFirstName().isBlank()
+            ? profile.getFirstName()
+            : firstName;
+        String resolvedLastName = profile.getLastName() != null && !profile.getLastName().isBlank()
+            ? profile.getLastName()
+            : lastName;
+        String resolvedEmail = profile.getEmail() != null && !profile.getEmail().isBlank()
+            ? profile.getEmail()
+            : email;
+
+        resp.setFirstName(resolvedFirstName == null ? "" : resolvedFirstName.trim());
+        resp.setLastName(resolvedLastName == null ? "" : resolvedLastName.trim());
+        resp.setEmail(resolvedEmail == null ? "" : resolvedEmail.trim());
         resp.setDateOfBirth(profile.getDateOfBirth());
         resp.setGender(profile.getGender());
         resp.setBloodGroup(profile.getBloodGroup());
