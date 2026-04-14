@@ -434,9 +434,13 @@ export default function AppointmentBooking() {
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-4">
-                        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-lg font-bold text-white">
-                          {doctor.initials}
-                        </div>
+                        {doctor.profilePictureUrl ? (
+                          <img src={doctor.profilePictureUrl} alt={doctor.fullName} className="h-14 w-14 rounded-2xl object-cover shadow-sm border border-gray-100" />
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 text-lg font-bold text-white shrink-0 shadow-sm">
+                            {doctor.initials}
+                          </div>
+                        )}
                         <div>
                           <h3 className="font-semibold text-gray-900">{doctor.fullName}</h3>
                           <p className="text-sm text-gray-600">{doctor.specialty}</p>
