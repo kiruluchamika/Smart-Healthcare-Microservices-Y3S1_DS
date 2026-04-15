@@ -6,5 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record NotificationIntegrationProperties(
         String authBaseUrl,
         String doctorBaseUrl,
-        String patientBaseUrl) {
+        String patientBaseUrl,
+        String doctorUsername,
+        String doctorPassword) {
 }
