@@ -209,6 +209,24 @@ services:
       timeout: 5s
       retries: 10
 
+  mysql-notification:
+    image: mysql:8.0
+    container_name: mysql-notification
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: notification_service_db
+      MYSQL_USER: notification_user
+      MYSQL_PASSWORD: notification_pass
+    ports:
+      - "3315:3306"
+    volumes:
+      - mysql-notification-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   mysql-telemedicine:
     image: mysql:8.0
     container_name: mysql-telemedicine
@@ -244,6 +262,23 @@ services:
     ports:
       - "8087:8087"
 
+  notification-service:
+    build:
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-notification:3306/notification_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: notification_user
+      SPRING_DATASOURCE_PASSWORD: notification_pass
+      SERVER_PORT: 8084
+    depends_on:
+      mysql-notification:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
+
   payment-service:
     build:
       context: ./services/payment-service
@@ -261,13 +296,15 @@ services:
       DOCTOR_SERVICE_USERNAME: doctor
       DOCTOR_SERVICE_PASSWORD: doctor123
       TELEMEDICINE_SERVICE_BASE_URL: http://telemedicine-service:8087
-      NOTIFICATION_SERVICE_BASE_URL: http://host.docker.internal:8084
+      NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8084
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
       SERVER_PORT: 8086
     depends_on:
       mysql-payment:
         condition: service_healthy
       telemedicine-service:
+        condition: service_started
+      notification-service:
         condition: service_started
     ports:
       - "8086:8086"
@@ -280,4 +317,5 @@ volumes:
   mysql-ai-suggestion-data:
   mysql-ai-symptom-data:
   mysql-payment-data:
+  mysql-notification-data:
   mysql-telemedicine-data:
