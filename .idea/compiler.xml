@@ -7,12 +7,13 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="api-gateway" />
         <module name="auth-service" />
-        <module name="patient-service" />
         <module name="appointment-service" />
+        <module name="api-gateway" />
+        <module name="patient-service" />
         <module name="telemedicine-service" />
         <module name="ai-symptom-service" />
+        <module name="notification-service" />
       </profile>
       <profile name="Annotation profile for payment-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -36,6 +37,7 @@
       <module name="appointment-service" options="-parameters" />
       <module name="auth-service" options="-parameters" />
       <module name="doctor-service" options="-parameters" />
+      <module name="notification-service" options="-parameters" />
       <module name="patient-Service" options="-parameters -parameters" />
       <module name="patient-service" options="-parameters -parameters" />
       <module name="payment-service" options="-parameters" />

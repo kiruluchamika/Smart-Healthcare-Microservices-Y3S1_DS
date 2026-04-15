@@ -1,3 +1,33 @@
 spring:
   application:
     name: notification-service
+  docker:
+    compose:
+      enabled: true
+      file: services/notification-service/docker-compose.yaml
+      lifecycle-management: start-and-stop
+      stop:
+        command: down
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3315/notification_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:notification_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:notification_pass}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: false
+
+server:
+  port: ${SERVER_PORT:8084}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
