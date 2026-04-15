@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { ChevronDown, Menu, UserCircle2, X } from 'lucide-react';
 import { getDoctorByEmail } from '../services/doctor/doctorApi';
 import { patientApi } from '../services/patientApi';
+import NotificationBell from './notifications/NotificationBell';
 import {
   AUTH_CHANGED_EVENT,
   PROFILE_UPDATED_EVENT,
@@ -343,7 +344,9 @@ export default function Header() {
                 </>
               )
             ) : role === 'PATIENT' ? (
-              <div className="relative" ref={profileMenuRef}>
+              <div className="flex items-center gap-3">
+                <NotificationBell />
+                <div className="relative" ref={profileMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsProfileOpen((prev) => !prev)}
@@ -388,9 +391,12 @@ export default function Header() {
                     </button>
                   </div>
                 )}
+                </div>
               </div>
             ) : role === 'DOCTOR' && (isDoctorWorkspaceRoute || isLandingPage) ? (
-              <div className="relative" ref={profileMenuRef}>
+              <div className="flex items-center gap-3">
+                <NotificationBell />
+                <div className="relative" ref={profileMenuRef}>
                 <button
                   type="button"
                   onClick={() => {
@@ -450,6 +456,7 @@ export default function Header() {
                     </button>
                   </div>
                 )}
+                </div>
               </div>
             ) : (
               <>
@@ -508,6 +515,15 @@ export default function Header() {
                 {item.label}
               </Link>
             ))}
+            {isAuthenticated && (role === 'PATIENT' || role === 'DOCTOR') && (
+              <Link
+                to="/notifications"
+                className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Notifications
+              </Link>
+            )}
             {!isAuthenticated ? (
               <div className="pt-4 border-t border-gray-200/20 space-y-2">
                 <Link
