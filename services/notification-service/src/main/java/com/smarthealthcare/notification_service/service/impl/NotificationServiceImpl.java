@@ -13,6 +13,7 @@ import com.smarthealthcare.notification_service.enums.NotificationChannel;
 import com.smarthealthcare.notification_service.enums.NotificationStatus;
 import com.smarthealthcare.notification_service.repository.NotificationRepository;
 import com.smarthealthcare.notification_service.service.NotificationService;
+import com.twilio.exception.ApiException;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
@@ -64,6 +65,12 @@ public class NotificationServiceImpl implements NotificationService {
     @PostConstruct
     void initTwilio() {
         Twilio.init(twilioProperties.accountSid(), twilioProperties.authToken());
+        String normalizedSender = normalizePhone(twilioProperties.phoneNumber());
+        if (!StringUtils.hasText(normalizedSender)) {
+            log.warn("Twilio sender phone-number is missing or invalid. SMS delivery will fail until a Twilio-owned E.164 number is configured.");
+        } else {
+            log.info("Twilio SMS sender configured as {}", maskPhone(normalizedSender));
+        }
     }
 
     @Override
@@ -76,18 +83,26 @@ public class NotificationServiceImpl implements NotificationService {
                 request.appointmentId(),
                 request.paymentId());
 
-        RecipientContext recipient = resolveRecipient(request.targetRole(), request.targetUserId());
+        RecipientContext recipient;
+        try {
+            recipient = resolveRecipient(request.targetRole(), request.targetUserId());
+        } catch (Exception ex) {
+            log.warn(
+                    "Recipient resolution failed eventType={}, targetRole={}, targetUserId={}, reason={}",
+                    normalize(request.eventType()),
+                    normalizeRole(request.targetRole()),
+                    request.targetUserId(),
+                    ex.getMessage());
 
-        Notification notification = new Notification();
-        notification.setEventType(normalize(request.eventType()));
-        notification.setTargetRole(normalizeRole(request.targetRole()));
-        notification.setTargetUserId(request.targetUserId());
-        notification.setPaymentId(request.paymentId());
-        notification.setAppointmentId(request.appointmentId());
-        notification.setTitle(defaultIfBlank(request.title(), buildDefaultTitle(request.eventType())));
-        notification.setMessage(defaultIfBlank(request.message(), buildDefaultMessage(request.eventType(), recipient.role(), recipient.displayName())));
+            Notification failed = buildBaseNotification(request, normalizeRole(request.targetRole()), "User");
+            failed.setChannel(NotificationChannel.EMAIL);
+            failed.setStatus(NotificationStatus.FAILED);
+            failed.setFailureReason(limit("Recipient resolution failed: " + ex.getMessage(), 180));
+            return NotificationResponse.fromEntity(notificationRepository.save(failed));
+        }
+
+        Notification notification = buildBaseNotification(request, recipient.role(), recipient.displayName());
         notification.setChannel(resolveChannel(recipient));
-        notification.setStatus(NotificationStatus.PENDING);
         notification.setRecipientEmail(recipient.email());
         notification.setRecipientPhone(normalizePhone(recipient.phone()));
         notification.setRecipientName(recipient.displayName());
@@ -122,6 +137,22 @@ public class NotificationServiceImpl implements NotificationService {
         }
 
         return NotificationResponse.fromEntity(notificationRepository.save(saved));
+    }
+
+    private Notification buildBaseNotification(NotificationEventRequest request, String targetRole, String recipientName) {
+        Notification notification = new Notification();
+        notification.setEventType(normalize(request.eventType()));
+        notification.setTargetRole(normalizeRole(targetRole));
+        notification.setTargetUserId(request.targetUserId());
+        notification.setPaymentId(request.paymentId());
+        notification.setAppointmentId(request.appointmentId());
+        notification.setTitle(defaultIfBlank(request.title(), buildDefaultTitle(request.eventType())));
+        notification.setMessage(defaultIfBlank(
+                request.message(),
+                buildDefaultMessage(request.eventType(), normalizeRole(targetRole), recipientName)));
+        notification.setStatus(NotificationStatus.PENDING);
+        notification.setRecipientName(recipientName);
+        return notification;
     }
 
     @Override
@@ -217,9 +248,25 @@ public class NotificationServiceImpl implements NotificationService {
             throw new IllegalArgumentException("Recipient phone is missing or invalid for SMS delivery");
         }
 
+        String normalizedSender = normalizePhone(twilioProperties.phoneNumber());
+        if (!StringUtils.hasText(normalizedSender)) {
+            throw new IllegalStateException("Twilio sender phone-number is missing or invalid. Use a Twilio-owned E.164 number.");
+        }
+
+        if (Objects.equals(normalizedSender, normalizedPhone)) {
+            log.warn("Twilio sender and recipient are the same number {}. Trial restrictions may block delivery.", maskPhone(normalizedPhone));
+        }
+
         String smsBody = buildSmsBody(notification);
-        Message.creator(new PhoneNumber(normalizedPhone), new PhoneNumber(twilioProperties.phoneNumber()), smsBody)
-                .create();
+        try {
+            Message.creator(new PhoneNumber(normalizedPhone), new PhoneNumber(normalizedSender), smsBody)
+                    .create();
+        } catch (ApiException ex) {
+            String detail = ex.getCode() != null
+                    ? "Twilio error code " + ex.getCode() + ": " + ex.getMessage()
+                    : ex.getMessage();
+            throw new IllegalStateException(detail, ex);
+        }
     }
 
     private String buildSmsBody(Notification notification) {
@@ -319,12 +366,13 @@ public class NotificationServiceImpl implements NotificationService {
 
     private String buildDefaultTitle(String eventType) {
         return switch (normalize(eventType)) {
-            case "APPOINTMENT_CONFIRMED" -> "Your Appointment Is Confirmed";
-            case "APPOINTMENT_CONFIRMED_DOCTOR" -> "Appointment Confirmed Successfully";
-            case "CONSULTATION_COMPLETED" -> "Consultation Completed";
-            case "CONSULTATION_COMPLETED_DOCTOR" -> "Consultation Closed Successfully";
-            case "PAYMENT_CONFIRMED" -> "Payment Confirmed";
-            case "PAYMENT_CONFIRMED_DOCTOR" -> "Patient Payment Confirmed";
+            case "APPOINTMENT_CONFIRMED" -> "Appointment Confirmed: You're All Set";
+            case "APPOINTMENT_CONFIRMED_DOCTOR" -> "Appointment Confirmed With Patient";
+            case "CONSULTATION_COMPLETED" -> "Consultation Successfully Completed";
+            case "CONSULTATION_COMPLETED_DOCTOR" -> "Consultation Completion Recorded";
+            case "PAYMENT_CONFIRMED" -> "Payment Confirmed: Consultation Ready";
+            case "PAYMENT_CONFIRMED_DOCTOR" -> "Patient Payment Received";
+            case "APPOINTMENT_REMINDER" -> "Friendly Reminder: Appointment Starts Soon";
             default -> "Smart Healthcare Update";
         };
     }
@@ -332,14 +380,15 @@ public class NotificationServiceImpl implements NotificationService {
     private String buildDefaultMessage(String eventType, String role, String displayName) {
         String name = StringUtils.hasText(displayName) ? displayName : "there";
         return switch (normalize(eventType)) {
-            case "APPOINTMENT_CONFIRMED" -> "Hi " + name + ", great news! Your appointment has been confirmed. Please be ready a few minutes before your scheduled time.";
-            case "APPOINTMENT_CONFIRMED_DOCTOR" -> "Hi Dr. " + name + ", your patient appointment is now confirmed. Wishing you a successful consultation.";
-            case "CONSULTATION_COMPLETED" -> "Hi " + name + ", your consultation was successfully completed. Thank you for choosing Smart Healthcare.";
-            case "CONSULTATION_COMPLETED_DOCTOR" -> "Hi Dr. " + name + ", consultation completion has been recorded successfully.";
-            case "PAYMENT_CONFIRMED" -> "Hi " + name + ", your payment is successful and your consultation is ready.";
-            case "PAYMENT_CONFIRMED_DOCTOR" -> "A patient payment was confirmed. Consultation workflow can proceed.";
-            case "PAYMENT_FAILED" -> "Your payment could not be processed. Please retry or contact support.";
-            case "PAYMENT_REFUNDED" -> "Your payment refund was successfully processed.";
+            case "APPOINTMENT_CONFIRMED" -> "Hi " + name + ", your appointment is confirmed and your care team is ready for you. Please join 5 minutes early and keep your records nearby.";
+            case "APPOINTMENT_CONFIRMED_DOCTOR" -> "Hi Dr. " + name + ", this booking is confirmed. Your patient has been notified and the appointment is now active in your schedule.";
+            case "CONSULTATION_COMPLETED" -> "Hi " + name + ", your consultation has been marked as completed. Thank you for trusting Smart Healthcare for your care journey.";
+            case "CONSULTATION_COMPLETED_DOCTOR" -> "Hi Dr. " + name + ", the consultation completion was recorded successfully. Billing and follow-up workflow can now continue.";
+            case "PAYMENT_CONFIRMED" -> "Hi " + name + ", we received your payment successfully. Your consultation access is now ready and your booking remains confirmed.";
+            case "PAYMENT_CONFIRMED_DOCTOR" -> "A patient payment has been confirmed. You can proceed with consultation preparation and follow-up without payment hold.";
+            case "APPOINTMENT_REMINDER" -> "Hi " + name + ", this is a friendly reminder that your appointment is starting soon. Please be available a few minutes before the scheduled time.";
+            case "PAYMENT_FAILED" -> "Your payment could not be processed. Please retry using a valid card or contact support for assistance.";
+            case "PAYMENT_REFUNDED" -> "Your refund has been processed successfully. Please allow your bank's standard processing time for balance reflection.";
             default -> "You have a new notification from Smart Healthcare for role " + role + ".";
         };
     }
