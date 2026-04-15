@@ -387,8 +387,8 @@ public class AppointmentServiceImpl implements AppointmentService {
                 "PATIENT",
                 appointment.getPatientId(),
                 appointment.getId(),
-                "Appointment confirmed",
-                "Your appointment has been confirmed by your doctor. We are excited to support your care journey.",
+            null,
+            null,
                 scheduledFor);
 
         publishNotification(
@@ -396,8 +396,8 @@ public class AppointmentServiceImpl implements AppointmentService {
                 "DOCTOR",
                 appointment.getDoctorId(),
                 appointment.getId(),
-                "Booking confirmed",
-                "You confirmed this appointment successfully. Your patient has now been notified.",
+            null,
+            null,
                 scheduledFor);
     }
 
