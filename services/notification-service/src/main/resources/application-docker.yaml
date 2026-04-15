@@ -3,9 +3,9 @@ spring:
     compose:
       enabled: false
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql-notification:3306/notification_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
-    username: ${SPRING_DATASOURCE_USERNAME:notification_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:notification_pass}
+    url: jdbc:mysql://mysql-notification:3306/notification_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: notification_user
+    password: notification_pass
   jpa:
     hibernate:
       ddl-auto: update
@@ -13,3 +13,33 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: gamindukalmadu8@gmail.com
+    password: bnnbdilpxngkpmtz
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+twilio:
+  account-sid: AC1870d6fd6e1e2c9e28c955cdbd749651
+  auth-token: b2b7d4716ccd47ee60976b3e5fa63044
+  phone-number: +94767955166
+
+app:
+  notification:
+    from-email: gamindukalmadu8@gmail.com
+    reply-to-email: gamindukalmadu8@gmail.com
+    subject-prefix: Smart Healthcare
+  integrations:
+    auth-base-url: http://auth-service:8080/auth
+    doctor-base-url: http://doctor-service:8083/api/v1/doctors
+    patient-base-url: http://patient-service:8085/patients
