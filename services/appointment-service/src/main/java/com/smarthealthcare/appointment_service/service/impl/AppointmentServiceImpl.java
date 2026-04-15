@@ -1,5 +1,7 @@
 package com.smarthealthcare.appointment_service.service.impl;
 
+import com.smarthealthcare.appointment_service.client.NotificationClient;
+import com.smarthealthcare.appointment_service.dto.integration.NotificationEventRequest;
 import com.smarthealthcare.appointment_service.dto.request.CreateAppointmentRequest;
 import com.smarthealthcare.appointment_service.dto.request.RescheduleAppointmentRequest;
 import com.smarthealthcare.appointment_service.dto.request.AcceptAppointmentRequest;
@@ -21,12 +23,16 @@ import java.time.LocalTime;
 import java.util.Locale;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
 public class AppointmentServiceImpl implements AppointmentService {
+
+    private static final Logger log = LoggerFactory.getLogger(AppointmentServiceImpl.class);
 
     private static final BigDecimal VIDEO_FIXED_FEE = new BigDecimal("15.00");
     private static final BigDecimal PHYSICAL_FIXED_FEE = new BigDecimal("20.00");
@@ -38,9 +44,11 @@ public class AppointmentServiceImpl implements AppointmentService {
             Set.of(AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED);
 
     private final AppointmentRepository appointmentRepository;
+        private final NotificationClient notificationClient;
 
-    public AppointmentServiceImpl(AppointmentRepository appointmentRepository) {
+        public AppointmentServiceImpl(AppointmentRepository appointmentRepository, NotificationClient notificationClient) {
         this.appointmentRepository = appointmentRepository;
+            this.notificationClient = notificationClient;
     }
 
     @Override
@@ -213,6 +221,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setExtraFeeReason(extraFeeReason == null ? null : extraFeeReason.trim());
         appointment.setPaymentStatusHint("UNPAID");
         Appointment updatedAppointment = appointmentRepository.save(appointment);
+        publishAppointmentConfirmedNotifications(updatedAppointment);
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
 
@@ -368,5 +377,50 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     private BigDecimal normalizeMoney(BigDecimal amount) {
         return amount.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private void publishAppointmentConfirmedNotifications(Appointment appointment) {
+        LocalDateTime scheduledFor = appointment.getAppointmentDate().atTime(appointment.getStartTime());
+
+        publishNotification(
+                "APPOINTMENT_CONFIRMED",
+                "PATIENT",
+                appointment.getPatientId(),
+                appointment.getId(),
+                "Appointment confirmed",
+                "Your appointment has been confirmed by your doctor. We are excited to support your care journey.",
+                scheduledFor);
+
+        publishNotification(
+                "APPOINTMENT_CONFIRMED_DOCTOR",
+                "DOCTOR",
+                appointment.getDoctorId(),
+                appointment.getId(),
+                "Booking confirmed",
+                "You confirmed this appointment successfully. Your patient has now been notified.",
+                scheduledFor);
+    }
+
+    private void publishNotification(
+            String eventType,
+            String targetRole,
+            Long targetUserId,
+            Long appointmentId,
+            String title,
+            String message,
+            LocalDateTime scheduledFor) {
+        try {
+            notificationClient.sendEvent(new NotificationEventRequest(
+                    eventType,
+                    targetRole,
+                    targetUserId,
+                    null,
+                    appointmentId,
+                    title,
+                    message,
+                    scheduledFor));
+        } catch (Exception ex) {
+            log.warn("Notification dispatch failed for appointment {}: {}", appointmentId, ex.getMessage());
+        }
     }
 }
