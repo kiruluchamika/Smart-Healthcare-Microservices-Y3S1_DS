@@ -236,6 +236,7 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentTransaction saved = repository.save(transaction);
         syncAppointmentPaymentStatus(saved, "COMPLETED", saved.getPaidAt(), saved.getTelemedicineSessionUrl());
         publishNotification("CONSULTATION_COMPLETED", saved, "Consultation completed successfully", saved.getPatientId());
+        publishNotification("CONSULTATION_COMPLETED_DOCTOR", saved, "Consultation completion recorded", saved.getDoctorId());
         return PaymentMapper.toResponse(saved);
     }
 
