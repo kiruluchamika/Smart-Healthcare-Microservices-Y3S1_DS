@@ -25,6 +25,7 @@ import DoctorMyProfile from './pages/doctor/DoctorMyProfile';
 import DoctorAvailabilityManager from './pages/doctor/DoctorAvailabilityManager';
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
 import DoctorVerificationAdmin from './pages/doctor/DoctorVerificationAdmin';
+import NotificationsCenter from './pages/NotificationsCenter';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
@@ -161,6 +162,14 @@ function App() {
           }
         />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoleRoute allowedRoles={['PATIENT', 'DOCTOR']}>
+              <Layout><NotificationsCenter /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
         <Route path="/appointments" element={<PatientProtectedRoute><Layout><MyAppointments /></Layout></PatientProtectedRoute>} />
         <Route path="/appointments/book" element={<PatientProtectedRoute><Layout><AppointmentBooking /></Layout></PatientProtectedRoute>} />
         <Route path="/payments/success" element={<PatientProtectedRoute><Layout><PaymentSuccess /></Layout></PatientProtectedRoute>} />
