@@ -33,3 +33,5 @@ logging:
 app:
   security:
     allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:80}
+  integrations:
+    notification-base-url: ${NOTIFICATION_SERVICE_BASE_URL:http://localhost:8084}
