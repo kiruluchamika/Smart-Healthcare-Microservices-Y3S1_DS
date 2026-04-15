@@ -43,3 +43,5 @@ app:
     auth-base-url: http://auth-service:8080/auth
     doctor-base-url: http://doctor-service:8083/api/v1/doctors
     patient-base-url: http://patient-service:8085/patients
+    doctor-username: doctor
+    doctor-password: doctor123
