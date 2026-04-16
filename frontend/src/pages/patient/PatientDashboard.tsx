@@ -115,6 +115,25 @@ const PatientDashboard: React.FC = () => {
     fetchDashboardData();
   }, []);
 
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    if (window.location.hash !== '#quick-access') {
+      return;
+    }
+
+    const anchor = document.getElementById('quick-access');
+    if (!anchor) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [loading]);
+
   if (loading) return (
     <div className="flex h-[80vh] items-center justify-center">
       <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600"></div>
@@ -153,6 +172,7 @@ const PatientDashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         <motion.section
+          id="quick-access"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
