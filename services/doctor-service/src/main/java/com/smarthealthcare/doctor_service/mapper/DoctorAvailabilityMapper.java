@@ -15,6 +15,7 @@ public class DoctorAvailabilityMapper {
                 .dayOfWeek(request.getDayOfWeek())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
+                .slotDuration(request.getSlotDuration())
                 .available(request.getIsAvailable())
                 .effectiveFrom(request.getEffectiveFrom())
                 .effectiveTo(request.getEffectiveTo())
@@ -25,6 +26,7 @@ public class DoctorAvailabilityMapper {
         availability.setDayOfWeek(request.getDayOfWeek());
         availability.setStartTime(request.getStartTime());
         availability.setEndTime(request.getEndTime());
+        availability.setSlotDuration(request.getSlotDuration());
         availability.setAvailable(request.getIsAvailable());
         availability.setEffectiveFrom(request.getEffectiveFrom());
         availability.setEffectiveTo(request.getEffectiveTo());
@@ -37,6 +39,7 @@ public class DoctorAvailabilityMapper {
                 .dayOfWeek(availability.getDayOfWeek())
                 .startTime(availability.getStartTime())
                 .endTime(availability.getEndTime())
+                .slotDuration(availability.getSlotDuration() == null ? 30 : availability.getSlotDuration())
                 .isAvailable(availability.getAvailable())
                 .effectiveFrom(availability.getEffectiveFrom())
                 .effectiveTo(availability.getEffectiveTo())

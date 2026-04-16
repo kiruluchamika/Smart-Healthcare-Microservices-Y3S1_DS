@@ -6,17 +6,32 @@ const AUTH_TOKEN_EXPIRES_AT_KEY = 'authTokenExpiresAt';
 export const AUTH_CHANGED_EVENT = 'auth-state-changed';
 export const PROFILE_UPDATED_EVENT = 'patient-profile-updated';
 
-const authStorage = window.sessionStorage;
+function getAuthStorage() {
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
 
 function notifyAuthChanged() {
-  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+  }
 }
 
 export function notifyProfileUpdated() {
-  window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(PROFILE_UPDATED_EVENT));
+  }
 }
 
 export function setAuthSession(response: AuthResponse) {
+  const authStorage = getAuthStorage();
+  if (!authStorage) {
+    return;
+  }
+
   const expiresAt = Date.now() + (response.expiresInMs || 0);
   authStorage.setItem(AUTH_TOKEN_KEY, response.accessToken);
   authStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
@@ -36,6 +51,11 @@ export function updateAuthUser(patch: Record<string, unknown>) {
 }
 
 export function clearAuthSession() {
+  const authStorage = getAuthStorage();
+  if (!authStorage) {
+    return;
+  }
+
   authStorage.removeItem(AUTH_TOKEN_KEY);
   authStorage.removeItem(AUTH_USER_KEY);
   authStorage.removeItem(AUTH_TOKEN_EXPIRES_AT_KEY);
@@ -43,6 +63,11 @@ export function clearAuthSession() {
 }
 
 function isTokenExpired(token: string) {
+  const authStorage = getAuthStorage();
+  if (!authStorage) {
+    return false;
+  }
+
   const expiresAtRaw = authStorage.getItem(AUTH_TOKEN_EXPIRES_AT_KEY);
   const expiresAt = expiresAtRaw ? Number(expiresAtRaw) : NaN;
 
@@ -64,6 +89,11 @@ function isTokenExpired(token: string) {
 }
 
 export function getAuthToken() {
+  const authStorage = getAuthStorage();
+  if (!authStorage) {
+    return null;
+  }
+
   const token = authStorage.getItem(AUTH_TOKEN_KEY);
   if (!token) {
     return null;
@@ -78,6 +108,11 @@ export function getAuthToken() {
 }
 
 export function getAuthUser() {
+  const authStorage = getAuthStorage();
+  if (!authStorage) {
+    return null;
+  }
+
   const rawUser = authStorage.getItem(AUTH_USER_KEY);
   if (!rawUser) {
     return null;

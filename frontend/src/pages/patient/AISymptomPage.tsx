@@ -284,22 +284,86 @@ export default function AISymptomPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <input type="number" min="0" max="120" value={form.age} onChange={(event) => setField('age', event.target.value)} placeholder="Age" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition focus:ring-2" />
-                <select value={form.sex} onChange={(event) => setField('sex', event.target.value)} className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition focus:ring-2">
-                  <option value="MALE">Male</option>
-                  <option value="FEMALE">Female</option>
-                  <option value="OTHER">Other</option>
-                  <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
-                </select>
-                <input type="number" min="0" max="8760" value={form.durationHours} onChange={(event) => setField('durationHours', event.target.value)} placeholder="Duration (hours)" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition focus:ring-2" />
-                <input type="text" value={form.locale} onChange={(event) => setField('locale', event.target.value)} placeholder="Locale (en-US)" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition focus:ring-2" />
-              </div>
+              <div className="mt-6 pt-4 border-t border-slate-100">
+                <h3 className="mb-4 text-sm font-bold text-slate-900">Patient Details & Context</h3>
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <label htmlFor="age" className="block text-sm font-medium text-slate-700">Age (Years)</label>
+                    <input id="age" type="number" min="0" max="120" value={form.age} onChange={(event) => setField('age', event.target.value)} placeholder="e.g. 35" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition placeholder:text-slate-400 focus:ring-2" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="sex" className="block text-sm font-medium text-slate-700">Biological Sex</label>
+                    <div className="relative">
+                      <select id="sex" value={form.sex} onChange={(event) => setField('sex', event.target.value)} className="w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-800 outline-none ring-teal-400 transition focus:ring-2">
+                        <option value="MALE">Male</option>
+                        <option value="FEMALE">Female</option>
+                        <option value="OTHER">Other</option>
+                        <option value="PREFER_NOT_TO_SAY">Prefer not to say</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                        <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="grid gap-4 lg:grid-cols-3">
-                <input type="text" value={form.chronicConditions} onChange={(event) => setField('chronicConditions', event.target.value)} placeholder="Chronic conditions: Asthma, diabetes" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition focus:ring-2" />
-                <input type="text" value={form.currentMedications} onChange={(event) => setField('currentMedications', event.target.value)} placeholder="Current medications: Inhaler, paracetamol" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition focus:ring-2" />
-                <input type="text" value={form.allergies} onChange={(event) => setField('allergies', event.target.value)} placeholder="Allergies: Penicillin, peanuts" className="rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition focus:ring-2" />
+                  <div className="space-y-2">
+                    <label htmlFor="durationHours" className="block text-sm font-medium text-slate-700">Duration of Symptoms</label>
+                    <div className="relative">
+                      <select id="durationHours" value={form.durationHours} onChange={(event) => setField('durationHours', event.target.value)} className="w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-800 outline-none ring-teal-400 transition focus:ring-2">
+                        <option value="1">Just started (&lt; 1 hour)</option>
+                        <option value="6">A few hours</option>
+                        <option value="12">Half a day (~12 hours)</option>
+                        <option value="24">1 day</option>
+                        <option value="48">2 days</option>
+                        <option value="72">3 days</option>
+                        <option value="168">1 week</option>
+                        <option value="336">2 weeks</option>
+                        <option value="720">More than 2 weeks</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                        <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-5 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <label htmlFor="chronicConditions" className="block text-sm font-medium text-slate-700">Chronic Conditions</label>
+                    <input id="chronicConditions" type="text" value={form.chronicConditions} onChange={(event) => setField('chronicConditions', event.target.value)} placeholder="e.g. Asthma, Diabetes" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition placeholder:text-slate-400 focus:ring-2" />
+                    <p className="text-[11px] text-slate-500">Separate multiple with commas</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="currentMedications" className="block text-sm font-medium text-slate-700">Current Medications</label>
+                    <input id="currentMedications" type="text" value={form.currentMedications} onChange={(event) => setField('currentMedications', event.target.value)} placeholder="e.g. Inhaler, Paracetamol" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition placeholder:text-slate-400 focus:ring-2" />
+                    <p className="text-[11px] text-slate-500">Separate multiple with commas</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="allergies" className="block text-sm font-medium text-slate-700">Known Allergies</label>
+                    <input id="allergies" type="text" value={form.allergies} onChange={(event) => setField('allergies', event.target.value)} placeholder="e.g. Penicillin, Peanuts" className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 outline-none ring-teal-400 transition placeholder:text-slate-400 focus:ring-2" />
+                    <p className="text-[11px] text-slate-500">Separate multiple with commas</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-5 lg:grid-cols-3">
+                  <div className="space-y-2">
+                    <label htmlFor="locale" className="block text-sm font-medium text-slate-700">Response Language</label>
+                    <div className="relative">
+                      <select id="locale" value={form.locale} onChange={(event) => setField('locale', event.target.value)} className="w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-800 outline-none ring-teal-400 transition focus:ring-2">
+                        <option value="en-US">English (US)</option>
+                        <option value="en-GB">English (UK)</option>
+                        <option value="fr-FR">French</option>
+                        <option value="es-ES">Spanish</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+                        <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {error && (

@@ -31,5 +31,11 @@ public class DoctorSchemaReconciler {
         } catch (Exception ex) {
             LOGGER.warn("Unable to reconcile doctors.profile_picture_url column type. {}", ex.getMessage());
         }
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE doctor_availabilities ADD COLUMN IF NOT EXISTS slot_duration INT NULL");
+        } catch (Exception ex) {
+            LOGGER.debug("Skipping doctor_availabilities.slot_duration add-column reconciliation: {}", ex.getMessage());
+        }
     }
 }

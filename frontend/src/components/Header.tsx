@@ -196,6 +196,14 @@ export default function Header() {
     { label: 'Contact', href: '/#contact' },
   ];
 
+  const doctorLandingStaticNavItems = [
+    { label: 'About', href: '/about' },
+    { label: 'Guidelines', href: '/guidelines' },
+    { label: 'FAQ', href: '/faq' },
+    { label: 'Contact', href: '/contact' },
+    { label: 'Privacy', href: '/privacy-policy' },
+  ];
+
   const patientNavItems = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Profile', href: '/profile' },
@@ -211,7 +219,6 @@ export default function Header() {
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Doctor Profile', href: '/doctors/profile' },
     { label: 'Appointments', href: '/doctor/appointments' },
-    { label: 'Patient Reports', href: '/doctor/reports' },
   ];
 
   const adminNavItems = [
@@ -231,11 +238,13 @@ export default function Header() {
 
   const baseDisplayItems = isAuthPage
     ? []
-    : isAuthenticated && role === 'PATIENT'
-      ? guestNavItems
-      : isAuthenticated
-        ? authNavItems
-        : guestNavItems;
+    : isLandingPage && (!isAuthenticated || role === 'DOCTOR')
+      ? doctorLandingStaticNavItems
+      : isAuthenticated && role === 'PATIENT'
+        ? guestNavItems
+        : isAuthenticated
+          ? authNavItems
+          : guestNavItems;
 
   const displayItems = role === 'DOCTOR' && isDoctorCompactNavRoute ? [] : baseDisplayItems;
 
