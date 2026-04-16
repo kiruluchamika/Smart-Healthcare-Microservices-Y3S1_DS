@@ -4,6 +4,8 @@ import { Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../services/authApi';
 import { setAuthSession } from '../services/authSession';
+import { patientApi } from '../services/patientApi';
+import { isPatientProfileComplete } from '../utils/patientProfile';
 
 interface LoginFormProps {
   onSwitch: () => void;
@@ -48,10 +50,26 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
       const response = await login(email, password);
       setAuthSession(response);
 
+      let redirectPath = '/dashboard';
+      let navigationState: Record<string, unknown> | undefined;
+
+      if (response.user.role === 'PATIENT') {
+        try {
+          const profileResponse = await patientApi.getProfile();
+          if (!isPatientProfileComplete(profileResponse.data)) {
+            redirectPath = '/profile';
+            navigationState = { onboarding: true };
+          }
+        } catch {
+          redirectPath = '/profile';
+          navigationState = { onboarding: true };
+        }
+      }
+
       setIsLoading(false);
       setEmail('');
       setPassword('');
-      navigate('/dashboard');
+      navigate(redirectPath, { state: navigationState });
     } catch (error) {
       setIsLoading(false);
       setServerError(error instanceof Error ? error.message : 'Login failed');
