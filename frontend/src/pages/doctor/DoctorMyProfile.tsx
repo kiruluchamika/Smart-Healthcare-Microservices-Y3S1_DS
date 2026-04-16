@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Clock3, FileCheck2, ShieldX, Stethoscope } from 'lucide-react';
 import { DoctorTopNav } from '../../components/doctor/DoctorTopNav';
-import { getDoctorByEmail, getDoctorById } from '../../services/doctor/doctorApi';
+import { getDoctorByEmail } from '../../services/doctor/doctorApi';
 import { getAuthUser } from '../../services/authSession';
 import type { DoctorServiceDoctor } from '../../types/doctor';
 
@@ -41,6 +41,7 @@ function getStatusIcon(status: DoctorServiceDoctor['verificationStatus']) {
 }
 
 export default function DoctorMyProfile() {
+  const navigate = useNavigate();
   const [doctor, setDoctor] = useState<DoctorServiceDoctor | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -63,16 +64,10 @@ export default function DoctorMyProfile() {
           localStorage.setItem(DOCTOR_PROFILE_ID_KEY, String(byEmail.id));
           return;
         } catch {
-          const rawStoredId = localStorage.getItem(DOCTOR_PROFILE_ID_KEY);
-          const storedId = rawStoredId ? Number(rawStoredId) : 0;
-          if (storedId > 0) {
-            const byId = await getDoctorById(storedId);
-            setDoctor(byId);
-            return;
-          }
+          localStorage.removeItem(DOCTOR_PROFILE_ID_KEY);
+          navigate('/doctors/profile/manage', { replace: true });
+          return;
         }
-
-        setDoctor(null);
       } catch (requestError) {
         const message = requestError instanceof Error ? requestError.message : 'Unable to load doctor profile.';
         setError(message);
@@ -82,7 +77,7 @@ export default function DoctorMyProfile() {
     };
 
     void loadOwnProfile();
-  }, []);
+  }, [navigate]);
 
   const fullName = useMemo(() => {
     if (!doctor) {

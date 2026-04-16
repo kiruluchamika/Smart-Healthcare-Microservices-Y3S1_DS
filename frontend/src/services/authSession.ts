@@ -3,6 +3,7 @@ import type { AuthResponse } from './authApi';
 const AUTH_TOKEN_KEY = 'authToken';
 const AUTH_USER_KEY = 'user';
 const AUTH_TOKEN_EXPIRES_AT_KEY = 'authTokenExpiresAt';
+const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
 export const AUTH_CHANGED_EVENT = 'auth-state-changed';
 export const PROFILE_UPDATED_EVENT = 'patient-profile-updated';
 
@@ -28,6 +29,7 @@ export function clearAuthSession() {
   authStorage.removeItem(AUTH_TOKEN_KEY);
   authStorage.removeItem(AUTH_USER_KEY);
   authStorage.removeItem(AUTH_TOKEN_EXPIRES_AT_KEY);
+  window.localStorage.removeItem(DOCTOR_PROFILE_ID_KEY);
   notifyAuthChanged();
 }
 
