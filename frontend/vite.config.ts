@@ -27,6 +27,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/doctors/, '/api/v1/doctors'),
       },
+      '/api/notifications': {
+        target: 'http://localhost:8084',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/notifications/, '/api/v1/notifications'),
+      },
       '/api/payments': {
         target: 'http://localhost:8086',
         changeOrigin: true,
