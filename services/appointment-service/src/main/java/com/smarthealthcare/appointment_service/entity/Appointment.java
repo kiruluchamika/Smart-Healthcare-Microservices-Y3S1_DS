@@ -68,6 +68,9 @@ public class Appointment {
     @Column(length = 500)
     private String extraFeeReason;
 
+    @Column(length = 500)
+    private String statusReason;
+
     @Column(length = 32)
     private String paymentStatusHint;
 
@@ -215,6 +218,14 @@ public class Appointment {
 
     public void setExtraFeeReason(String extraFeeReason) {
         this.extraFeeReason = extraFeeReason;
+    }
+
+    public String getStatusReason() {
+        return statusReason;
+    }
+
+    public void setStatusReason(String statusReason) {
+        this.statusReason = statusReason;
     }
 
     public String getPaymentStatusHint() {

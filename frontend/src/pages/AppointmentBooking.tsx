@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import {
   AlertCircle,
   CheckCircle,
+  ChevronLeft,
   ChevronRight,
   Clock,
   LayoutDashboard,
@@ -12,91 +13,151 @@ import {
   ShieldCheck,
   Star,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   createAppointment,
   getDoctorAvailability,
+  getDoctorAvailabilityCalendar,
+  type CalendarDateAvailability,
   type AppointmentResponse,
+  type GeneratedAvailabilitySlot,
 } from '../services/appointmentsApi';
 import { getBookableDoctors } from '../services/doctor/doctorApi';
 import type { AppointmentBookingDoctor } from '../types/doctor';
 import { formatDisplayAmount } from '../utils/currency';
 
-const APPOINTMENT_DURATION_MINUTES = 60;
 const FIXED_VIDEO_PRICE = 15;
 const FIXED_PHYSICAL_PRICE = 20;
+const CALENDAR_WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+type CalendarDay = {
+  value: string;
+  date: Date;
+  dateNumber: number;
+  inCurrentMonth: boolean;
+  isPast: boolean;
+  isSelected: boolean;
+  hasAvailableSlots: boolean;
+};
 
 function formatTimeLabel(time: string) {
-  const [hours, minutes] = time.split(':').map(Number);
+  const [hours, minutes] = time.slice(0, 5).split(':').map(Number);
   const suffix = hours >= 12 ? 'PM' : 'AM';
   const normalizedHours = hours % 12 || 12;
   return `${normalizedHours}:${String(minutes).padStart(2, '0')} ${suffix}`;
 }
 
-function addMinutes(time: string, minutesToAdd: number) {
-  const [hours, minutes] = time.split(':').map(Number);
-  const totalMinutes = hours * 60 + minutes + minutesToAdd;
-  const nextHours = Math.floor(totalMinutes / 60);
-  const nextMinutes = totalMinutes % 60;
-  return `${String(nextHours).padStart(2, '0')}:${String(nextMinutes).padStart(2, '0')}`;
+function toIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-function getNextSevenDates() {
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date();
-    date.setDate(date.getDate() + index);
-    const isoDate = date.toISOString().split('T')[0];
+function parseIsoDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
 
-    return {
-      value: isoDate,
-      dayLabel: date.toLocaleDateString('en-US', { weekday: 'short' }),
-      dayNumber: date.getDate(),
-      fullLabel: date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }),
-    };
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function endOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+}
+
+function addMonths(date: Date, amount: number) {
+  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+}
+
+function addDays(date: Date, amount: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
+}
+
+function isSameMonth(left: Date, right: Date) {
+  return left.getFullYear() === right.getFullYear() && left.getMonth() === right.getMonth();
+}
+
+function formatFullDateLabel(value: string) {
+  return parseIsoDate(value).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
   });
 }
 
-function getDefaultTimeSlots() {
-  return ['09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+function buildCalendarDays(
+  visibleMonth: Date,
+  calendarAvailabilityByDate: Record<string, CalendarDateAvailability>,
+  selectedDate: string | null,
+) {
+  const monthStart = startOfMonth(visibleMonth);
+  const gridStart = addDays(monthStart, -monthStart.getDay());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = addDays(gridStart, index);
+    const value = toIsoDate(date);
+    const summary = calendarAvailabilityByDate[value];
+
+    return {
+      value,
+      date,
+      dateNumber: date.getDate(),
+      inCurrentMonth: isSameMonth(date, visibleMonth),
+      isPast: date < today,
+      isSelected: selectedDate === value,
+      hasAvailableSlots: Boolean(summary?.hasAvailableSlots),
+    } satisfies CalendarDay;
+  });
 }
 
 function resetBookingState(
   setSelectedDoctor: (value: number | null) => void,
   setSelectedDate: (value: string | null) => void,
-  setSelectedTime: (value: string | null) => void,
+  setSelectedSlot: (value: GeneratedAvailabilitySlot | null) => void,
   setReasonForVisit: (value: string) => void,
-  setAvailabilityTimes: (value: string[]) => void,
+  setAvailabilitySlots: (value: GeneratedAvailabilitySlot[]) => void,
   setAvailabilityMessage: (value: string) => void,
   setAvailabilityError: (value: string) => void,
+  setCalendarAvailability: (value: CalendarDateAvailability[]) => void,
+  setCalendarError: (value: string) => void,
   setSubmitError: (value: string) => void,
   setCreatedAppointment: (value: AppointmentResponse | null) => void,
+  setVisibleMonth: (value: Date) => void,
   setStep: (value: number) => void,
 ) {
   setStep(1);
   setSelectedDoctor(null);
   setSelectedDate(null);
-  setSelectedTime(null);
+  setSelectedSlot(null);
   setReasonForVisit('');
-  setAvailabilityTimes([]);
+  setAvailabilitySlots([]);
   setAvailabilityMessage('');
   setAvailabilityError('');
+  setCalendarAvailability([]);
+  setCalendarError('');
   setSubmitError('');
   setCreatedAppointment(null);
+  setVisibleMonth(startOfMonth(new Date()));
 }
 
 export default function AppointmentBooking() {
+  const [searchParams] = useSearchParams();
+  const currentMonth = useMemo(() => startOfMonth(new Date()), []);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<GeneratedAvailabilitySlot | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<number | null>(null);
   const [appointmentType, setAppointmentType] = useState<'VIDEO' | 'PHYSICAL'>('PHYSICAL');
   const [step, setStep] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [reasonForVisit, setReasonForVisit] = useState('');
-  const [availabilityTimes, setAvailabilityTimes] = useState<string[]>([]);
+  const [availabilitySlots, setAvailabilitySlots] = useState<GeneratedAvailabilitySlot[]>([]);
   const [availabilityMessage, setAvailabilityMessage] = useState('');
   const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [availabilityError, setAvailabilityError] = useState('');
@@ -106,8 +167,42 @@ export default function AppointmentBooking() {
   const [doctors, setDoctors] = useState<AppointmentBookingDoctor[]>([]);
   const [isLoadingDoctors, setIsLoadingDoctors] = useState(true);
   const [doctorsError, setDoctorsError] = useState('');
+  const [specialtyFilter, setSpecialtyFilter] = useState('ALL');
+  const [experienceFilter, setExperienceFilter] = useState<'ALL' | '5' | '10'>('ALL');
+  const [locationFilter, setLocationFilter] = useState('ALL');
+  const [visibleMonth, setVisibleMonth] = useState(currentMonth);
+  const [calendarAvailability, setCalendarAvailability] = useState<CalendarDateAvailability[]>([]);
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(false);
+  const [calendarError, setCalendarError] = useState('');
+  const requestedDoctorId = useMemo(() => {
+    const value = Number(searchParams.get('doctorId'));
+    return Number.isInteger(value) && value > 0 ? value : null;
+  }, [searchParams]);
+  const requestedAppointmentType = searchParams.get('appointmentType');
+  const requestedReason = searchParams.get('reason') || '';
+  const sourceAppointmentId = searchParams.get('sourceAppointmentId');
 
-  const dateOptions = useMemo(() => getNextSevenDates(), []);
+  const specialtyOptions = useMemo(
+    () => ['ALL', ...new Set(doctors.map((doctor) => doctor.specialty).filter(Boolean).sort((a, b) => a.localeCompare(b)))],
+    [doctors],
+  );
+  const locationOptions = useMemo(
+    () => ['ALL', ...new Set(doctors.map((doctor) => doctor.location).filter(Boolean).sort((a, b) => a.localeCompare(b)))],
+    [doctors],
+  );
+  const calendarAvailabilityByDate = useMemo(
+    () => Object.fromEntries(calendarAvailability.map((entry) => [entry.appointmentDate, entry] as const)),
+    [calendarAvailability],
+  );
+  const calendarDays = useMemo(
+    () => buildCalendarDays(visibleMonth, calendarAvailabilityByDate, selectedDate),
+    [calendarAvailabilityByDate, selectedDate, visibleMonth],
+  );
+  const availableDateCount = useMemo(
+    () => calendarAvailability.filter((entry) => entry.hasAvailableSlots).length,
+    [calendarAvailability],
+  );
+  const isCurrentVisibleMonth = useMemo(() => isSameMonth(visibleMonth, currentMonth), [currentMonth, visibleMonth]);
 
   useEffect(() => {
     let isActive = true;
@@ -118,7 +213,6 @@ export default function AppointmentBooking() {
 
       try {
         const response = await getBookableDoctors();
-
         if (isActive) {
           setDoctors(response);
         }
@@ -144,22 +238,22 @@ export default function AppointmentBooking() {
   const filteredDoctors = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
 
-    if (!normalizedSearch) {
-      return doctors;
-    }
+    return doctors.filter((doctor) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        [doctor.fullName, doctor.specialty, doctor.qualifications, doctor.location]
+          .join(' ')
+          .toLowerCase()
+          .includes(normalizedSearch);
 
-    return doctors.filter((doctor) =>
-      [
-        doctor.fullName,
-        doctor.specialty,
-        doctor.qualifications,
-        doctor.location,
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(normalizedSearch),
-    );
-  }, [doctors, searchTerm]);
+      const matchesSpecialty = specialtyFilter === 'ALL' || doctor.specialty === specialtyFilter;
+      const matchesExperience =
+        experienceFilter === 'ALL' || doctor.experienceYears >= Number(experienceFilter);
+      const matchesLocation = locationFilter === 'ALL' || doctor.location === locationFilter;
+
+      return matchesSearch && matchesSpecialty && matchesExperience && matchesLocation;
+    });
+  }, [doctors, experienceFilter, locationFilter, searchTerm, specialtyFilter]);
 
   const selectedDoctorDetails = useMemo(
     () => doctors.find((doctor) => doctor.id === selectedDoctor) || null,
@@ -183,8 +277,55 @@ export default function AppointmentBooking() {
       : 'Fixed system price';
 
   useEffect(() => {
+    if (!selectedDoctor) {
+      setCalendarAvailability([]);
+      setCalendarError('');
+      return;
+    }
+
+    let isActive = true;
+
+    const loadCalendarAvailability = async () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const monthStart = startOfMonth(visibleMonth);
+      const rangeStart = monthStart < today ? today : monthStart;
+      const rangeEnd = endOfMonth(visibleMonth);
+
+      setIsLoadingCalendar(true);
+      setCalendarError('');
+
+      try {
+        const response = await getDoctorAvailabilityCalendar(
+          selectedDoctor,
+          toIsoDate(rangeStart),
+          toIsoDate(rangeEnd),
+        );
+        if (isActive) {
+          setCalendarAvailability(response.dates || []);
+        }
+      } catch (error) {
+        if (isActive) {
+          setCalendarAvailability([]);
+          setCalendarError(error instanceof Error ? error.message : 'Failed to load calendar availability');
+        }
+      } finally {
+        if (isActive) {
+          setIsLoadingCalendar(false);
+        }
+      }
+    };
+
+    void loadCalendarAvailability();
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedDoctor, visibleMonth]);
+
+  useEffect(() => {
     if (!selectedDoctor || !selectedDate) {
-      setAvailabilityTimes([]);
+      setAvailabilitySlots([]);
       setAvailabilityMessage('');
       setAvailabilityError('');
       return;
@@ -192,26 +333,21 @@ export default function AppointmentBooking() {
 
     let isActive = true;
 
-    const loadAvailability = async () => {
+    const loadSlots = async () => {
       setIsLoadingAvailability(true);
       setAvailabilityError('');
-      setSelectedTime(null);
+      setSelectedSlot(null);
 
       try {
         const response = await getDoctorAvailability(selectedDoctor, selectedDate);
-        const bookedStartTimes = new Set(response.bookedSlots.map((slot) => slot.startTime.slice(0, 5)));
-        const availableSlots = getDefaultTimeSlots().filter((time) => !bookedStartTimes.has(time));
-
         if (isActive) {
-          setAvailabilityTimes(availableSlots);
+          setAvailabilitySlots(response.slots || []);
           setAvailabilityMessage(response.message);
         }
       } catch (error) {
         if (isActive) {
-          setAvailabilityTimes([]);
-          setAvailabilityError(
-            error instanceof Error ? error.message : 'Failed to load doctor availability',
-          );
+          setAvailabilitySlots([]);
+          setAvailabilityError(error instanceof Error ? error.message : 'Failed to load doctor availability');
         }
       } finally {
         if (isActive) {
@@ -220,12 +356,48 @@ export default function AppointmentBooking() {
       }
     };
 
-    void loadAvailability();
+    void loadSlots();
 
     return () => {
       isActive = false;
     };
-  }, [selectedDoctor, selectedDate]);
+  }, [selectedDate, selectedDoctor]);
+
+  useEffect(() => {
+    if (isLoadingDoctors || !requestedDoctorId || selectedDoctor !== null) {
+      return;
+    }
+
+    const doctorExists = doctors.some((doctor) => doctor.id === requestedDoctorId);
+    if (!doctorExists) {
+      return;
+    }
+
+    setSelectedDoctor(requestedDoctorId);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setVisibleMonth(currentMonth);
+    setCalendarAvailability([]);
+    setCalendarError('');
+    setAvailabilitySlots([]);
+    setAvailabilityMessage('');
+    setAvailabilityError('');
+    setSubmitError('');
+    setCreatedAppointment(null);
+    setReasonForVisit(requestedReason);
+    if (requestedAppointmentType === 'VIDEO' || requestedAppointmentType === 'PHYSICAL') {
+      setAppointmentType(requestedAppointmentType);
+    }
+    setStep(2);
+  }, [
+    currentMonth,
+    doctors,
+    isLoadingDoctors,
+    requestedAppointmentType,
+    requestedDoctorId,
+    requestedReason,
+    selectedDoctor,
+  ]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -247,17 +419,14 @@ export default function AppointmentBooking() {
     },
   };
 
-  const handleNext = () => {
-    if (step < 4) {
-      setStep(step + 1);
-    }
-  };
-
   const handleDoctorSelect = (doctor: AppointmentBookingDoctor) => {
     setSelectedDoctor(doctor.id);
     setSelectedDate(null);
-    setSelectedTime(null);
-    setAvailabilityTimes([]);
+    setSelectedSlot(null);
+    setVisibleMonth(currentMonth);
+    setCalendarAvailability([]);
+    setCalendarError('');
+    setAvailabilitySlots([]);
     setAvailabilityMessage('');
     setAvailabilityError('');
     setSubmitError('');
@@ -265,8 +434,19 @@ export default function AppointmentBooking() {
     setStep(2);
   };
 
+  const refreshSelectedDateSlots = async () => {
+    if (!selectedDoctor || !selectedDate) {
+      return;
+    }
+
+    const response = await getDoctorAvailability(selectedDoctor, selectedDate);
+    setAvailabilitySlots(response.slots || []);
+    setAvailabilityMessage(response.message);
+    setSelectedSlot(null);
+  };
+
   const handleSubmit = async () => {
-    if (!selectedDoctor || !selectedDate || !selectedTime) {
+    if (!selectedDoctor || !selectedDate || !selectedSlot) {
       setSubmitError('Please select doctor, date, and time before booking');
       return;
     }
@@ -283,8 +463,8 @@ export default function AppointmentBooking() {
       const response = await createAppointment({
         doctorId: selectedDoctor,
         appointmentDate: selectedDate,
-        startTime: selectedTime,
-        endTime: addMinutes(selectedTime, APPOINTMENT_DURATION_MINUTES),
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
         appointmentType,
         reasonForVisit: reasonForVisit.trim(),
       });
@@ -292,7 +472,16 @@ export default function AppointmentBooking() {
       setCreatedAppointment(response);
       setStep(4);
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Failed to create appointment');
+      const message = error instanceof Error ? error.message : 'Failed to create appointment';
+      setSubmitError(message);
+
+      if (message.includes('slot is no longer available')) {
+        try {
+          await refreshSelectedDateSlots();
+        } catch {
+          // Keep the original booking error visible if refresh also fails.
+        }
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -319,6 +508,13 @@ export default function AppointmentBooking() {
             Dashboard
           </Link>
         </motion.div>
+
+        {sourceAppointmentId && requestedDoctorId && (
+          <div className="mb-8 rounded-2xl border border-cyan-200 bg-cyan-50 px-5 py-4 text-sm text-cyan-800">
+            Rebooking flow loaded from rejected appointment #{sourceAppointmentId}. The doctor has
+            been preselected so you can safely request another slot using the existing booking flow.
+          </div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -371,6 +567,51 @@ export default function AppointmentBooking() {
                   className="w-full pl-12 pr-4 py-3 border border-gray-200/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+            </div>
+
+            <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-gray-900">Specialty</span>
+                <select
+                  value={specialtyFilter}
+                  onChange={(event) => setSpecialtyFilter(event.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {specialtyOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option === 'ALL' ? 'All specialties' : option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-gray-900">Experience</span>
+                <select
+                  value={experienceFilter}
+                  onChange={(event) => setExperienceFilter(event.target.value as 'ALL' | '5' | '10')}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ALL">All experience levels</option>
+                  <option value="5">5+ years</option>
+                  <option value="10">10+ years</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-semibold text-gray-900">Location</span>
+                <select
+                  value={locationFilter}
+                  onChange={(event) => setLocationFilter(event.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {locationOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option === 'ALL' ? 'All locations' : option}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             {isLoadingDoctors && (
@@ -489,29 +730,129 @@ export default function AppointmentBooking() {
           >
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Select Date</h2>
 
-            <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-8">
-              {dateOptions.map((dateOption) => (
-                <motion.button
-                  key={dateOption.value}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setSelectedDate(dateOption.value)}
-                  className={`py-4 rounded-lg border-2 font-semibold transition-all ${
-                    selectedDate === dateOption.value
-                      ? 'border-blue-600 bg-gradient-to-r from-blue-600 to-cyan-500 text-white'
-                      : 'border-gray-200/30 bg-white text-gray-700 hover:border-blue-200'
-                  }`}
-                >
-                  <div className="text-sm font-medium">{dateOption.dayLabel}</div>
-                  <div className="text-lg">{dateOption.dayNumber}</div>
-                </motion.button>
-              ))}
+            <div className="mb-6 rounded-xl border border-gray-200/40 bg-white p-5">
+              <div className="flex flex-col gap-2 text-sm text-gray-600 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <p><span className="font-semibold text-gray-900">Doctor:</span> {selectedDoctorDetails?.fullName || 'Not selected'}</p>
+                  <p><span className="font-semibold text-gray-900">Specialty:</span> {selectedDoctorDetails?.specialty || 'Not available'}</p>
+                </div>
+                {selectedDate && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                    Selected date: <span className="font-semibold">{formatFullDateLabel(selectedDate)}</span>
+                  </div>
+                )}
+              </div>
             </div>
+
+            <div className="mb-6 rounded-2xl border border-gray-200/60 bg-white p-4 shadow-sm sm:p-6">
+              <div className="mb-6 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium uppercase tracking-[0.25em] text-blue-600">Booking Calendar</p>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {visibleMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleMonth(addMonths(visibleMonth, -1))}
+                    disabled={isCurrentVisibleMonth}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Previous month"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setVisibleMonth(addMonths(visibleMonth, 1))}
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-700 transition hover:border-blue-300 hover:text-blue-700"
+                    aria-label="Next month"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-3 grid grid-cols-7 gap-2">
+                {CALENDAR_WEEK_DAYS.map((dayLabel) => (
+                  <div key={dayLabel} className="px-2 py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    {dayLabel}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-2">
+                {calendarDays.map((day) => {
+                  const isSelectable = day.inCurrentMonth && !day.isPast && day.hasAvailableSlots;
+                  const toneClass = day.isSelected
+                    ? 'border-blue-600 bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/20'
+                    : !day.inCurrentMonth
+                      ? 'border-transparent bg-gray-50 text-gray-300'
+                      : day.isPast
+                        ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+                        : day.hasAvailableSlots
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:border-blue-300 hover:bg-white'
+                          : 'border-gray-200 bg-white text-gray-400';
+
+                  return (
+                    <motion.button
+                      key={day.value}
+                      type="button"
+                      whileHover={isSelectable ? { scale: 1.03 } : undefined}
+                      whileTap={isSelectable ? { scale: 0.98 } : undefined}
+                      onClick={() => {
+                        if (isSelectable) {
+                          setSelectedDate(day.value);
+                        }
+                      }}
+                      disabled={!isSelectable}
+                      className={`min-h-[88px] rounded-2xl border p-2 text-left transition-all sm:p-3 ${toneClass}`}
+                    >
+                      <div className="flex h-full flex-col justify-between">
+                        <div className="text-sm font-semibold sm:text-base">{day.dateNumber}</div>
+                        <div className="text-[10px] uppercase tracking-wide sm:text-[11px]">
+                          {day.isSelected
+                            ? 'Selected'
+                            : !day.inCurrentMonth
+                              ? 'Other month'
+                              : day.isPast
+                                ? 'Past'
+                                : day.hasAvailableSlots
+                                  ? 'Available'
+                                  : 'Unavailable'}
+                        </div>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {isLoadingCalendar && (
+              <div className="mb-6 flex items-center gap-2 text-blue-600">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Loading calendar availability...
+              </div>
+            )}
+
+            {!isLoadingCalendar && calendarError && (
+              <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                {calendarError}
+              </div>
+            )}
+
+            {!isLoadingCalendar && !calendarError && (
+              <div className="mb-8 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                {availableDateCount > 0
+                  ? `${availableDateCount} bookable date${availableDateCount === 1 ? '' : 's'} found in ${visibleMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}.`
+                  : 'No availability in this period. Try another month.'}
+              </div>
+            )}
 
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={handleNext}
+              onClick={() => setStep(3)}
               disabled={!selectedDate}
               className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold py-3 rounded-lg hover:shadow-lg hover:shadow-blue-500/30 transition-all disabled:opacity-50"
             >
@@ -531,19 +872,12 @@ export default function AppointmentBooking() {
 
             <div className="mb-6 rounded-xl border border-gray-200/40 bg-white p-5">
               <div className="flex flex-col gap-2 text-sm text-gray-600">
-                <p>
-                  <span className="font-semibold text-gray-900">Doctor:</span>{' '}
-                  {selectedDoctorDetails?.fullName || 'Not selected'}
-                </p>
+                <p><span className="font-semibold text-gray-900">Doctor:</span> {selectedDoctorDetails?.fullName || 'Not selected'}</p>
                 <p>
                   <span className="font-semibold text-gray-900">Date:</span>{' '}
-                  {selectedDate
-                    ? dateOptions.find((option) => option.value === selectedDate)?.fullLabel || selectedDate
-                    : 'Not selected'}
+                  {selectedDate ? formatFullDateLabel(selectedDate) : 'Not selected'}
                 </p>
-                <p>
-                  <span className="font-semibold text-gray-900">Consultation Type:</span> {appointmentType}
-                </p>
+                <p><span className="font-semibold text-gray-900">Consultation Type:</span> {appointmentType}</p>
                 <p>
                   <span className="font-semibold text-gray-900">Estimated Channeling Fee:</span>{' '}
                   {formatDisplayAmount(resolvedPrice, 'USD')} ({pricingSourceLabel})
@@ -599,29 +933,53 @@ export default function AppointmentBooking() {
               variants={containerVariants}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+              className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
             >
-              {availabilityTimes.map((time) => (
-                <motion.button
-                  key={time}
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setSelectedTime(time)}
-                  className={`py-4 rounded-lg border-2 font-semibold transition-all ${
-                    selectedTime === time
+              {availabilitySlots.map((slot) => {
+                const isSelected =
+                  selectedSlot?.startTime === slot.startTime && selectedSlot?.endTime === slot.endTime;
+                const isAvailable = slot.state === 'AVAILABLE';
+                const toneClass =
+                  slot.state === 'AVAILABLE'
+                    ? isSelected
                       ? 'border-blue-600 bg-gradient-to-r from-blue-600 to-cyan-500 text-white'
                       : 'border-gray-200/30 bg-white text-gray-700 hover:border-blue-200'
-                  }`}
-                >
-                  {formatTimeLabel(time)}
-                </motion.button>
-              ))}
+                    : slot.state === 'PENDING'
+                      ? 'border-amber-200 bg-amber-50 text-amber-800 cursor-not-allowed'
+                      : 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed';
+
+                return (
+                  <motion.button
+                    key={`${slot.startTime}-${slot.endTime}`}
+                    variants={itemVariants}
+                    whileHover={isAvailable ? { scale: 1.03 } : undefined}
+                    whileTap={isAvailable ? { scale: 0.97 } : undefined}
+                    onClick={() => {
+                      if (isAvailable) {
+                        setSelectedSlot(slot);
+                      }
+                    }}
+                    disabled={!isAvailable}
+                    className={`rounded-lg border-2 p-4 text-left font-semibold transition-all ${toneClass}`}
+                  >
+                    <div className="text-base">
+                      {formatTimeLabel(slot.startTime)} - {formatTimeLabel(slot.endTime)}
+                    </div>
+                    <div className="mt-2 text-xs uppercase tracking-wide">
+                      {slot.state === 'AVAILABLE'
+                        ? 'Available'
+                        : slot.state === 'PENDING'
+                          ? 'Pending'
+                          : 'Confirmed / Booked'}
+                    </div>
+                  </motion.button>
+                );
+              })}
             </motion.div>
 
-            {!isLoadingAvailability && !availabilityError && availabilityTimes.length === 0 && (
+            {!isLoadingAvailability && !availabilityError && availabilitySlots.length === 0 && (
               <div className="mb-8 rounded-lg border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-700">
-                No free slots are available for this doctor on the selected date.
+                No slots are available for this doctor on the selected date.
               </div>
             )}
 
@@ -646,7 +1004,7 @@ export default function AppointmentBooking() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => void handleSubmit()}
-              disabled={!selectedTime || isSubmitting || isLoadingAvailability}
+              disabled={!selectedSlot || isSubmitting || isLoadingAvailability}
               className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold py-3 rounded-lg hover:shadow-lg hover:shadow-blue-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
@@ -702,11 +1060,13 @@ export default function AppointmentBooking() {
                   <div>
                     <p className="text-sm text-gray-600">Date & Time</p>
                     <p className="font-semibold text-gray-900">
-                      {createdAppointment?.appointmentDate || selectedDate} at{' '}
+                      {createdAppointment?.appointmentDate || selectedDate
+                        ? formatFullDateLabel(createdAppointment?.appointmentDate || selectedDate || '')
+                        : 'Not selected'} at{' '}
                       {createdAppointment?.startTime
-                        ? formatTimeLabel(createdAppointment.startTime.slice(0, 5))
-                        : selectedTime
-                          ? formatTimeLabel(selectedTime)
+                        ? `${formatTimeLabel(createdAppointment.startTime)} - ${formatTimeLabel(createdAppointment.endTime)}`
+                        : selectedSlot
+                          ? `${formatTimeLabel(selectedSlot.startTime)} - ${formatTimeLabel(selectedSlot.endTime)}`
                           : ''}
                     </p>
                   </div>
@@ -726,9 +1086,7 @@ export default function AppointmentBooking() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Reason for Visit</p>
-                    <p className="font-semibold text-gray-900">
-                      {createdAppointment?.reasonForVisit || reasonForVisit}
-                    </p>
+                    <p className="font-semibold text-gray-900">{createdAppointment?.reasonForVisit || reasonForVisit}</p>
                   </div>
                 </div>
               </motion.div>
@@ -741,13 +1099,16 @@ export default function AppointmentBooking() {
                     resetBookingState(
                       setSelectedDoctor,
                       setSelectedDate,
-                      setSelectedTime,
+                      setSelectedSlot,
                       setReasonForVisit,
-                      setAvailabilityTimes,
+                      setAvailabilitySlots,
                       setAvailabilityMessage,
                       setAvailabilityError,
+                      setCalendarAvailability,
+                      setCalendarError,
                       setSubmitError,
                       setCreatedAppointment,
+                      setVisibleMonth,
                       setStep,
                     )
                   }

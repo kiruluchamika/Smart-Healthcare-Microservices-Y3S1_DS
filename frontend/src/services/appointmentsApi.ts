@@ -6,14 +6,37 @@ export interface BookedSlot {
   appointmentId: number;
   startTime: string;
   endTime: string;
-  status: 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED';
+  status: 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED';
+}
+
+export interface GeneratedAvailabilitySlot {
+  appointmentId?: number | null;
+  startTime: string;
+  endTime: string;
+  state: 'AVAILABLE' | 'PENDING' | 'CONFIRMED';
 }
 
 export interface AvailabilityResponse {
   doctorId: number;
   appointmentDate: string;
+  availableOnDate: boolean;
   bookedSlots: BookedSlot[];
+  slots: GeneratedAvailabilitySlot[];
   message: string;
+}
+
+export interface CalendarDateAvailability {
+  appointmentDate: string;
+  availableOnDate: boolean;
+  hasAvailableSlots: boolean;
+  message: string;
+}
+
+export interface CalendarAvailabilityResponse {
+  doctorId: number;
+  rangeStart: string;
+  rangeEnd: string;
+  dates: CalendarDateAvailability[];
 }
 
 export interface CreateAppointmentPayload {
@@ -33,7 +56,7 @@ export interface AppointmentResponse {
   startTime: string;
   endTime: string;
   appointmentType: 'VIDEO' | 'PHYSICAL';
-  status: 'PENDING' | 'CONFIRMED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED';
+  status: 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED';
   reasonForVisit: string;
   fixedFeeSnapshot?: number | null;
   doctorExtraFee?: number | null;
@@ -41,6 +64,7 @@ export interface AppointmentResponse {
   feeCurrency?: string | null;
   feeLockedAt?: string | null;
   extraFeeReason?: string | null;
+  statusReason?: string | null;
   paymentStatusHint?: 'UNPAID' | 'PAID' | 'FAILED' | 'REFUNDED' | 'COMPLETED' | string | null;
   paymentPaidAt?: string | null;
   telemedicineSessionUrl?: string | null;
@@ -122,6 +146,18 @@ export function getDoctorAvailability(doctorId: number, date: string) {
   });
 
   return request<AvailabilityResponse>(`/availability?${params.toString()}`, {
+    method: 'GET',
+  });
+}
+
+export function getDoctorAvailabilityCalendar(doctorId: number, from: string, to: string) {
+  const params = new URLSearchParams({
+    doctorId: String(doctorId),
+    from,
+    to,
+  });
+
+  return request<CalendarAvailabilityResponse>(`/availability/calendar?${params.toString()}`, {
     method: 'GET',
   });
 }
