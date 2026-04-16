@@ -1,0 +1,8 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql-telemedicine:3306/telemedicine_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:telemedicine_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:telemedicine_pass}

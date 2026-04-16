@@ -1,3 +1,61 @@
 spring:
   application:
     name: notification-service
+  docker:
+    compose:
+      enabled: false
+  datasource:
+    url: jdbc:mysql://localhost:3315/notification_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: notification_user
+    password: notification_pass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: false
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: gamindukalmadu8@gmail.com
+    password: bnnbdilpxngkpmtz
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+server:
+  port: 8084
+
+twilio:
+  account-sid: AC1870d6fd6e1e2c9e28c955cdbd749651
+  auth-token: b2b7d4716ccd47ee60976b3e5fa63044
+  phone-number: +94767955166
+
+app:
+  notification:
+    from-email: gamindukalmadu8@gmail.com
+    reply-to-email: gamindukalmadu8@gmail.com
+    subject-prefix: Smart Healthcare
+  integrations:
+    auth-base-url: http://localhost:8080/auth
+    doctor-base-url: http://localhost:8083/api/v1/doctors
+    patient-base-url: http://localhost:8085/patients
+    doctor-username: doctor
+    doctor-password: doctor123
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

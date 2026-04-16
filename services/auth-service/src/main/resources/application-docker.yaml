@@ -1,0 +1,6 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql-auth:3306/auth_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
