@@ -24,6 +24,17 @@ export function setAuthSession(response: AuthResponse) {
   notifyAuthChanged();
 }
 
+export function updateAuthUser(patch: Record<string, unknown>) {
+  const current = getAuthUser();
+  if (!current) {
+    return;
+  }
+
+  const next = { ...current, ...patch };
+  authStorage.setItem(AUTH_USER_KEY, JSON.stringify(next));
+  notifyAuthChanged();
+}
+
 export function clearAuthSession() {
   authStorage.removeItem(AUTH_TOKEN_KEY);
   authStorage.removeItem(AUTH_USER_KEY);
