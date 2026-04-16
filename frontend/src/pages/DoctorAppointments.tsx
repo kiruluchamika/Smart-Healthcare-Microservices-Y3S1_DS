@@ -16,6 +16,7 @@ import {
 } from '../services/telemedicineApi';
 import { formatDisplayAmount } from '../utils/currency';
 import { getConsultationAccessState } from '../utils/telemedicine/telemedicineFlow';
+import PrescriptionForm from '../components/doctor/PrescriptionForm';
 
 const VIDEO_FIXED_FEE = 15;
 const PHYSICAL_FIXED_FEE = 20;
@@ -72,6 +73,7 @@ export default function DoctorAppointments() {
   const [acceptExtraFee, setAcceptExtraFee] = useState('0');
   const [acceptExtraFeeReason, setAcceptExtraFeeReason] = useState('');
   const [acceptFormError, setAcceptFormError] = useState('');
+  const [prescriptionModalAppointment, setPrescriptionModalAppointment] = useState<AppointmentResponse | null>(null);
   const acceptFeeInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadAppointments = async () => {
@@ -502,6 +504,15 @@ export default function DoctorAppointments() {
                                 Complete
                               </button>
                             )}
+                            {(canComplete || appointment.status === 'COMPLETED') && (
+                              <button
+                                type="button"
+                                onClick={() => setPrescriptionModalAppointment(appointment)}
+                                className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700"
+                              >
+                                Write Prescription
+                              </button>
+                            )}
                           </div>
                         </div>
                       </motion.div>
@@ -589,6 +600,31 @@ export default function DoctorAppointments() {
                 {actionLoadingId === acceptModalAppointment.id ? 'Accepting...' : 'Confirm Accept'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Prescription Pad Modal */}
+      {prescriptionModalAppointment && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto flex p-4 sm:p-8 justify-center">
+          {/* Backdrop */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setPrescriptionModalAppointment(null)}
+          />
+          <div className="relative z-10 w-full h-max mt-4 sm:mt-10 pb-20 flex justify-center">
+             <PrescriptionForm 
+                patientId={prescriptionModalAppointment.patientId} 
+                appointmentId={prescriptionModalAppointment.id} 
+                onCreated={() => {
+                  setPrescriptionModalAppointment(null);
+                  loadAppointments(); // Refresh to potentially update state
+                }}
+                onCancel={() => setPrescriptionModalAppointment(null)}
+             />
           </div>
         </div>
       )}
