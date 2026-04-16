@@ -22,6 +22,9 @@ public class DoctorAvailabilityUpdateRequest {
     @NotNull(message = "End time is required")
     private LocalTime endTime;
 
+    @NotNull(message = "Slot duration is required")
+    private Integer slotDuration;
+
     @NotNull(message = "Availability flag is required")
     private Boolean isAvailable;
 
@@ -42,5 +45,14 @@ public class DoctorAvailabilityUpdateRequest {
             return true;
         }
         return !effectiveFrom.isAfter(effectiveTo);
+    }
+
+    @AssertTrue(message = "Slot duration must be one of 15, 30, 45, or 60 minutes")
+    public boolean isSlotDurationValid() {
+        if (slotDuration == null) {
+            return true;
+        }
+
+        return slotDuration == 15 || slotDuration == 30 || slotDuration == 45 || slotDuration == 60;
     }
 }

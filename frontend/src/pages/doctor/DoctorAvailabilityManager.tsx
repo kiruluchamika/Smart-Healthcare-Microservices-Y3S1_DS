@@ -13,6 +13,59 @@ import {
 import type { DoctorAvailability, DoctorAvailabilityPayload } from '../../types/doctor';
 import { formatDate, formatDayOfWeek, formatTime } from '../../utils/doctor/doctorFormatters';
 
+function parseLocalDate(value?: string) {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+}
+
+function formatPreviewDate(date: Date) {
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function getMatchingDatesPreview(dayOfWeek: string, effectiveFrom?: string, effectiveTo?: string) {
+  const start = parseLocalDate(effectiveFrom);
+  const end = parseLocalDate(effectiveTo);
+  const dayMap: Record<string, number> = {
+    MONDAY: 0,
+    TUESDAY: 1,
+    WEDNESDAY: 2,
+    THURSDAY: 3,
+    FRIDAY: 4,
+    SATURDAY: 5,
+    SUNDAY: 6,
+  };
+
+  const targetDay = dayMap[dayOfWeek];
+  if (targetDay === undefined || !start || !end || start > end) {
+    return [];
+  }
+
+  const matches: string[] = [];
+  const cursor = new Date(start);
+
+  while (cursor <= end && matches.length < 3) {
+    const currentDay = (cursor.getDay() + 6) % 7;
+    if (currentDay === targetDay) {
+      matches.push(formatPreviewDate(cursor));
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return matches;
+}
+
 export default function DoctorAvailabilityManager() {
   const params = useParams();
   const doctorId = Number(params.id || 0);
@@ -168,6 +221,7 @@ export default function DoctorAvailabilityManager() {
                             dayOfWeek: slot.dayOfWeek,
                             startTime: slot.startTime,
                             endTime: slot.endTime,
+                            slotDuration: (slot.slotDuration || 30) as DoctorAvailabilityPayload['slotDuration'],
                             isAvailable: slot.isAvailable,
                             effectiveFrom: slot.effectiveFrom,
                             effectiveTo: slot.effectiveTo,
@@ -182,10 +236,35 @@ export default function DoctorAvailabilityManager() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div>
                             <p className="text-lg font-bold text-slate-900 group-hover:text-teal-700 transition-colors">
-                              {formatDayOfWeek(slot.dayOfWeek)} <span className="text-slate-400 font-normal mx-1">from</span> {formatTime(slot.startTime)} <span className="text-slate-400 font-normal mx-1">to</span> {formatTime(slot.endTime)}
+                              {slot.effectiveFrom && slot.effectiveTo
+                                ? 'Every day'
+                                : `Every ${formatDayOfWeek(slot.dayOfWeek)}`}{' '}
+                              <span className="text-slate-400 font-normal mx-1">from</span> {formatTime(slot.startTime)} <span className="text-slate-400 font-normal mx-1">to</span> {formatTime(slot.endTime)}
                             </p>
                             <p className="mt-1 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                               {formatDate(slot.effectiveFrom)} &mdash; {formatDate(slot.effectiveTo)}
+                            </p>
+                            {!slot.effectiveFrom || !slot.effectiveTo ? (
+                              getMatchingDatesPreview(slot.dayOfWeek, slot.effectiveFrom, slot.effectiveTo).length > 0 && (
+                                <p className="mt-2 text-sm text-slate-600">
+                                  Booking dates in this range:
+                                  {' '}
+                                  <span className="font-medium">
+                                    {getMatchingDatesPreview(slot.dayOfWeek, slot.effectiveFrom, slot.effectiveTo).join(', ')}
+                                  </span>
+                                </p>
+                              )
+                            ) : (
+                              <p className="mt-2 text-sm text-slate-600">
+                                Booking dates in this range:
+                                {' '}
+                                <span className="font-medium">
+                                  {formatDate(slot.effectiveFrom)} to {formatDate(slot.effectiveTo)}
+                                </span>
+                              </p>
+                            )}
+                            <p className="mt-2 text-sm font-medium text-slate-600">
+                              Slot duration: {slot.slotDuration || 30} minutes
                             </p>
                             <p className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold border shadow-sm ${slot.isAvailable ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-slate-50 text-slate-600 border-slate-200'}`}>
                               <span className={`w-2 h-2 rounded-full ${slot.isAvailable ? 'bg-teal-500 animate-pulse' : 'bg-slate-400'}`}></span>

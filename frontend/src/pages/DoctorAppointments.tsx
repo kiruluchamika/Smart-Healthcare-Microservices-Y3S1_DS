@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Calendar, Clock, Loader2, MapPin, Video } from 'lucide-react';
+import ConfirmationModal from '../components/ConfirmationModal';
+import { patientApi } from '../services/patientApi';
 import {
   acceptAppointmentWithFee,
   completeAppointment,
@@ -14,6 +17,7 @@ import {
   getMyDoctorTelemedicineSessions,
   type TelemedicineSessionResponse,
 } from '../services/telemedicineApi';
+import type { PatientProfile } from '../types/patient';
 import { formatDisplayAmount } from '../utils/currency';
 import { getConsultationAccessState } from '../utils/telemedicine/telemedicineFlow';
 
@@ -44,6 +48,30 @@ function formatMoney(amount?: number | null, currency = 'USD') {
   return formatDisplayAmount(amount, currency);
 }
 
+function getStatusBadgeClasses(status: AppointmentResponse['status']) {
+  if (status === 'CONFIRMED') {
+    return 'bg-emerald-100 text-emerald-700';
+  }
+
+  if (status === 'PENDING') {
+    return 'bg-amber-100 text-amber-700';
+  }
+
+  if (status === 'EXPIRED') {
+    return 'bg-slate-200 text-slate-700';
+  }
+
+  if (status === 'COMPLETED') {
+    return 'bg-blue-100 text-blue-700';
+  }
+
+  if (status === 'CANCELLED') {
+    return 'bg-red-100 text-red-700';
+  }
+
+  return 'bg-gray-100 text-gray-700';
+}
+
 function resolveBaseFee(appointment: AppointmentResponse) {
   if (
     appointment.fixedFeeSnapshot != null &&
@@ -62,9 +90,39 @@ type AppointmentGroup = {
   appointments: AppointmentResponse[];
 };
 
+type PendingConfirmation = {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  tone: 'primary' | 'danger' | 'success';
+  details?: ReactNode;
+  action: () => Promise<void>;
+} | null;
+
+function buildAppointmentSummary(appointment: AppointmentResponse) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+      <p className="font-semibold text-slate-900">Patient #{appointment.patientId}</p>
+      <p className="mt-1">
+        {formatDateLabel(appointment.appointmentDate)} at {formatTimeLabel(appointment.startTime)} -{' '}
+        {formatTimeLabel(appointment.endTime)}
+      </p>
+      <p className="mt-1">
+        {appointment.appointmentType === 'VIDEO' ? 'Video Consultation' : 'In-Person Visit'}
+      </p>
+    </div>
+  );
+}
+
+function getPatientDisplayName(profile: PatientProfile | null | undefined, patientId: number) {
+  const fullName = `${profile?.firstName || ''} ${profile?.lastName || ''}`.trim();
+  return fullName || `Patient #${patientId}`;
+}
+
 export default function DoctorAppointments() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [telemedicineMap, setTelemedicineMap] = useState<Record<number, TelemedicineSessionResponse>>({});
+  const [patientMap, setPatientMap] = useState<Record<number, PatientProfile>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
@@ -72,10 +130,14 @@ export default function DoctorAppointments() {
   const [acceptExtraFee, setAcceptExtraFee] = useState('0');
   const [acceptExtraFeeReason, setAcceptExtraFeeReason] = useState('');
   const [acceptFormError, setAcceptFormError] = useState('');
+  const [confirmation, setConfirmation] = useState<PendingConfirmation>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
   const acceptFeeInputRef = useRef<HTMLInputElement | null>(null);
 
-  const loadAppointments = async () => {
-    setIsLoading(true);
+  const loadAppointments = useCallback(async (silent = false) => {
+    if (!silent) {
+      setIsLoading(true);
+    }
     setError('');
 
     try {
@@ -84,13 +146,25 @@ export default function DoctorAppointments() {
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load doctor appointments');
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, []);
 
   useEffect(() => {
     void loadAppointments();
-  }, []);
+  }, [loadAppointments]);
+
+  useEffect(() => {
+    const refreshTimer = window.setInterval(() => {
+      void loadAppointments(true);
+    }, 30000);
+
+    return () => {
+      window.clearInterval(refreshTimer);
+    };
+  }, [loadAppointments]);
 
   useEffect(() => {
     const authUser = getAuthUser();
@@ -134,12 +208,10 @@ export default function DoctorAppointments() {
   const groupedAppointments = useMemo<AppointmentGroup[]>(() => {
     const pending = appointments.filter((appointment) => appointment.status === 'PENDING');
     const confirmed = appointments.filter((appointment) => appointment.status === 'CONFIRMED');
-    const completed = appointments.filter((appointment) => appointment.status === 'COMPLETED');
-    const other = appointments.filter(
+    const history = appointments.filter(
       (appointment) =>
         appointment.status !== 'PENDING' &&
-        appointment.status !== 'CONFIRMED' &&
-        appointment.status !== 'COMPLETED',
+        appointment.status !== 'CONFIRMED',
     );
 
     return [
@@ -154,17 +226,65 @@ export default function DoctorAppointments() {
         appointments: confirmed,
       },
       {
-        title: 'Completed Appointments',
-        description: 'Appointments you have already completed.',
-        appointments: completed,
+        title: 'History / Other Records',
+        description: 'Completed, rejected, cancelled, and expired appointment records.',
+        appointments: history,
       },
-      {
-        title: 'Other Statuses',
-        description: 'Rejected or cancelled appointments for reference.',
-        appointments: other,
-      },
-    ].filter((group) => group.appointments.length > 0);
+    ];
   }, [appointments]);
+
+  const patientIds = useMemo(
+    () => [...new Set(appointments.map((appointment) => appointment.patientId))],
+    [appointments],
+  );
+
+  useEffect(() => {
+    const missingPatientIds = patientIds.filter((patientId) => !patientMap[patientId]);
+
+    if (!missingPatientIds.length) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadPatients = async () => {
+      const patientEntries = await Promise.all(
+        missingPatientIds.map(async (patientId) => {
+          try {
+            const response = await patientApi.getPatientProfileForDoctor(patientId);
+            return [patientId, response.data] as const;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (!isActive) {
+        return;
+      }
+
+      setPatientMap((currentMap) => {
+        const nextMap = { ...currentMap };
+
+        patientEntries.forEach((entry) => {
+          if (!entry) {
+            return;
+          }
+
+          const [patientId, patient] = entry;
+          nextMap[patientId] = patient;
+        });
+
+        return nextMap;
+      });
+    };
+
+    void loadPatients();
+
+    return () => {
+      isActive = false;
+    };
+  }, [patientIds, patientMap]);
 
   const handleAction = async (
     appointmentId: number,
@@ -180,6 +300,29 @@ export default function DoctorAppointments() {
       setError(actionError instanceof Error ? actionError.message : 'Failed to update appointment');
     } finally {
       setActionLoadingId(null);
+    }
+  };
+
+  const closeConfirmation = () => {
+    if (isConfirming) {
+      return;
+    }
+
+    setConfirmation(null);
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmation) {
+      return;
+    }
+
+    setIsConfirming(true);
+
+    try {
+      await confirmation.action();
+      setConfirmation(null);
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -304,9 +447,133 @@ export default function DoctorAppointments() {
                   <p className="text-sm text-gray-600">{group.description}</p>
                 </div>
 
-                <div className="space-y-4">
-                  {group.appointments.map((appointment) => {
+                {group.title === 'Confirmed Appointments' ? (
+                  <div className="overflow-hidden rounded-2xl border border-gray-200/40 bg-white shadow-lg">
+                    {group.appointments.length === 0 ? (
+                      <div className="p-5 text-sm text-gray-500">No appointments in this section yet.</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-slate-50">
+                            <tr className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                              <th className="px-4 py-3">Patient</th>
+                              <th className="px-4 py-3">Date</th>
+                              <th className="px-4 py-3">Time</th>
+                              <th className="px-4 py-3">Type</th>
+                              <th className="px-4 py-3">Payment</th>
+                              <th className="px-4 py-3">Status</th>
+                              <th className="px-4 py-3">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 bg-white">
+                            {group.appointments.map((appointment) => {
+                              const isBusy = actionLoadingId === appointment.id;
+                              const patient = patientMap[appointment.patientId];
+                              const patientName = getPatientDisplayName(patient, appointment.patientId);
+                              const canComplete = appointment.status === 'CONFIRMED';
+                              const paymentStatus = (appointment.paymentStatusHint || 'UNPAID').toUpperCase();
+                              const isPaymentSettled =
+                                paymentStatus === 'PAID' || paymentStatus === 'COMPLETED';
+                              const paymentAmount =
+                                appointment.finalFee ?? appointment.fixedFeeSnapshot ?? appointment.doctorExtraFee ?? null;
+                              const paymentCurrency = appointment.feeCurrency || 'USD';
+                              const telemedicineSession = telemedicineMap[appointment.id];
+                              const consultationState =
+                                appointment.appointmentType === 'VIDEO'
+                                  ? getConsultationAccessState(appointment, telemedicineSession, 'DOCTOR')
+                                  : null;
+                              const showConsultationLink =
+                                appointment.appointmentType === 'VIDEO' &&
+                                appointment.status !== 'PENDING' &&
+                                consultationState?.canOpenPage;
+                              const showPhysicalComplete =
+                                appointment.appointmentType !== 'VIDEO' && canComplete;
+
+                              return (
+                                <tr key={appointment.id} className="align-top text-sm text-slate-700">
+                                  <td className="px-4 py-4">
+                                    <div className="font-semibold text-slate-900">{patientName}</div>
+                                    <div className="mt-1 text-xs text-slate-500">
+                                      Patient ID: {appointment.patientId}
+                                    </div>
+                                    <div className="mt-1 text-xs text-slate-500">Appointment #{appointment.id}</div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">{formatDateLabel(appointment.appointmentDate)}</td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    {formatTimeLabel(appointment.startTime)} - {formatTimeLabel(appointment.endTime)}
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    {appointment.appointmentType === 'VIDEO' ? 'Video Consultation' : 'In-Person Visit'}
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <div className="font-semibold text-slate-900">
+                                      {paymentAmount != null ? formatMoney(paymentAmount, paymentCurrency) : 'TBD'}
+                                    </div>
+                                    <div className={`mt-1 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                      isPaymentSettled ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'
+                                    }`}>
+                                      {isPaymentSettled ? 'PAID' : 'UNPAID'}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClasses(appointment.status)}`}>
+                                      {appointment.status}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4">
+                                    <div className="flex flex-wrap gap-2">
+                                      {showConsultationLink && (
+                                        <Link
+                                          to={`/consultation/${encodeURIComponent(String(appointment.id))}`}
+                                          className="inline-flex items-center justify-center rounded-lg bg-cyan-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-cyan-700"
+                                        >
+                                          {consultationState?.primaryLabel || 'Open'}
+                                        </Link>
+                                      )}
+                                      {showPhysicalComplete && (
+                                        <button
+                                          type="button"
+                                          disabled={isBusy || !isPaymentSettled}
+                                          onClick={() =>
+                                            setConfirmation({
+                                              title: 'Complete Appointment',
+                                              message:
+                                                'This will mark the consultation as completed using the current doctor workflow.',
+                                              confirmLabel: 'Confirm Completion',
+                                              tone: 'success',
+                                              details: buildAppointmentSummary(appointment),
+                                              action: async () => {
+                                                await handleAction(appointment.id, completeAppointment);
+                                              },
+                                            })
+                                          }
+                                          className="rounded-lg border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                          Complete
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {group.appointments.length === 0 && (
+                      <div className="rounded-2xl border border-gray-200/40 bg-white p-5 text-sm text-gray-500 shadow-lg">
+                        No appointments in this section yet.
+                      </div>
+                    )}
+
+                    {group.appointments.map((appointment) => {
                     const isBusy = actionLoadingId === appointment.id;
+                    const patient = patientMap[appointment.patientId];
+                    const patientName = getPatientDisplayName(patient, appointment.patientId);
                     const canAcceptOrReject = appointment.status === 'PENDING';
                     const canComplete = appointment.status === 'CONFIRMED';
                     const paymentStatus = (appointment.paymentStatusHint || 'UNPAID').toUpperCase();
@@ -338,24 +605,15 @@ export default function DoctorAppointments() {
                           <div className="min-w-0">
                             <div className="mb-2 flex flex-wrap items-center gap-2">
                               <h3 className="text-xl font-semibold text-gray-900">
-                                Patient #{appointment.patientId}
+                                {patientName}
                               </h3>
                               <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                  appointment.status === 'CONFIRMED'
-                                    ? 'bg-emerald-100 text-emerald-700'
-                                    : appointment.status === 'PENDING'
-                                      ? 'bg-amber-100 text-amber-700'
-                                      : appointment.status === 'COMPLETED'
-                                        ? 'bg-blue-100 text-blue-700'
-                                        : appointment.status === 'CANCELLED'
-                                          ? 'bg-red-100 text-red-700'
-                                          : 'bg-gray-100 text-gray-700'
-                                }`}
+                                className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClasses(appointment.status)}`}
                               >
                                 {appointment.status}
                               </span>
                             </div>
+                            <p className="mb-3 text-sm text-slate-500">Patient ID: {appointment.patientId}</p>
 
                             <div
                               className={`mb-4 rounded-2xl border px-4 py-4 ${
@@ -441,6 +699,12 @@ export default function DoctorAppointments() {
                               <p className="mt-1 text-sm text-gray-700">{appointment.reasonForVisit}</p>
                             </div>
 
+                            {appointment.statusReason && (
+                              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                                {appointment.statusReason}
+                              </div>
+                            )}
+
                             {consultationState && (
                               <div className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4">
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -487,7 +751,19 @@ export default function DoctorAppointments() {
                             <button
                               type="button"
                               disabled={!canAcceptOrReject || isBusy}
-                              onClick={() => void handleAction(appointment.id, rejectAppointment)}
+                              onClick={() =>
+                                setConfirmation({
+                                  title: 'Reject Appointment',
+                                  message:
+                                    'This will decline the pending request while preserving the existing appointment record.',
+                                  confirmLabel: 'Confirm Rejection',
+                                  tone: 'danger',
+                                  details: buildAppointmentSummary(appointment),
+                                  action: async () => {
+                                    await handleAction(appointment.id, rejectAppointment);
+                                  },
+                                })
+                              }
                               className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               Reject
@@ -496,7 +772,19 @@ export default function DoctorAppointments() {
                               <button
                                 type="button"
                                 disabled={isBusy || !isPaymentSettled}
-                                onClick={() => void handleAction(appointment.id, completeAppointment)}
+                                onClick={() =>
+                                  setConfirmation({
+                                    title: 'Complete Appointment',
+                                    message:
+                                      'This will mark the consultation as completed using the current doctor workflow.',
+                                    confirmLabel: 'Confirm Completion',
+                                    tone: 'success',
+                                    details: buildAppointmentSummary(appointment),
+                                    action: async () => {
+                                      await handleAction(appointment.id, completeAppointment);
+                                    },
+                                  })
+                                }
                                 className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Complete
@@ -507,7 +795,8 @@ export default function DoctorAppointments() {
                       </motion.div>
                     );
                   })}
-                </div>
+                  </div>
+                )}
               </section>
             ))}
           </div>
@@ -592,6 +881,18 @@ export default function DoctorAppointments() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={Boolean(confirmation)}
+        title={confirmation?.title || ''}
+        message={confirmation?.message || ''}
+        confirmLabel={confirmation?.confirmLabel || 'Confirm'}
+        tone={confirmation?.tone || 'primary'}
+        details={confirmation?.details}
+        isLoading={isConfirming}
+        onClose={closeConfirmation}
+        onConfirm={handleConfirm}
+      />
     </div>
   );
 }
