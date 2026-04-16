@@ -41,6 +41,10 @@ public class JwtService {
         return userId == null ? null : userId.longValue();
     }
 
+    public String extractEmail(Claims claims) {
+        return claims.getSubject();
+    }
+
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }

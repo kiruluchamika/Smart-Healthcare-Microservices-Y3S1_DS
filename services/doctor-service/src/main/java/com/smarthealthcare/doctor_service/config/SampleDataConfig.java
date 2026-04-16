@@ -74,7 +74,7 @@ public class SampleDataConfig {
 
                         availabilityRepository.save(DoctorAvailability.builder()
                                         .doctorId(cardiologist.getId())
-                                        .dayOfWeek(DayOfWeek.MONDAY)
+                                        .daysOfWeek(DayOfWeek.MONDAY.name())
                                         .startTime(LocalTime.of(9, 0))
                                         .endTime(LocalTime.of(12, 0))
                                         .available(true)
@@ -82,7 +82,7 @@ public class SampleDataConfig {
 
                         availabilityRepository.save(DoctorAvailability.builder()
                                         .doctorId(cardiologist.getId())
-                                        .dayOfWeek(DayOfWeek.WEDNESDAY)
+                                        .daysOfWeek(DayOfWeek.WEDNESDAY.name())
                                         .startTime(LocalTime.of(14, 0))
                                         .endTime(LocalTime.of(17, 0))
                                         .available(true)
@@ -90,7 +90,7 @@ public class SampleDataConfig {
 
                         availabilityRepository.save(DoctorAvailability.builder()
                                         .doctorId(neurologist.getId())
-                                        .dayOfWeek(DayOfWeek.TUESDAY)
+                                        .daysOfWeek(DayOfWeek.TUESDAY.name())
                                         .startTime(LocalTime.of(10, 0))
                                         .endTime(LocalTime.of(13, 0))
                                         .available(true)

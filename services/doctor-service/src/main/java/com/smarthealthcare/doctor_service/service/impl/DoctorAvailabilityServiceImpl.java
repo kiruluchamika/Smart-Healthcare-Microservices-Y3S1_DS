@@ -10,7 +10,11 @@ import com.smarthealthcare.doctor_service.mapper.DoctorAvailabilityMapper;
 import com.smarthealthcare.doctor_service.repository.DoctorAvailabilityRepository;
 import com.smarthealthcare.doctor_service.repository.DoctorRepository;
 import com.smarthealthcare.doctor_service.service.DoctorAvailabilityService;
+import com.smarthealthcare.doctor_service.util.DoctorAvailabilityDays;
+import java.time.DayOfWeek;
 import java.time.Duration;
+import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,7 +36,7 @@ public class DoctorAvailabilityServiceImpl implements DoctorAvailabilityService 
         ensureDoctorExists(doctorId);
         validateSlotRules(
                 doctorId,
-                request.getDayOfWeek(),
+                DoctorAvailabilityDays.resolveRequestedDays(request.getDaysOfWeek(), request.getDayOfWeek()),
                 request.getStartTime(),
                 request.getEndTime(),
                 request.getSlotDuration(),
@@ -47,8 +51,14 @@ public class DoctorAvailabilityServiceImpl implements DoctorAvailabilityService 
     @Transactional(readOnly = true)
     public List<DoctorAvailabilityResponse> getAvailabilities(Long doctorId) {
         ensureDoctorExists(doctorId);
-        return availabilityRepository.findByDoctorIdOrderByDayOfWeekAscStartTimeAsc(doctorId)
+        return availabilityRepository.findByDoctorId(doctorId)
                 .stream()
+                .sorted(Comparator
+                        .comparing((DoctorAvailability availability) ->
+                                DoctorAvailabilityDays.parse(availability.getDaysOfWeek()).stream()
+                                        .findFirst()
+                                        .orElse(DayOfWeek.MONDAY))
+                        .thenComparing(DoctorAvailability::getStartTime))
                 .map(availabilityMapper::toResponse)
                 .toList();
     }
@@ -61,7 +71,7 @@ public class DoctorAvailabilityServiceImpl implements DoctorAvailabilityService 
         DoctorAvailability availability = findAvailabilityOrThrow(doctorId, availabilityId);
         validateSlotRules(
                 doctorId,
-                request.getDayOfWeek(),
+                DoctorAvailabilityDays.resolveRequestedDays(request.getDaysOfWeek(), request.getDayOfWeek()),
                 request.getStartTime(),
                 request.getEndTime(),
                 request.getSlotDuration(),
@@ -97,11 +107,15 @@ public class DoctorAvailabilityServiceImpl implements DoctorAvailabilityService 
 
     private void validateSlotRules(
             Long doctorId,
-            java.time.DayOfWeek dayOfWeek,
-            java.time.LocalTime startTime,
-            java.time.LocalTime endTime,
+            List<DayOfWeek> daysOfWeek,
+            LocalTime startTime,
+            LocalTime endTime,
             Integer slotDuration,
             Long availabilityId) {
+        if (daysOfWeek == null || daysOfWeek.isEmpty()) {
+            throw new BadRequestException("At least one day of week is required");
+        }
+
         if (!startTime.isBefore(endTime)) {
             throw new BadRequestException("Start time must be before end time");
         }
@@ -119,11 +133,12 @@ public class DoctorAvailabilityServiceImpl implements DoctorAvailabilityService 
             throw new BadRequestException("Availability range must be at least as long as the selected slot duration");
         }
 
-        boolean hasOverlap = availabilityId == null
-                ? availabilityRepository.existsByDoctorIdAndDayOfWeekAndStartTimeLessThanAndEndTimeGreaterThan(
-                        doctorId, dayOfWeek, endTime, startTime)
-                : availabilityRepository.existsByDoctorIdAndDayOfWeekAndStartTimeLessThanAndEndTimeGreaterThanAndIdNot(
-                        doctorId, dayOfWeek, endTime, startTime, availabilityId);
+        String requestedDays = DoctorAvailabilityDays.serialize(daysOfWeek);
+        boolean hasOverlap = availabilityRepository.findByDoctorId(doctorId).stream()
+                .filter(existing -> availabilityId == null || !existing.getId().equals(availabilityId))
+                .filter(existing -> DoctorAvailabilityDays.intersects(existing.getDaysOfWeek(), requestedDays))
+                .anyMatch(existing -> existing.getStartTime().isBefore(endTime)
+                        && existing.getEndTime().isAfter(startTime));
 
         if (hasOverlap) {
             throw new BadRequestException("Availability overlaps with an existing slot for the same day");

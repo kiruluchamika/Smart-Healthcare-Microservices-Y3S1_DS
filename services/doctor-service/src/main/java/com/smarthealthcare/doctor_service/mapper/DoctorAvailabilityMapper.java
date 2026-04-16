@@ -4,15 +4,20 @@ import com.smarthealthcare.doctor_service.dto.DoctorAvailabilityCreateRequest;
 import com.smarthealthcare.doctor_service.dto.DoctorAvailabilityResponse;
 import com.smarthealthcare.doctor_service.dto.DoctorAvailabilityUpdateRequest;
 import com.smarthealthcare.doctor_service.entity.DoctorAvailability;
+import com.smarthealthcare.doctor_service.util.DoctorAvailabilityDays;
 import org.springframework.stereotype.Component;
 
 @Component
 public class DoctorAvailabilityMapper {
 
     public DoctorAvailability toEntity(Long doctorId, DoctorAvailabilityCreateRequest request) {
+        var resolvedDays = DoctorAvailabilityDays.resolveRequestedDays(
+                request.getDaysOfWeek(),
+                request.getDayOfWeek());
+
         return DoctorAvailability.builder()
                 .doctorId(doctorId)
-                .dayOfWeek(request.getDayOfWeek())
+                .daysOfWeek(DoctorAvailabilityDays.serialize(resolvedDays))
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
                 .slotDuration(request.getSlotDuration())
@@ -23,7 +28,10 @@ public class DoctorAvailabilityMapper {
     }
 
     public void updateEntity(DoctorAvailability availability, DoctorAvailabilityUpdateRequest request) {
-        availability.setDayOfWeek(request.getDayOfWeek());
+        availability.setDaysOfWeek(DoctorAvailabilityDays.serialize(
+                DoctorAvailabilityDays.resolveRequestedDays(
+                        request.getDaysOfWeek(),
+                        request.getDayOfWeek())));
         availability.setStartTime(request.getStartTime());
         availability.setEndTime(request.getEndTime());
         availability.setSlotDuration(request.getSlotDuration());
@@ -33,10 +41,12 @@ public class DoctorAvailabilityMapper {
     }
 
     public DoctorAvailabilityResponse toResponse(DoctorAvailability availability) {
+        var daysOfWeek = DoctorAvailabilityDays.parse(availability.getDaysOfWeek());
         return DoctorAvailabilityResponse.builder()
                 .id(availability.getId())
                 .doctorId(availability.getDoctorId())
-                .dayOfWeek(availability.getDayOfWeek())
+                .dayOfWeek(daysOfWeek.isEmpty() ? null : daysOfWeek.get(0))
+                .daysOfWeek(daysOfWeek)
                 .startTime(availability.getStartTime())
                 .endTime(availability.getEndTime())
                 .slotDuration(availability.getSlotDuration() == null ? 30 : availability.getSlotDuration())

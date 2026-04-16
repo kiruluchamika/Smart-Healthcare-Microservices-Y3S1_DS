@@ -5,7 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import { DoctorStatusBadge } from '../../components/doctor/DoctorStatusBadge';
 import { getAvailability, getDashboardSummary, getDoctorById } from '../../services/doctor/doctorApi';
 import type { DoctorAvailability, DoctorDashboardSummary, DoctorServiceDoctor } from '../../types/doctor';
-import { formatDate, formatDayOfWeek, formatTime } from '../../utils/doctor/doctorFormatters';
+import { formatDate, formatDaysOfWeek, formatTime } from '../../utils/doctor/doctorFormatters';
 
 function splitValues(value?: string | null) {
   return (value || '')
@@ -213,7 +213,7 @@ export default function DoctorDetail() {
                       <div key={slot.id} className="group relative overflow-hidden rounded-2xl border border-white bg-white/50 p-4 shadow-sm transition-all duration-300 hover:shadow-md hover:bg-white/80 hover:-translate-y-0.5">
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-teal-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         <p className="font-bold text-slate-800 text-sm mb-1">
-                          {formatDayOfWeek(slot.dayOfWeek)} <span className="text-teal-600 mx-1">•</span> {formatTime(slot.startTime)} to {formatTime(slot.endTime)}
+                          {formatDaysOfWeek(slot.daysOfWeek)} <span className="text-teal-600 mx-1">•</span> {formatTime(slot.startTime)} to {formatTime(slot.endTime)}
                         </p>
                         <p className="text-xs font-medium text-slate-500">
                           Valid: {formatDate(slot.effectiveFrom)} to {formatDate(slot.effectiveTo)}

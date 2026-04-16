@@ -46,4 +46,14 @@ app:
       password: ${DOCTOR_SERVICE_PASSWORD:doctor123}
 
   integrations:
-    notification-base-url: ${NOTIFICATION_SERVICE_BASE_URL:http://localhost:8084}
+    notification-enabled: ${NOTIFICATION_ENABLED:true}
+    notification-base-url: ${NOTIFICATION_SERVICE_BASE_URL:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always

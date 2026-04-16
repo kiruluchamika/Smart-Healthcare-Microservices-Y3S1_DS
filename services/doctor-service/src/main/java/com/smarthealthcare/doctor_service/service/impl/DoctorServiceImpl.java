@@ -23,6 +23,7 @@ import com.smarthealthcare.doctor_service.repository.DoctorAvailabilityRepositor
 import com.smarthealthcare.doctor_service.repository.DoctorRepository;
 import com.smarthealthcare.doctor_service.repository.DoctorVerificationHistoryRepository;
 import com.smarthealthcare.doctor_service.service.DoctorService;
+import com.smarthealthcare.doctor_service.util.DoctorAvailabilityDays;
 import jakarta.persistence.criteria.Predicate;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -160,8 +161,11 @@ public class DoctorServiceImpl implements DoctorService {
             DayOfWeek dayOfWeek) {
         List<Long> doctorIdsByAvailability = null;
         if (dayOfWeek != null) {
-            doctorIdsByAvailability = availabilityRepository
-                    .findDistinctDoctorIdsByDayOfWeekAndAvailableTrue(dayOfWeek);
+            doctorIdsByAvailability = availabilityRepository.findByAvailableTrue().stream()
+                    .filter(availability -> DoctorAvailabilityDays.containsDay(availability.getDaysOfWeek(), dayOfWeek))
+                    .map(DoctorAvailability::getDoctorId)
+                    .distinct()
+                    .toList();
             if (doctorIdsByAvailability.isEmpty()) {
                 return List.of();
             }
@@ -247,7 +251,9 @@ public class DoctorServiceImpl implements DoctorService {
         Map<String, Long> weeklySlots = new HashMap<>();
         for (DayOfWeek day : DayOfWeek.values()) {
             weeklySlots.put(day.name(),
-                    slots.stream().filter(s -> s.getDayOfWeek() == day && Boolean.TRUE.equals(s.getAvailable()))
+                    slots.stream()
+                            .filter(s -> Boolean.TRUE.equals(s.getAvailable()))
+                            .filter(s -> DoctorAvailabilityDays.containsDay(s.getDaysOfWeek(), day))
                             .count());
         }
 

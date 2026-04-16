@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { DOCTOR_DAYS } from '../../constants/doctor';
 import type { DoctorAvailabilityPayload } from '../../types/doctor';
+import { formatDaysOfWeek } from '../../utils/doctor/doctorFormatters';
 
 interface AvailabilitySlotEditorProps {
   initialValue?: DoctorAvailabilityPayload;
@@ -11,6 +12,7 @@ interface AvailabilitySlotEditorProps {
 
 const defaultForm: DoctorAvailabilityPayload = {
   dayOfWeek: 'MONDAY',
+  daysOfWeek: ['MONDAY'],
   startTime: '09:00:00',
   endTime: '10:00:00',
   slotDuration: 30,
@@ -38,18 +40,31 @@ function formatShortDate(date: Date) {
   });
 }
 
+function normalizeDaysOfWeek(daysOfWeek?: string[], legacyDayOfWeek?: string) {
+  const resolved = daysOfWeek && daysOfWeek.length > 0 ? daysOfWeek : legacyDayOfWeek ? [legacyDayOfWeek] : [];
+  const normalized = DOCTOR_DAYS.filter((day) => resolved.includes(day));
+  return normalized.length > 0 ? normalized : ['MONDAY'];
+}
+
 export function AvailabilitySlotEditor({
   initialValue,
   onSubmit,
   isSubmitting = false,
   submitLabel = 'Save slot',
 }: AvailabilitySlotEditorProps) {
-  const [form, setForm] = useState<DoctorAvailabilityPayload>(initialValue || defaultForm);
+  const [form, setForm] = useState<DoctorAvailabilityPayload>(() => {
+    const base = initialValue || defaultForm;
+    const daysOfWeek = normalizeDaysOfWeek(base.daysOfWeek, base.dayOfWeek);
+
+    return {
+      ...base,
+      dayOfWeek: daysOfWeek[0],
+      daysOfWeek,
+    };
+  });
   const [error, setError] = useState('');
 
-  const hasValidRange = useMemo(() => {
-    return form.startTime < form.endTime;
-  }, [form.endTime, form.startTime]);
+  const hasValidRange = useMemo(() => form.startTime < form.endTime, [form.endTime, form.startTime]);
 
   const hasValidDates = useMemo(() => {
     if (!form.effectiveFrom || !form.effectiveTo) {
@@ -63,34 +78,47 @@ export function AvailabilitySlotEditor({
     const start = parseLocalDate(form.effectiveFrom);
     const end = parseLocalDate(form.effectiveTo);
 
-    if (!start || !end || start > end) {
-      return null;
-    }
-
-    const targetDayIndex = DOCTOR_DAYS.indexOf(form.dayOfWeek);
-    if (targetDayIndex < 0) {
+    if (!start || !end || start > end || form.daysOfWeek.length === 0) {
       return null;
     }
 
     const matchedDates: string[] = [];
     const cursor = new Date(start);
 
-    while (cursor <= end && matchedDates.length < 3) {
+    while (cursor <= end && matchedDates.length < 4) {
       const currentDayIndex = (cursor.getDay() + 6) % 7;
-      if (currentDayIndex === targetDayIndex) {
+      const currentDay = DOCTOR_DAYS[currentDayIndex];
+      if (form.daysOfWeek.includes(currentDay)) {
         matchedDates.push(formatShortDate(cursor));
       }
       cursor.setDate(cursor.getDate() + 1);
     }
 
-    return {
-      totalPreviewed: matchedDates.length,
-      matchedDates,
-    };
-  }, [form.dayOfWeek, form.effectiveFrom, form.effectiveTo]);
+    return matchedDates;
+  }, [form.daysOfWeek, form.effectiveFrom, form.effectiveTo]);
+
+  const toggleDay = (day: string) => {
+    setForm((prev) => {
+      const nextDays = prev.daysOfWeek.includes(day)
+        ? prev.daysOfWeek.filter((value) => value !== day)
+        : [...prev.daysOfWeek, day];
+
+      const normalized = DOCTOR_DAYS.filter((value) => nextDays.includes(value));
+      return {
+        ...prev,
+        dayOfWeek: normalized[0],
+        daysOfWeek: normalized,
+      };
+    });
+  };
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    if (form.daysOfWeek.length === 0) {
+      setError('Select at least one day.');
+      return;
+    }
 
     if (!hasValidRange) {
       setError('Start time must be before end time.');
@@ -103,7 +131,11 @@ export function AvailabilitySlotEditor({
     }
 
     setError('');
-    await onSubmit(form);
+    await onSubmit({
+      ...form,
+      dayOfWeek: form.daysOfWeek[0],
+      daysOfWeek: [...form.daysOfWeek],
+    });
   };
 
   return (
@@ -111,20 +143,32 @@ export function AvailabilitySlotEditor({
       {error && <p className="rounded-md bg-rose-100 px-3 py-2 text-sm text-rose-700">{error}</p>}
 
       <div className="grid gap-3 md:grid-cols-2">
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-slate-500">Day</span>
-          <select
-            value={form.dayOfWeek}
-            onChange={(e) => setForm((prev) => ({ ...prev, dayOfWeek: e.target.value }))}
-            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
-          >
-            {DOCTOR_DAYS.map((day) => (
-              <option key={day} value={day}>
-                {day}
-              </option>
-            ))}
-          </select>
-        </label>
+        <fieldset className="md:col-span-2">
+          <legend className="mb-2 block text-xs font-semibold text-slate-500">Repeat on</legend>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+            {DOCTOR_DAYS.map((day) => {
+              const checked = form.daysOfWeek.includes(day);
+              return (
+                <label
+                  key={day}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition ${
+                    checked
+                      ? 'border-teal-300 bg-teal-50 text-teal-900'
+                      : 'border-slate-200 bg-white text-slate-700'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleDay(day)}
+                    className="accent-teal-600"
+                  />
+                  {formatDaysOfWeek([day])}
+                </label>
+              );
+            })}
+          </div>
+        </fieldset>
 
         <label className="flex items-end gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
           <input
@@ -135,6 +179,11 @@ export function AvailabilitySlotEditor({
           />
           Available
         </label>
+
+        <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+          <span className="mb-1 block text-xs font-semibold text-slate-500">Selected days</span>
+          <span className="font-medium">{form.daysOfWeek.length > 0 ? formatDaysOfWeek(form.daysOfWeek) : 'None selected'}</span>
+        </div>
 
         <label className="block">
           <span className="mb-1 block text-xs font-semibold text-slate-500">Start time</span>
@@ -200,18 +249,16 @@ export function AvailabilitySlotEditor({
       <div className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-900">
         {form.effectiveFrom && form.effectiveTo ? (
           <>
-            This slot applies to <span className="font-semibold">every day</span> from the selected start date to end date.
+            This slot repeats on <span className="font-semibold">{formatDaysOfWeek(form.daysOfWeek)}</span> between the selected dates.
           </>
         ) : (
           <>
-            This slot repeats only on <span className="font-semibold">{form.dayOfWeek.toLowerCase()}</span>.
+            This slot repeats weekly on <span className="font-semibold">{formatDaysOfWeek(form.daysOfWeek)}</span>.
           </>
         )}
-        {recurrencePreview && recurrencePreview.matchedDates.length > 0 && !form.effectiveFrom && !form.effectiveTo && (
+        {recurrencePreview && recurrencePreview.length > 0 && (
           <div className="mt-1 text-teal-800">
-            Matching booking date{recurrencePreview.matchedDates.length === 1 ? '' : 's'} in this range:
-            {' '}
-            <span className="font-medium">{recurrencePreview.matchedDates.join(', ')}</span>
+            Matching booking dates in this range: <span className="font-medium">{recurrencePreview.join(', ')}</span>
           </div>
         )}
       </div>

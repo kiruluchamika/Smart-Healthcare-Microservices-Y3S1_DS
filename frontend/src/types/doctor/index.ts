@@ -91,7 +91,8 @@ export interface DoctorUpdatePayload extends DoctorCreatePayload { }
 export interface DoctorAvailability {
   id: number;
   doctorId: number;
-  dayOfWeek: string;
+  dayOfWeek?: string;
+  daysOfWeek: string[];
   startTime: string;
   endTime: string;
   slotDuration: number;
@@ -103,7 +104,8 @@ export interface DoctorAvailability {
 }
 
 export interface DoctorAvailabilityPayload {
-  dayOfWeek: string;
+  dayOfWeek?: string;
+  daysOfWeek: string[];
   startTime: string;
   endTime: string;
   slotDuration: 15 | 30 | 45 | 60;

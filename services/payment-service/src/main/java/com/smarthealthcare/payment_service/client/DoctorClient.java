@@ -35,4 +35,15 @@ public class DoctorClient {
             throw new ExternalServiceException("Unable to load doctor pricing details", ex);
         }
     }
+
+    public DoctorSnapshot getDoctorByEmail(String email) {
+        try {
+            return restClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/by-email").queryParam("email", email).build())
+                    .retrieve()
+                    .body(DoctorSnapshot.class);
+        } catch (Exception ex) {
+            throw new ExternalServiceException("Unable to resolve doctor account", ex);
+        }
+    }
 }

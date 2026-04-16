@@ -34,6 +34,7 @@ export function setAuthSession(response: AuthResponse) {
   }
 
   const expiresAt = Date.now() + (response.expiresInMs || 0);
+  window.localStorage.removeItem(DOCTOR_PROFILE_ID_KEY);
   authStorage.setItem(AUTH_TOKEN_KEY, response.accessToken);
   authStorage.setItem(AUTH_USER_KEY, JSON.stringify(response.user));
   authStorage.setItem(AUTH_TOKEN_EXPIRES_AT_KEY, String(expiresAt));

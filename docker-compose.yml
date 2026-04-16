@@ -97,6 +97,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: doctor_pass
       SERVER_PORT: 8083
       APP_UPLOAD_DIR: /app/uploads
+      APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
     depends_on:
       mysql-doctor:
         condition: service_healthy
@@ -115,6 +116,9 @@ services:
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
       SERVER_PORT: 8082
+      APP_SERVICES_AUTH_BASE_URL: http://auth-service:8080/auth
+      APP_SERVICES_DOCTOR_BASE_URL: http://doctor-service:8083/api/v1/doctors
+      NOTIFICATION_ENABLED: "false"
     depends_on:
       mysql-appointment:
         condition: service_healthy
@@ -130,6 +134,9 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql-patient:3306/patient_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: 123456
+      SERVER_PORT: 8085
+      APPOINTMENT_SERVICE_BASE_URL: http://appointment-service:8082
+      AUTH_SERVICE_BASE_URL: http://auth-service:8080/auth
       APP_JWT_SECRET: smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
     depends_on:
@@ -160,6 +167,9 @@ services:
     container_name: frontend
     depends_on:
       - auth-service
+      - patient-service
+      - doctor-service
+      - appointment-service
       - api-gateway
     ports:
       - "5173:80"
