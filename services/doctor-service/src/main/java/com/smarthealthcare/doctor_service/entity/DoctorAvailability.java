@@ -46,6 +46,9 @@ public class DoctorAvailability {
     @Column(nullable = false)
     private LocalTime endTime;
 
+    @Column
+    private Integer slotDuration;
+
     @Column(nullable = false)
     private Boolean available;
 
@@ -68,6 +71,9 @@ public class DoctorAvailability {
         this.updatedAt = now;
         if (this.available == null) {
             this.available = Boolean.TRUE;
+        }
+        if (this.slotDuration == null) {
+            this.slotDuration = 30;
         }
     }
 

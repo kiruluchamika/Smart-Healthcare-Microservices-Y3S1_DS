@@ -13,8 +13,30 @@ const defaultForm: DoctorAvailabilityPayload = {
   dayOfWeek: 'MONDAY',
   startTime: '09:00:00',
   endTime: '10:00:00',
+  slotDuration: 30,
   isAvailable: true,
 };
+
+function parseLocalDate(value?: string) {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return new Date(year, month - 1, day);
+}
+
+function formatShortDate(date: Date) {
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
 
 export function AvailabilitySlotEditor({
   initialValue,
@@ -36,6 +58,36 @@ export function AvailabilitySlotEditor({
 
     return form.effectiveFrom <= form.effectiveTo;
   }, [form.effectiveFrom, form.effectiveTo]);
+
+  const recurrencePreview = useMemo(() => {
+    const start = parseLocalDate(form.effectiveFrom);
+    const end = parseLocalDate(form.effectiveTo);
+
+    if (!start || !end || start > end) {
+      return null;
+    }
+
+    const targetDayIndex = DOCTOR_DAYS.indexOf(form.dayOfWeek);
+    if (targetDayIndex < 0) {
+      return null;
+    }
+
+    const matchedDates: string[] = [];
+    const cursor = new Date(start);
+
+    while (cursor <= end && matchedDates.length < 3) {
+      const currentDayIndex = (cursor.getDay() + 6) % 7;
+      if (currentDayIndex === targetDayIndex) {
+        matchedDates.push(formatShortDate(cursor));
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return {
+      totalPreviewed: matchedDates.length,
+      matchedDates,
+    };
+  }, [form.dayOfWeek, form.effectiveFrom, form.effectiveTo]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -105,6 +157,26 @@ export function AvailabilitySlotEditor({
         </label>
 
         <label className="block">
+          <span className="mb-1 block text-xs font-semibold text-slate-500">Slot duration</span>
+          <select
+            value={form.slotDuration}
+            onChange={(e) =>
+              setForm((prev) => ({
+                ...prev,
+                slotDuration: Number(e.target.value) as DoctorAvailabilityPayload['slotDuration'],
+              }))
+            }
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
+          >
+            {[15, 30, 45, 60].map((minutes) => (
+              <option key={minutes} value={minutes}>
+                {minutes} minutes
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
           <span className="mb-1 block text-xs font-semibold text-slate-500">Effective from</span>
           <input
             type="date"
@@ -123,6 +195,25 @@ export function AvailabilitySlotEditor({
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-teal-400 focus:ring"
           />
         </label>
+      </div>
+
+      <div className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3 text-sm text-teal-900">
+        {form.effectiveFrom && form.effectiveTo ? (
+          <>
+            This slot applies to <span className="font-semibold">every day</span> from the selected start date to end date.
+          </>
+        ) : (
+          <>
+            This slot repeats only on <span className="font-semibold">{form.dayOfWeek.toLowerCase()}</span>.
+          </>
+        )}
+        {recurrencePreview && recurrencePreview.matchedDates.length > 0 && !form.effectiveFrom && !form.effectiveTo && (
+          <div className="mt-1 text-teal-800">
+            Matching booking date{recurrencePreview.matchedDates.length === 1 ? '' : 's'} in this range:
+            {' '}
+            <span className="font-medium">{recurrencePreview.matchedDates.join(', ')}</span>
+          </div>
+        )}
       </div>
 
       <button
