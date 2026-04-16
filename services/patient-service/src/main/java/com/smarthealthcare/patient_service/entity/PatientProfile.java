@@ -47,7 +47,7 @@ public class PatientProfile {
     @Column(name = "emergency_contact_name", length = 100)
     private String emergencyContactName;
 
-    @Column(name = "emergency_contact_phone", length = 20)
+    @Column(name = "emergency_contact_phone", length = 10)
     private String emergencyContactPhone;
 
     @Column(name = "allergies", columnDefinition = "TEXT")
