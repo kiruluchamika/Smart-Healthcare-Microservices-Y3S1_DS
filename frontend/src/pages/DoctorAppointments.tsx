@@ -370,34 +370,13 @@ export default function DoctorAppointments() {
       return;
     }
 
-    const parsedExtraFee = Number(acceptExtraFee.trim() || '0');
-    if (!Number.isFinite(parsedExtraFee) || parsedExtraFee < 0) {
-      setAcceptFormError('Extra fee must be a valid non-negative number');
-      return;
-    }
-
-    const baseFee = resolveBaseFee(acceptModalAppointment);
-    const maxExtraFee = Number((baseFee * EXTRA_FEE_CAP_MULTIPLIER).toFixed(2));
-    if (parsedExtraFee > maxExtraFee) {
-      setAcceptFormError(
-        `Extra fee cannot exceed ${formatMoney(maxExtraFee, acceptModalAppointment.feeCurrency || 'USD')}`,
-      );
-      return;
-    }
-
-    const normalizedReason = acceptExtraFeeReason.trim();
-    if (parsedExtraFee > 0 && !normalizedReason) {
-      setAcceptFormError('Reason is required when adding an extra fee');
-      return;
-    }
-
     setActionLoadingId(acceptModalAppointment.id);
     setError('');
     setAcceptFormError('');
     try {
       await acceptAppointmentWithFee(acceptModalAppointment.id, {
-        extraFee: parsedExtraFee,
-        extraFeeReason: normalizedReason,
+        extraFee: 0,
+        extraFeeReason: '',
       });
       closeAcceptModal();
       await loadAppointments();
@@ -834,50 +813,17 @@ export default function DoctorAppointments() {
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
             <h3 className="text-xl font-bold text-slate-900">Accept Appointment</h3>
             <p className="mt-1 text-sm text-slate-600">
-              Set an optional extra fee before confirming this appointment.
+              Please review the system base fee and confirm the appointment.
             </p>
 
             <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
               {(() => {
                 const baseFee = resolveBaseFee(acceptModalAppointment);
-                const maxExtraFee = Number((baseFee * EXTRA_FEE_CAP_MULTIPLIER).toFixed(2));
                 const currency = acceptModalAppointment.feeCurrency || 'USD';
                 return (
-                  <>
-                    <p>Base fee: {formatMoney(baseFee, currency)}</p>
-                    <p>Max allowed extra fee: {formatMoney(maxExtraFee, currency)}</p>
-                  </>
+                  <p className="font-semibold text-slate-900">System Base Fee: {formatMoney(baseFee, currency)}</p>
                 );
               })()}
-            </div>
-
-            <div className="mt-4 space-y-4">
-              <label className="block">
-                <span className="mb-1 block text-sm font-semibold text-slate-700">Extra Fee (optional)</span>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={acceptExtraFee}
-                  ref={acceptFeeInputRef}
-                  onChange={(event) => setAcceptExtraFee(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  placeholder="0.00"
-                />
-              </label>
-
-              <label className="block">
-                <span className="mb-1 block text-sm font-semibold text-slate-700">
-                  Extra Fee Reason {Number(acceptExtraFee || '0') > 0 ? '(required)' : '(optional)'}
-                </span>
-                <textarea
-                  rows={3}
-                  value={acceptExtraFeeReason}
-                  onChange={(event) => setAcceptExtraFeeReason(event.target.value)}
-                  className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  placeholder="Explain why this extra fee is needed"
-                />
-              </label>
             </div>
 
             {acceptFormError && (
