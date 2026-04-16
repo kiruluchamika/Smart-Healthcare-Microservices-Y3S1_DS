@@ -15,6 +15,7 @@ public class DoctorAvailabilityResponse {
     DayOfWeek dayOfWeek;
     LocalTime startTime;
     LocalTime endTime;
+    Integer slotDuration;
     Boolean isAvailable;
     LocalDate effectiveFrom;
     LocalDate effectiveTo;

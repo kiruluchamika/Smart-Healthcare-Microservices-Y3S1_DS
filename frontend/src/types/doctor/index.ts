@@ -94,6 +94,7 @@ export interface DoctorAvailability {
   dayOfWeek: string;
   startTime: string;
   endTime: string;
+  slotDuration: number;
   isAvailable: boolean;
   effectiveFrom?: string;
   effectiveTo?: string;
@@ -105,6 +106,7 @@ export interface DoctorAvailabilityPayload {
   dayOfWeek: string;
   startTime: string;
   endTime: string;
+  slotDuration: 15 | 30 | 45 | 60;
   isAvailable: boolean;
   effectiveFrom?: string;
   effectiveTo?: string;

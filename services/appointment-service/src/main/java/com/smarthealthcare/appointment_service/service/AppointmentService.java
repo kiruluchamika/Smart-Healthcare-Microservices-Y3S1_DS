@@ -7,6 +7,7 @@ import com.smarthealthcare.appointment_service.dto.request.UpdateAppointmentPaym
 import com.smarthealthcare.appointment_service.dto.response.ApiMessageResponse;
 import com.smarthealthcare.appointment_service.dto.response.AppointmentResponse;
 import com.smarthealthcare.appointment_service.dto.response.AvailabilityResponse;
+import com.smarthealthcare.appointment_service.dto.response.CalendarAvailabilityResponse;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -37,6 +38,8 @@ public interface AppointmentService {
     AppointmentResponse updatePaymentStatus(Long appointmentId, UpdateAppointmentPaymentStatusRequest request);
 
     AvailabilityResponse getDoctorAvailability(Long doctorId, LocalDate appointmentDate);
+
+    CalendarAvailabilityResponse getDoctorAvailabilityCalendar(Long doctorId, LocalDate rangeStart, LocalDate rangeEnd);
 
     boolean hasDoctorCompletedAppointmentWithPatient(Long doctorId, Long patientId);
 }

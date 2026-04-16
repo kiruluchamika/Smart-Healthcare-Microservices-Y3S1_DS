@@ -10,7 +10,9 @@ public class AvailabilityResponse {
 
     private Long doctorId;
     private LocalDate appointmentDate;
+    private boolean availableOnDate;
     private List<BookedSlot> bookedSlots = new ArrayList<>();
+    private List<GeneratedSlot> slots = new ArrayList<>();
     private String message;
 
     public String getMessage() {
@@ -37,12 +39,28 @@ public class AvailabilityResponse {
         this.appointmentDate = appointmentDate;
     }
 
+    public boolean isAvailableOnDate() {
+        return availableOnDate;
+    }
+
+    public void setAvailableOnDate(boolean availableOnDate) {
+        this.availableOnDate = availableOnDate;
+    }
+
     public List<BookedSlot> getBookedSlots() {
         return bookedSlots;
     }
 
     public void setBookedSlots(List<BookedSlot> bookedSlots) {
         this.bookedSlots = bookedSlots;
+    }
+
+    public List<GeneratedSlot> getSlots() {
+        return slots;
+    }
+
+    public void setSlots(List<GeneratedSlot> slots) {
+        this.slots = slots;
     }
 
     public static class BookedSlot {
@@ -82,6 +100,46 @@ public class AvailabilityResponse {
 
         public void setStatus(AppointmentStatus status) {
             this.status = status;
+        }
+    }
+
+    public static class GeneratedSlot {
+
+        private Long appointmentId;
+        private LocalTime startTime;
+        private LocalTime endTime;
+        private String state;
+
+        public Long getAppointmentId() {
+            return appointmentId;
+        }
+
+        public void setAppointmentId(Long appointmentId) {
+            this.appointmentId = appointmentId;
+        }
+
+        public LocalTime getStartTime() {
+            return startTime;
+        }
+
+        public void setStartTime(LocalTime startTime) {
+            this.startTime = startTime;
+        }
+
+        public LocalTime getEndTime() {
+            return endTime;
+        }
+
+        public void setEndTime(LocalTime endTime) {
+            this.endTime = endTime;
+        }
+
+        public String getState() {
+            return state;
+        }
+
+        public void setState(String state) {
+            this.state = state;
         }
     }
 }
