@@ -978,37 +978,41 @@ export default function MyAppointments() {
           </div>
 
           <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col">
-            <button
-              type="button"
-              disabled={!canPayNow || isPaying}
-              onClick={() =>
-                setConfirmation({
-                  title: 'Proceed to Payment',
-                  message:
-                    'You will be redirected to the secure payment page for this appointment. Channeling payments are non-refundable.',
-                  confirmLabel: 'Continue to Payment',
-                  tone: 'primary',
-                  details: summaryCard,
-                  action: async () => {
-                    await handlePayNow(appointment);
-                  },
-                })
-              }
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <CreditCard className="h-4 w-4" />
-              {isPaying ? 'Redirecting...' : 'Pay Now'}
-            </button>
-            <button
-              type="button"
-              disabled={!canReschedule || isBusy}
-              onClick={() =>
-                isRescheduling ? setActiveRescheduleId(null) : openReschedule(appointment)
-              }
-              className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Reschedule
-            </button>
+            {!isPaid && (
+              <button
+                type="button"
+                disabled={!canPayNow || isPaying}
+                onClick={() =>
+                  setConfirmation({
+                    title: 'Proceed to Payment',
+                    message:
+                      'You will be redirected to the secure payment page for this appointment. Channeling payments are non-refundable.',
+                    confirmLabel: 'Continue to Payment',
+                    tone: 'primary',
+                    details: summaryCard,
+                    action: async () => {
+                      await handlePayNow(appointment);
+                    },
+                  })
+                }
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <CreditCard className="h-4 w-4" />
+                {isPaying ? 'Redirecting...' : 'Pay Now'}
+              </button>
+            )}
+            {!isPaid && (
+              <button
+                type="button"
+                disabled={!canReschedule || isBusy}
+                onClick={() =>
+                  isRescheduling ? setActiveRescheduleId(null) : openReschedule(appointment)
+                }
+                className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Reschedule
+              </button>
+            )}
             <button
               type="button"
               disabled={!canCancel || isBusy}
