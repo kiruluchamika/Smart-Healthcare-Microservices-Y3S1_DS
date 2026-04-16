@@ -8,7 +8,6 @@ import Dashboard from './pages/Dashboard';
 import AppointmentBooking from './pages/AppointmentBooking';
 import MyAppointments from './pages/MyAppointments';
 import DoctorAppointments from './pages/DoctorAppointments';
-import DoctorPatientReports from './pages/doctor/DoctorPatientReports';
 import Telemedicine from './pages/Telemedicine';
 import Profile from './pages/Profile';
 import PaymentCancel from './pages/payments/PaymentCancel';
@@ -25,12 +24,24 @@ import DoctorMyProfile from './pages/doctor/DoctorMyProfile';
 import DoctorAvailabilityManager from './pages/doctor/DoctorAvailabilityManager';
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
 import DoctorVerificationAdmin from './pages/doctor/DoctorVerificationAdmin';
+import NotificationsCenter from './pages/NotificationsCenter';
 import AdminLogin from './pages/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminTelemedicine from './pages/admin/AdminTelemedicine';
+import AboutPage from './pages/static/AboutPage';
+import ContactPage from './pages/static/ContactPage';
+import FAQPage from './pages/static/FAQPage';
+import GuidelinesPage from './pages/static/GuidelinesPage';
+import PrivacyPolicyPage from './pages/static/PrivacyPolicyPage';
+import TermsAndConditionsPage from './pages/static/TermsAndConditionsPage';
+import CookiePolicyPage from './pages/static/CookiePolicyPage';
+import SecurityPolicyPage from './pages/static/SecurityPolicyPage';
+import PatientRightsConsentPage from './pages/static/PatientRightsConsentPage';
+import AccessibilityStatementPage from './pages/static/AccessibilityStatementPage';
+import EmergencyDisclaimerPage from './pages/static/EmergencyDisclaimerPage';
 import AIChat from './components/AIChat';
 import { motion } from 'framer-motion';
 import { MessageCircle } from 'lucide-react';
@@ -106,6 +117,17 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Layout><Landing /></Layout>} />
+        <Route path="/about" element={<Layout><AboutPage /></Layout>} />
+        <Route path="/guidelines" element={<Layout><GuidelinesPage /></Layout>} />
+        <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
+        <Route path="/faq" element={<Layout><FAQPage /></Layout>} />
+        <Route path="/privacy-policy" element={<Layout><PrivacyPolicyPage /></Layout>} />
+        <Route path="/terms-and-conditions" element={<Layout><TermsAndConditionsPage /></Layout>} />
+        <Route path="/cookie-policy" element={<Layout><CookiePolicyPage /></Layout>} />
+        <Route path="/security-policy" element={<Layout><SecurityPolicyPage /></Layout>} />
+        <Route path="/patient-rights-consent" element={<Layout><PatientRightsConsentPage /></Layout>} />
+        <Route path="/accessibility" element={<Layout><AccessibilityStatementPage /></Layout>} />
+        <Route path="/emergency-disclaimer" element={<Layout><EmergencyDisclaimerPage /></Layout>} />
         <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
         <Route path="/login" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
         <Route path="/register" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
@@ -161,19 +183,19 @@ function App() {
           }
         />
         <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoleRoute allowedRoles={['PATIENT', 'DOCTOR']}>
+              <Layout><NotificationsCenter /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
         <Route path="/appointments" element={<PatientProtectedRoute><Layout><MyAppointments /></Layout></PatientProtectedRoute>} />
         <Route path="/appointments/book" element={<PatientProtectedRoute><Layout><AppointmentBooking /></Layout></PatientProtectedRoute>} />
         <Route path="/payments/success" element={<PatientProtectedRoute><Layout><PaymentSuccess /></Layout></PatientProtectedRoute>} />
         <Route path="/payments/cancel" element={<PatientProtectedRoute><Layout><PaymentCancel /></Layout></PatientProtectedRoute>} />
         <Route path="/doctor/appointments" element={<ProtectedRoute><Layout><DoctorAppointments /></Layout></ProtectedRoute>} />
-        <Route
-          path="/doctor/reports"
-          element={
-            <ProtectedRoleRoute allowedRoles={['DOCTOR']}>
-              <Layout><DoctorPatientReports /></Layout>
-            </ProtectedRoleRoute>
-          }
-        />
         <Route
           path="/consultation/:id"
           element={

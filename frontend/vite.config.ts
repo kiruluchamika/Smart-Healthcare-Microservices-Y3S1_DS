@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '127.0.0.1',
     proxy: {
       '/api/auth': {
         target: 'http://localhost:8080',
@@ -25,6 +26,11 @@ export default defineConfig({
         target: 'http://localhost:8083',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/doctors/, '/api/v1/doctors'),
+      },
+      '/api/notifications': {
+        target: 'http://localhost:8084',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/notifications/, '/api/v1/notifications'),
       },
       '/api/payments': {
         target: 'http://localhost:8086',

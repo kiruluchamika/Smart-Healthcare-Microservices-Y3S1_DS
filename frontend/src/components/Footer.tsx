@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Mail, Phone, MapPin, Facebook, Twitter, Linkedin } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -7,19 +8,38 @@ export default function Footer() {
   const footerSections = [
     {
       title: 'Company',
-      links: ['About Us', 'Blog', 'Careers', 'Press'],
+      links: [
+        { label: 'About', href: '/about' },
+        { label: 'Contact', href: '/contact' },
+        { label: 'FAQ', href: '/faq' },
+      ],
     },
     {
       title: 'Services',
-      links: ['Telemedicine', 'Appointments', 'Health Records', 'Prescriptions'],
+      links: [
+        { label: 'Telemedicine', href: '/login' },
+        { label: 'Appointments', href: '/login' },
+        { label: 'Health Records', href: '/login' },
+        { label: 'Prescriptions', href: '/login' },
+      ],
     },
     {
       title: 'Support',
-      links: ['Help Center', 'Contact Us', 'Feedback', 'Status'],
+      links: [
+        { label: 'Contact', href: '/contact' },
+        { label: 'Accessibility', href: '/accessibility' },
+        { label: 'Emergency Disclaimer', href: '/emergency-disclaimer' },
+      ],
     },
     {
       title: 'Legal',
-      links: ['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Compliance'],
+      links: [
+        { label: 'Privacy Policy', href: '/privacy-policy' },
+        { label: 'Terms and Conditions', href: '/terms-and-conditions' },
+        { label: 'Cookie Policy', href: '/cookie-policy' },
+        { label: 'Security Policy', href: '/security-policy' },
+        { label: 'Patient Rights & Consent', href: '/patient-rights-consent' },
+      ],
     },
   ];
 
@@ -75,13 +95,13 @@ export default function Footer() {
               <h3 className="font-semibold text-gray-900 mb-4">{section.title}</h3>
               <ul className="space-y-2">
                 {section.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
+                  <li key={link.label}>
+                    <Link
+                      to={link.href}
                       className="text-gray-600 hover:text-blue-600 text-sm transition-colors"
                     >
-                      {link}
-                    </a>
+                      {link.label}
+                    </Link>
                   </li>
                 ))}
               </ul>

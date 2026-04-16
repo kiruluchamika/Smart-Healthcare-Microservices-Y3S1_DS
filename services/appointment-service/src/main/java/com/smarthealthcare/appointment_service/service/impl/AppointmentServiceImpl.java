@@ -1,8 +1,10 @@
 package com.smarthealthcare.appointment_service.service.impl;
 
+import com.smarthealthcare.appointment_service.client.NotificationClient;
 import com.smarthealthcare.appointment_service.dto.integration.AuthUserLookupResponse;
 import com.smarthealthcare.appointment_service.dto.integration.DoctorAvailabilityLookupResponse;
 import com.smarthealthcare.appointment_service.dto.integration.DoctorLookupResponse;
+import com.smarthealthcare.appointment_service.dto.integration.NotificationEventRequest;
 import com.smarthealthcare.appointment_service.dto.request.AcceptAppointmentRequest;
 import com.smarthealthcare.appointment_service.dto.request.CreateAppointmentRequest;
 import com.smarthealthcare.appointment_service.dto.request.RescheduleAppointmentRequest;
@@ -44,7 +46,8 @@ import org.springframework.web.client.RestClientException;
 @Transactional
 public class AppointmentServiceImpl implements AppointmentService {
 
-    private static final Logger logger = LoggerFactory.getLogger(AppointmentServiceImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(AppointmentServiceImpl.class);
+
     private static final BigDecimal VIDEO_FIXED_FEE = new BigDecimal("15.00");
     private static final BigDecimal PHYSICAL_FIXED_FEE = new BigDecimal("20.00");
     private static final BigDecimal EXTRA_FEE_CAP_MULTIPLIER = new BigDecimal("2.00");
@@ -58,30 +61,40 @@ public class AppointmentServiceImpl implements AppointmentService {
     private static final String SLOT_STATE_AVAILABLE = "AVAILABLE";
     private static final String SLOT_STATE_PENDING = "PENDING";
     private static final String SLOT_STATE_CONFIRMED = "CONFIRMED";
+
     private static final List<AppointmentStatus> ACTIVE_STATUSES =
             List.of(AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED);
+
     private static final Set<AppointmentStatus> DOCTOR_REPORT_ACCESS_STATUSES =
             Set.of(AppointmentStatus.CONFIRMED, AppointmentStatus.COMPLETED);
-    private static final ParameterizedTypeReference<List<DoctorAvailabilityLookupResponse>> DOCTOR_AVAILABILITY_LIST_TYPE =
-            new ParameterizedTypeReference<>() {
-            };
+
+    private static final ParameterizedTypeReference<List<DoctorAvailabilityLookupResponse>>
+            DOCTOR_AVAILABILITY_LIST_TYPE = new ParameterizedTypeReference<>() {};
 
     private final AppointmentRepository appointmentRepository;
     private final RestClient authServiceClient;
     private final RestClient doctorServiceClient;
+    private final NotificationClient notificationClient;
 
     public AppointmentServiceImpl(
             AppointmentRepository appointmentRepository,
+            NotificationClient notificationClient,
             @Value("${app.services.auth.base-url}") String authServiceBaseUrl,
             @Value("${app.services.doctor.base-url}") String doctorServiceBaseUrl,
             @Value("${app.services.doctor.username}") String doctorServiceUsername,
             @Value("${app.services.doctor.password}") String doctorServicePassword) {
+
         this.appointmentRepository = appointmentRepository;
+        this.notificationClient = notificationClient;
+
         this.authServiceClient = RestClient.builder()
                 .baseUrl(authServiceBaseUrl)
                 .build();
+
         String basicToken = Base64.getEncoder()
-                .encodeToString((doctorServiceUsername + ":" + doctorServicePassword).getBytes(StandardCharsets.UTF_8));
+                .encodeToString((doctorServiceUsername + ":" + doctorServicePassword)
+                        .getBytes(StandardCharsets.UTF_8));
+
         this.doctorServiceClient = RestClient.builder()
                 .baseUrl(doctorServiceBaseUrl)
                 .defaultHeader("Authorization", "Basic " + basicToken)
@@ -100,6 +113,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                 request.getDoctorId(),
                 request.getAppointmentDate(),
                 null);
+
         GeneratedSlotView selectedSlot = findAvailableSlot(
                 availabilityView,
                 request.getStartTime(),
@@ -119,12 +133,14 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setStatus(AppointmentStatus.PENDING);
         appointment.setStatusReason(null);
         appointment.setReasonForVisit(request.getReasonForVisit().trim());
+
         BigDecimal fixedFee = resolveFixedFee(request.getAppointmentType());
         appointment.setFixedFeeSnapshot(fixedFee);
         appointment.setDoctorExtraFee(BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP));
         appointment.setFinalFee(fixedFee);
         appointment.setFeeCurrency(DEFAULT_CURRENCY);
         appointment.setPaymentStatusHint(UNPAID_STATUS);
+
         Appointment savedAppointment = appointmentRepository.save(appointment);
         return AppointmentResponse.fromEntity(savedAppointment);
     }
@@ -173,9 +189,13 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     public AppointmentResponse rescheduleAppointment(
-            Long appointmentId, Long patientId, RescheduleAppointmentRequest request) {
+            Long appointmentId,
+            Long patientId,
+            RescheduleAppointmentRequest request) {
+
         expireStalePendingAppointments();
         Appointment appointment = findPatientAppointment(appointmentId, patientId);
+
         validateAppointmentDate(request.getAppointmentDate());
         validateTimeRange(request.getStartTime(), request.getEndTime());
 
@@ -199,6 +219,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                 appointment.getDoctorId(),
                 request.getAppointmentDate(),
                 appointment.getId());
+
         GeneratedSlotView selectedSlot = findAvailableSlot(
                 availabilityView,
                 request.getStartTime(),
@@ -213,7 +234,9 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setEndTime(selectedSlot.endTime());
         appointment.setStatus(AppointmentStatus.PENDING);
         appointment.setStatusReason("Rescheduled by patient and waiting for doctor confirmation");
+
         resetWorkflowStateForReschedule(appointment);
+
         Appointment updatedAppointment = appointmentRepository.save(appointment);
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
@@ -242,11 +265,16 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setStatus(AppointmentStatus.CANCELLED);
         appointment.setStatusReason("Cancelled by patient");
         appointmentRepository.save(appointment);
+
         return new ApiMessageResponse("Appointment cancelled successfully");
     }
 
     @Override
-    public AppointmentResponse acceptAppointment(Long appointmentId, Long doctorId, AcceptAppointmentRequest request) {
+    public AppointmentResponse acceptAppointment(
+            Long appointmentId,
+            Long doctorId,
+            AcceptAppointmentRequest request) {
+
         expireStalePendingAppointments();
         Appointment appointment = findDoctorAppointment(appointmentId, doctorId);
 
@@ -261,17 +289,21 @@ public class AppointmentServiceImpl implements AppointmentService {
         BigDecimal extraFee = request != null && request.getExtraFee() != null
                 ? normalizeMoney(request.getExtraFee())
                 : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+
         if (extraFee.compareTo(BigDecimal.ZERO) < 0) {
             throw new BusinessValidationException("Extra fee cannot be negative");
         }
 
-        BigDecimal extraFeeCap = fixedFee.multiply(EXTRA_FEE_CAP_MULTIPLIER).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal extraFeeCap = fixedFee.multiply(EXTRA_FEE_CAP_MULTIPLIER)
+                .setScale(2, RoundingMode.HALF_UP);
+
         if (extraFee.compareTo(extraFeeCap) > 0) {
             throw new BusinessValidationException("Extra fee exceeds the maximum allowed limit");
         }
 
         String extraFeeReason = request != null ? request.getExtraFeeReason() : null;
-        if (extraFee.compareTo(BigDecimal.ZERO) > 0 && (extraFeeReason == null || extraFeeReason.trim().isEmpty())) {
+        if (extraFee.compareTo(BigDecimal.ZERO) > 0
+                && (extraFeeReason == null || extraFeeReason.trim().isEmpty())) {
             throw new BusinessValidationException("Reason is required when extra fee is added");
         }
 
@@ -284,7 +316,10 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setFeeLockedAt(LocalDateTime.now());
         appointment.setExtraFeeReason(extraFeeReason == null ? null : extraFeeReason.trim());
         appointment.setPaymentStatusHint(UNPAID_STATUS);
+
         Appointment updatedAppointment = appointmentRepository.save(appointment);
+        publishAppointmentConfirmedNotifications(updatedAppointment);
+
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
 
@@ -299,6 +334,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         appointment.setStatus(AppointmentStatus.REJECTED);
         appointment.setStatusReason("Rejected by doctor");
+
         Appointment updatedAppointment = appointmentRepository.save(appointment);
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
@@ -315,34 +351,44 @@ public class AppointmentServiceImpl implements AppointmentService {
         String paymentStatus = appointment.getPaymentStatusHint() == null
                 ? UNPAID_STATUS
                 : appointment.getPaymentStatusHint().toUpperCase(Locale.ROOT);
+
         if (!"PAID".equals(paymentStatus) && !"COMPLETED".equals(paymentStatus)) {
             throw new BusinessValidationException("Appointment cannot be completed before payment is successful");
         }
 
-        if (appointment.getAppointmentType() == com.smarthealthcare.appointment_service.enums.AppointmentType.VIDEO
-                && (appointment.getTelemedicineSessionUrl() == null || appointment.getTelemedicineSessionUrl().isBlank())) {
+        if (appointment.getAppointmentType()
+                == com.smarthealthcare.appointment_service.enums.AppointmentType.VIDEO
+                && (appointment.getTelemedicineSessionUrl() == null
+                || appointment.getTelemedicineSessionUrl().isBlank())) {
             appointment.setTelemedicineSessionUrl("Video link available before appointment");
         }
 
         appointment.setStatus(AppointmentStatus.COMPLETED);
         appointment.setStatusReason(null);
         appointment.setPaymentStatusHint("COMPLETED");
+
         Appointment updatedAppointment = appointmentRepository.save(appointment);
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
 
     @Override
-    public AppointmentResponse updatePaymentStatus(Long appointmentId, UpdateAppointmentPaymentStatusRequest request) {
+    public AppointmentResponse updatePaymentStatus(
+            Long appointmentId,
+            UpdateAppointmentPaymentStatusRequest request) {
+
         expireStalePendingAppointments();
         Appointment appointment = findAppointment(appointmentId);
-        String normalizedStatus = request.getPaymentStatus().trim().toUpperCase(Locale.ROOT);
 
+        String normalizedStatus = request.getPaymentStatus().trim().toUpperCase(Locale.ROOT);
         appointment.setPaymentStatusHint(normalizedStatus);
+
         if ("PAID".equals(normalizedStatus) || "COMPLETED".equals(normalizedStatus)) {
-            appointment.setPaymentPaidAt(request.getPaidAt() == null ? LocalDateTime.now() : request.getPaidAt());
+            appointment.setPaymentPaidAt(
+                    request.getPaidAt() == null ? LocalDateTime.now() : request.getPaidAt());
         }
 
-        if (request.getTelemedicineSessionUrl() != null && !request.getTelemedicineSessionUrl().isBlank()) {
+        if (request.getTelemedicineSessionUrl() != null
+                && !request.getTelemedicineSessionUrl().isBlank()) {
             appointment.setTelemedicineSessionUrl(request.getTelemedicineSessionUrl().trim());
         }
 
@@ -355,18 +401,24 @@ public class AppointmentServiceImpl implements AppointmentService {
         expireStalePendingAppointments();
         validateAppointmentDate(appointmentDate);
         validateDoctorIsBookable(doctorId);
+
         AvailabilityView availabilityView = buildAvailabilityView(doctorId, appointmentDate, null);
         return toAvailabilityResponse(availabilityView);
     }
 
     @Override
-    public CalendarAvailabilityResponse getDoctorAvailabilityCalendar(Long doctorId, LocalDate rangeStart, LocalDate rangeEnd) {
+    public CalendarAvailabilityResponse getDoctorAvailabilityCalendar(
+            Long doctorId,
+            LocalDate rangeStart,
+            LocalDate rangeEnd) {
+
         expireStalePendingAppointments();
         validateAvailabilityRange(rangeStart, rangeEnd);
         validateDoctorIsBookable(doctorId);
 
         List<CalendarAvailabilityResponse.DateAvailability> dates = new ArrayList<>();
         LocalDate cursor = rangeStart;
+
         while (!cursor.isAfter(rangeEnd)) {
             AvailabilityView availabilityView = buildAvailabilityView(doctorId, cursor, null);
             dates.add(toCalendarDateAvailability(availabilityView));
@@ -378,6 +430,7 @@ public class AppointmentServiceImpl implements AppointmentService {
         response.setRangeStart(rangeStart);
         response.setRangeEnd(rangeEnd);
         response.setDates(dates);
+
         return response;
     }
 
@@ -392,6 +445,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     public void expireStalePendingAppointments() {
         LocalDateTime expiryCutoff = LocalDateTime.now().minusHours(PENDING_EXPIRY_HOURS);
+
         List<Appointment> staleAppointments = appointmentRepository.findByStatusAndCreatedAtBefore(
                 AppointmentStatus.PENDING,
                 expiryCutoff);
@@ -404,24 +458,32 @@ public class AppointmentServiceImpl implements AppointmentService {
             appointment.setStatus(AppointmentStatus.EXPIRED);
             appointment.setStatusReason("Pending request expired after 2 hours without doctor action");
         });
+
         appointmentRepository.saveAll(staleAppointments);
     }
 
     private Appointment findAppointment(Long appointmentId) {
         return appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Appointment not found with id: " + appointmentId));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Appointment not found with id: " + appointmentId));
     }
 
     private Appointment findPatientAppointment(Long appointmentId, Long patientId) {
         return appointmentRepository.findByIdAndPatientId(appointmentId, patientId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Appointment not found for patient with id: " + patientId + " and appointment id: " + appointmentId));
+                        "Appointment not found for patient with id: "
+                                + patientId
+                                + " and appointment id: "
+                                + appointmentId));
     }
 
     private Appointment findDoctorAppointment(Long appointmentId, Long doctorId) {
         return appointmentRepository.findByIdAndDoctorId(appointmentId, doctorId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Appointment not found for doctor with id: " + doctorId + " and appointment id: " + appointmentId));
+                        "Appointment not found for doctor with id: "
+                                + doctorId
+                                + " and appointment id: "
+                                + appointmentId));
     }
 
     private void validateTimeRange(LocalTime startTime, LocalTime endTime) {
@@ -442,7 +504,8 @@ public class AppointmentServiceImpl implements AppointmentService {
         }
 
         if (rangeEnd.isBefore(rangeStart)) {
-            throw new BusinessValidationException("Availability range end must be on or after the start date");
+            throw new BusinessValidationException(
+                    "Availability range end must be on or after the start date");
         }
 
         long rangeLength = ChronoUnit.DAYS.between(rangeStart, rangeEnd);
@@ -453,11 +516,15 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     private void validatePatientExists(Long patientId) {
         AuthUserLookupResponse user = getAuthUserById(patientId);
+
         if (user == null || user.getId() == null) {
             throw new BusinessValidationException("Selected patient account does not exist");
         }
 
-        String userRole = user.getRole() == null ? "" : user.getRole().trim().toUpperCase(Locale.ROOT);
+        String userRole = user.getRole() == null
+                ? ""
+                : user.getRole().trim().toUpperCase(Locale.ROOT);
+
         if (!PATIENT_ROLE.equals(userRole)) {
             throw new BusinessValidationException("Selected user is not a patient account");
         }
@@ -465,19 +532,23 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     private void validateDoctorIsBookable(Long doctorId) {
         DoctorLookupResponse doctor = getDoctorById(doctorId);
+
         if (doctor == null || doctor.getId() == null) {
             throw new BusinessValidationException("Selected doctor does not exist");
         }
 
         if (!Boolean.TRUE.equals(doctor.getActive())) {
-            throw new BusinessValidationException("Selected doctor is currently unavailable for appointments");
+            throw new BusinessValidationException(
+                    "Selected doctor is currently unavailable for appointments");
         }
 
         String verificationStatus = doctor.getVerificationStatus() == null
                 ? ""
                 : doctor.getVerificationStatus().trim().toUpperCase(Locale.ROOT);
+
         if (!APPROVED_STATUS.equals(verificationStatus)) {
-            throw new BusinessValidationException("Selected doctor is not approved for appointment booking");
+            throw new BusinessValidationException(
+                    "Selected doctor is not approved for appointment booking");
         }
     }
 
@@ -488,7 +559,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                     .retrieve()
                     .body(AuthUserLookupResponse.class);
         } catch (RestClientException ex) {
-            logger.error("Failed to validate patient account {}", patientId, ex);
+            log.error("Failed to validate patient account {}", patientId, ex);
             throw new ExternalServiceException("Unable to validate patient account right now", ex);
         }
     }
@@ -500,7 +571,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                     .retrieve()
                     .body(DoctorLookupResponse.class);
         } catch (RestClientException ex) {
-            logger.error("Failed to validate doctor profile {}", doctorId, ex);
+            log.error("Failed to validate doctor profile {}", doctorId, ex);
             throw new ExternalServiceException("Unable to validate doctor profile right now", ex);
         }
     }
@@ -511,9 +582,10 @@ public class AppointmentServiceImpl implements AppointmentService {
                     .uri("/{doctorId}/availability", doctorId)
                     .retrieve()
                     .body(DOCTOR_AVAILABILITY_LIST_TYPE);
+
             return availabilities == null ? List.of() : availabilities;
         } catch (RestClientException ex) {
-            logger.error("Failed to fetch doctor availability {}", doctorId, ex);
+            log.error("Failed to fetch doctor availability {}", doctorId, ex);
             throw new ExternalServiceException("Unable to load doctor availability right now", ex);
         }
     }
@@ -533,7 +605,11 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setTelemedicineSessionUrl(null);
     }
 
-    private AvailabilityView buildAvailabilityView(Long doctorId, LocalDate appointmentDate, Long excludedAppointmentId) {
+    private AvailabilityView buildAvailabilityView(
+            Long doctorId,
+            LocalDate appointmentDate,
+            Long excludedAppointmentId) {
+
         List<DoctorAvailabilityLookupResponse> availabilityWindows = getDoctorAvailabilities(doctorId)
                 .stream()
                 .filter(availability -> Boolean.TRUE.equals(availability.getIsAvailable()))
@@ -543,9 +619,13 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .toList();
 
         List<Appointment> blockingAppointments = appointmentRepository
-                .findByDoctorIdAndAppointmentDateAndStatusInOrderByStartTimeAsc(doctorId, appointmentDate, ACTIVE_STATUSES)
+                .findByDoctorIdAndAppointmentDateAndStatusInOrderByStartTimeAsc(
+                        doctorId,
+                        appointmentDate,
+                        ACTIVE_STATUSES)
                 .stream()
-                .filter(appointment -> excludedAppointmentId == null || !appointment.getId().equals(excludedAppointmentId))
+                .filter(appointment -> excludedAppointmentId == null
+                        || !appointment.getId().equals(excludedAppointmentId))
                 .toList();
 
         List<AvailabilityResponse.BookedSlot> bookedSlots = blockingAppointments.stream()
@@ -554,6 +634,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
         List<GeneratedSlotView> generatedSlots = new ArrayList<>();
         LocalDateTime now = LocalDateTime.now();
+
         for (DoctorAvailabilityLookupResponse availabilityWindow : availabilityWindows) {
             LocalTime cursor = availabilityWindow.getStartTime();
             int durationMinutes = resolveSlotDuration(availabilityWindow.getSlotDuration());
@@ -563,11 +644,14 @@ public class AppointmentServiceImpl implements AppointmentService {
                 LocalTime slotEnd = cursor.plusMinutes(durationMinutes);
                 cursor = slotEnd;
 
-                if (appointmentDate.equals(now.toLocalDate()) && !slotStart.isAfter(now.toLocalTime())) {
+                if (appointmentDate.equals(now.toLocalDate())
+                        && !slotStart.isAfter(now.toLocalTime())) {
                     continue;
                 }
 
-                Appointment blockingAppointment = findBlockingAppointment(blockingAppointments, slotStart, slotEnd);
+                Appointment blockingAppointment =
+                        findBlockingAppointment(blockingAppointments, slotStart, slotEnd);
+
                 generatedSlots.add(toGeneratedSlotView(blockingAppointment, slotStart, slotEnd));
             }
         }
@@ -581,18 +665,32 @@ public class AppointmentServiceImpl implements AppointmentService {
             message = "Slots retrieved successfully";
         }
 
-        return new AvailabilityView(doctorId, appointmentDate, !availabilityWindows.isEmpty(), bookedSlots, generatedSlots, message);
+        return new AvailabilityView(
+                doctorId,
+                appointmentDate,
+                !availabilityWindows.isEmpty(),
+                bookedSlots,
+                generatedSlots,
+                message);
     }
 
-    private boolean isWithinEffectiveRange(DoctorAvailabilityLookupResponse availability, LocalDate appointmentDate) {
+    private boolean isWithinEffectiveRange(
+            DoctorAvailabilityLookupResponse availability,
+            LocalDate appointmentDate) {
+
         LocalDate effectiveFrom = availability.getEffectiveFrom();
         LocalDate effectiveTo = availability.getEffectiveTo();
+
         boolean startsBeforeOrOnDate = effectiveFrom == null || !effectiveFrom.isAfter(appointmentDate);
         boolean endsAfterOrOnDate = effectiveTo == null || !effectiveTo.isBefore(appointmentDate);
+
         return startsBeforeOrOnDate && endsAfterOrOnDate;
     }
 
-    private boolean matchesAppointmentDate(DoctorAvailabilityLookupResponse availability, LocalDate appointmentDate) {
+    private boolean matchesAppointmentDate(
+            DoctorAvailabilityLookupResponse availability,
+            LocalDate appointmentDate) {
+
         if (availability.getEffectiveFrom() != null && availability.getEffectiveTo() != null) {
             return true;
         }
@@ -607,15 +705,24 @@ public class AppointmentServiceImpl implements AppointmentService {
         return slotDuration;
     }
 
-    private Appointment findBlockingAppointment(List<Appointment> appointments, LocalTime slotStart, LocalTime slotEnd) {
+    private Appointment findBlockingAppointment(
+            List<Appointment> appointments,
+            LocalTime slotStart,
+            LocalTime slotEnd) {
+
         return appointments.stream()
-                .filter(appointment -> appointment.getStartTime().isBefore(slotEnd)
-                        && appointment.getEndTime().isAfter(slotStart))
+                .filter(appointment ->
+                        appointment.getStartTime().isBefore(slotEnd)
+                                && appointment.getEndTime().isAfter(slotStart))
                 .findFirst()
                 .orElse(null);
     }
 
-    private GeneratedSlotView toGeneratedSlotView(Appointment blockingAppointment, LocalTime slotStart, LocalTime slotEnd) {
+    private GeneratedSlotView toGeneratedSlotView(
+            Appointment blockingAppointment,
+            LocalTime slotStart,
+            LocalTime slotEnd) {
+
         if (blockingAppointment == null) {
             return new GeneratedSlotView(null, slotStart, slotEnd, SLOT_STATE_AVAILABLE);
         }
@@ -623,7 +730,12 @@ public class AppointmentServiceImpl implements AppointmentService {
         String state = blockingAppointment.getStatus() == AppointmentStatus.PENDING
                 ? SLOT_STATE_PENDING
                 : SLOT_STATE_CONFIRMED;
-        return new GeneratedSlotView(blockingAppointment.getId(), slotStart, slotEnd, state);
+
+        return new GeneratedSlotView(
+                blockingAppointment.getId(),
+                slotStart,
+                slotEnd,
+                state);
     }
 
     private AvailabilityResponse toAvailabilityResponse(AvailabilityView availabilityView) {
@@ -637,14 +749,19 @@ public class AppointmentServiceImpl implements AppointmentService {
         return response;
     }
 
-    private CalendarAvailabilityResponse.DateAvailability toCalendarDateAvailability(AvailabilityView availabilityView) {
+    private CalendarAvailabilityResponse.DateAvailability toCalendarDateAvailability(
+            AvailabilityView availabilityView) {
+
         CalendarAvailabilityResponse.DateAvailability dateAvailability =
                 new CalendarAvailabilityResponse.DateAvailability();
+
         dateAvailability.setAppointmentDate(availabilityView.appointmentDate());
         dateAvailability.setAvailableOnDate(availabilityView.availableOnDate());
-        dateAvailability.setHasAvailableSlots(availabilityView.slots().stream()
-                .anyMatch(slot -> SLOT_STATE_AVAILABLE.equals(slot.state())));
+        dateAvailability.setHasAvailableSlots(
+                availabilityView.slots().stream()
+                        .anyMatch(slot -> SLOT_STATE_AVAILABLE.equals(slot.state())));
         dateAvailability.setMessage(availabilityView.message());
+
         return dateAvailability;
     }
 
@@ -652,9 +769,11 @@ public class AppointmentServiceImpl implements AppointmentService {
             AvailabilityView availabilityView,
             LocalTime requestedStartTime,
             LocalTime requestedEndTime) {
+
         return availabilityView.slots().stream()
                 .filter(slot -> SLOT_STATE_AVAILABLE.equals(slot.state()))
-                .filter(slot -> slot.startTime().equals(requestedStartTime) && slot.endTime().equals(requestedEndTime))
+                .filter(slot -> slot.startTime().equals(requestedStartTime)
+                        && slot.endTime().equals(requestedEndTime))
                 .findFirst()
                 .orElse(null);
     }
@@ -685,15 +804,66 @@ public class AppointmentServiceImpl implements AppointmentService {
         return generatedSlot;
     }
 
-    private BigDecimal resolveFixedFee(com.smarthealthcare.appointment_service.enums.AppointmentType appointmentType) {
-        BigDecimal fee = appointmentType == com.smarthealthcare.appointment_service.enums.AppointmentType.PHYSICAL
+    private BigDecimal resolveFixedFee(
+            com.smarthealthcare.appointment_service.enums.AppointmentType appointmentType) {
+
+        BigDecimal fee = appointmentType
+                == com.smarthealthcare.appointment_service.enums.AppointmentType.PHYSICAL
                 ? PHYSICAL_FIXED_FEE
                 : VIDEO_FIXED_FEE;
+
         return normalizeMoney(fee);
     }
 
     private BigDecimal normalizeMoney(BigDecimal amount) {
         return amount.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private void publishAppointmentConfirmedNotifications(Appointment appointment) {
+        LocalDateTime scheduledFor =
+                appointment.getAppointmentDate().atTime(appointment.getStartTime());
+
+        publishNotification(
+                "APPOINTMENT_CONFIRMED",
+                "PATIENT",
+                appointment.getPatientId(),
+                appointment.getId(),
+                null,
+                null,
+                scheduledFor);
+
+        publishNotification(
+                "APPOINTMENT_CONFIRMED_DOCTOR",
+                "DOCTOR",
+                appointment.getDoctorId(),
+                appointment.getId(),
+                null,
+                null,
+                scheduledFor);
+    }
+
+    private void publishNotification(
+            String eventType,
+            String targetRole,
+            Long targetUserId,
+            Long appointmentId,
+            String title,
+            String message,
+            LocalDateTime scheduledFor) {
+
+        try {
+            notificationClient.sendEvent(new NotificationEventRequest(
+                    eventType,
+                    targetRole,
+                    targetUserId,
+                    null,
+                    appointmentId,
+                    title,
+                    message,
+                    scheduledFor));
+        } catch (Exception ex) {
+            log.warn("Notification dispatch failed for appointment {}: {}", appointmentId, ex.getMessage());
+        }
     }
 
     private record AvailabilityView(

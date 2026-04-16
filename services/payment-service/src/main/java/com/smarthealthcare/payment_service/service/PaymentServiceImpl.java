@@ -236,6 +236,7 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentTransaction saved = repository.save(transaction);
         syncAppointmentPaymentStatus(saved, "COMPLETED", saved.getPaidAt(), saved.getTelemedicineSessionUrl());
         publishNotification("CONSULTATION_COMPLETED", saved, "Consultation completed successfully", saved.getPatientId());
+        publishNotification("CONSULTATION_COMPLETED_DOCTOR", saved, "Consultation completion recorded", saved.getDoctorId());
         return PaymentMapper.toResponse(saved);
     }
 
@@ -459,18 +460,26 @@ public class PaymentServiceImpl implements PaymentService {
 
     private void publishNotification(String eventType, PaymentTransaction transaction, String message, Long targetUserId) {
         try {
+            boolean useDefaultTemplate = shouldUseDefaultTemplate(eventType);
             notificationClient.sendEvent(new NotificationEventRequest(
                     eventType,
                     determineTargetRole(targetUserId, transaction),
                     targetUserId,
                     transaction.getId(),
                     transaction.getAppointmentId(),
-                    "Smart Healthcare payment update",
-                    message,
+                    useDefaultTemplate ? null : "Smart Healthcare payment update",
+                    useDefaultTemplate ? null : message,
                     transaction.getAppointmentDate().atTime(transaction.getStartTime())));
         } catch (Exception ex) {
             log.warn("Notification dispatch failed for payment {}: {}", transaction.getId(), ex.getMessage());
         }
+    }
+
+    private boolean shouldUseDefaultTemplate(String eventType) {
+        return switch (eventType == null ? "" : eventType.trim().toUpperCase(Locale.ROOT)) {
+            case "PAYMENT_CONFIRMED", "PAYMENT_CONFIRMED_DOCTOR", "CONSULTATION_COMPLETED", "CONSULTATION_COMPLETED_DOCTOR" -> true;
+            default -> false;
+        };
     }
 
     private String determineTargetRole(Long targetUserId, PaymentTransaction transaction) {
