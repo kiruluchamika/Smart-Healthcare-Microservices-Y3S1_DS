@@ -1,11 +1,13 @@
 spring:
   application:
     name: appointment-service
+
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3311/appointment_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
   docker:
     compose:
       enabled: true
@@ -13,6 +15,7 @@ spring:
       lifecycle-management: start-and-stop
       stop:
         command: down
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -33,3 +36,14 @@ logging:
 app:
   security:
     allowed-origins: ${APP_SECURITY_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:80}
+
+  services:
+    auth:
+      base-url: ${APP_SERVICES_AUTH_BASE_URL:http://localhost:8080/auth}
+    doctor:
+      base-url: ${APP_SERVICES_DOCTOR_BASE_URL:http://localhost:8083/api/v1/doctors}
+      username: ${DOCTOR_SERVICE_USERNAME:doctor}
+      password: ${DOCTOR_SERVICE_PASSWORD:doctor123}
+
+  integrations:
+    notification-base-url: ${NOTIFICATION_SERVICE_BASE_URL:http://localhost:8084}

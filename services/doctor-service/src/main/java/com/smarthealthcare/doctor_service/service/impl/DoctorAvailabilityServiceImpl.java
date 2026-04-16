@@ -30,7 +30,13 @@ public class DoctorAvailabilityServiceImpl implements DoctorAvailabilityService 
     @Transactional
     public DoctorAvailabilityResponse createAvailability(Long doctorId, DoctorAvailabilityCreateRequest request) {
         ensureDoctorExists(doctorId);
-        validateSlotRules(doctorId, request.getDayOfWeek(), request.getStartTime(), request.getEndTime(), null);
+        validateSlotRules(
+                doctorId,
+                request.getDayOfWeek(),
+                request.getStartTime(),
+                request.getEndTime(),
+                request.getSlotDuration(),
+                null);
 
         DoctorAvailability availability = availabilityMapper.toEntity(doctorId, request);
         DoctorAvailability saved = availabilityRepository.save(availability);
@@ -53,7 +59,12 @@ public class DoctorAvailabilityServiceImpl implements DoctorAvailabilityService 
             DoctorAvailabilityUpdateRequest request) {
         ensureDoctorExists(doctorId);
         DoctorAvailability availability = findAvailabilityOrThrow(doctorId, availabilityId);
-        validateSlotRules(doctorId, request.getDayOfWeek(), request.getStartTime(), request.getEndTime(),
+        validateSlotRules(
+                doctorId,
+                request.getDayOfWeek(),
+                request.getStartTime(),
+                request.getEndTime(),
+                request.getSlotDuration(),
                 availabilityId);
 
         availabilityMapper.updateEntity(availability, request);
@@ -89,14 +100,23 @@ public class DoctorAvailabilityServiceImpl implements DoctorAvailabilityService 
             java.time.DayOfWeek dayOfWeek,
             java.time.LocalTime startTime,
             java.time.LocalTime endTime,
+            Integer slotDuration,
             Long availabilityId) {
         if (!startTime.isBefore(endTime)) {
             throw new BadRequestException("Start time must be before end time");
         }
 
+        if (slotDuration == null || (slotDuration != 15 && slotDuration != 30 && slotDuration != 45 && slotDuration != 60)) {
+            throw new BadRequestException("Slot duration must be one of 15, 30, 45, or 60 minutes");
+        }
+
         long durationMinutes = Duration.between(startTime, endTime).toMinutes();
         if (durationMinutes < MIN_SLOT_MINUTES) {
             throw new BadRequestException("Availability slot must be at least " + MIN_SLOT_MINUTES + " minutes");
+        }
+
+        if (durationMinutes < slotDuration) {
+            throw new BadRequestException("Availability range must be at least as long as the selected slot duration");
         }
 
         boolean hasOverlap = availabilityId == null

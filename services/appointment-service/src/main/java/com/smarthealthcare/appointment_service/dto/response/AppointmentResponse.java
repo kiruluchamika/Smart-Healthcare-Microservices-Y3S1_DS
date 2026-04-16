@@ -25,6 +25,7 @@ public class AppointmentResponse {
     private String feeCurrency;
     private LocalDateTime feeLockedAt;
     private String extraFeeReason;
+    private String statusReason;
     private String paymentStatusHint;
     private LocalDateTime paymentPaidAt;
     private String telemedicineSessionUrl;
@@ -48,6 +49,7 @@ public class AppointmentResponse {
         response.setFeeCurrency(appointment.getFeeCurrency());
         response.setFeeLockedAt(appointment.getFeeLockedAt());
         response.setExtraFeeReason(appointment.getExtraFeeReason());
+        response.setStatusReason(appointment.getStatusReason());
         response.setPaymentStatusHint(appointment.getPaymentStatusHint());
         response.setPaymentPaidAt(appointment.getPaymentPaidAt());
         response.setTelemedicineSessionUrl(appointment.getTelemedicineSessionUrl());
@@ -174,6 +176,14 @@ public class AppointmentResponse {
 
     public void setExtraFeeReason(String extraFeeReason) {
         this.extraFeeReason = extraFeeReason;
+    }
+
+    public String getStatusReason() {
+        return statusReason;
+    }
+
+    public void setStatusReason(String statusReason) {
+        this.statusReason = statusReason;
     }
 
     public String getPaymentStatusHint() {

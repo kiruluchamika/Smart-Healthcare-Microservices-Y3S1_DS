@@ -12,6 +12,7 @@
         <module name="api-gateway" />
         <module name="patient-service" />
         <module name="telemedicine-service" />
+        <module name="patient-Service" />
         <module name="ai-symptom-service" />
         <module name="notification-service" />
       </profile>

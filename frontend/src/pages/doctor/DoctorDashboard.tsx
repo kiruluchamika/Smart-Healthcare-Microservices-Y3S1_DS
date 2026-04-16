@@ -232,9 +232,9 @@ export default function DoctorDashboard() {
                     <span>Search</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button type="button" className="rounded-full border border-slate-200 bg-white p-2 text-slate-600">
+                    <Link to="/notifications" className="rounded-full border border-slate-200 bg-white p-2 text-slate-600 hover:bg-slate-50" aria-label="Notifications">
                       <Bell className="h-4 w-4" />
-                    </button>
+                    </Link>
                     <button type="button" className="rounded-full border border-slate-200 bg-white p-2 text-slate-600">
                       <Mail className="h-4 w-4" />
                     </button>

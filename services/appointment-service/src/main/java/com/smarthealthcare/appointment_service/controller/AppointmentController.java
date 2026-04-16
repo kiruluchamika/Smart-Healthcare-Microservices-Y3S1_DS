@@ -8,6 +8,7 @@ import com.smarthealthcare.appointment_service.dto.response.ApiMessageResponse;
 import com.smarthealthcare.appointment_service.dto.response.AppointmentAccessResponse;
 import com.smarthealthcare.appointment_service.dto.response.AppointmentResponse;
 import com.smarthealthcare.appointment_service.dto.response.AvailabilityResponse;
+import com.smarthealthcare.appointment_service.dto.response.CalendarAvailabilityResponse;
 import com.smarthealthcare.appointment_service.service.AppointmentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -123,6 +124,14 @@ public class AppointmentController {
             @RequestParam @Positive Long doctorId,
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate appointmentDate) {
         return ResponseEntity.ok(appointmentService.getDoctorAvailability(doctorId, appointmentDate));
+    }
+
+    @GetMapping("/availability/calendar")
+    public ResponseEntity<CalendarAvailabilityResponse> getDoctorAvailabilityCalendar(
+            @RequestParam @Positive Long doctorId,
+            @RequestParam("from") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate rangeStart,
+            @RequestParam("to") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate rangeEnd) {
+        return ResponseEntity.ok(appointmentService.getDoctorAvailabilityCalendar(doctorId, rangeStart, rangeEnd));
     }
 
     @GetMapping("/internal/access-check")
