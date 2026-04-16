@@ -110,6 +110,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: 123456
       APP_JWT_SECRET: smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
+      DOCTOR_SERVICE_BASE_URL: http://host.docker.internal:8083
     depends_on:
       mysql-patient:
         condition: service_healthy
