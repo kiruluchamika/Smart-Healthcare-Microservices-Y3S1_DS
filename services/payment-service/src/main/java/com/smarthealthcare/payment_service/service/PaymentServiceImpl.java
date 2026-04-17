@@ -81,12 +81,69 @@ public class PaymentServiceImpl implements PaymentService {
 
         PaymentTransaction existing = repository.findByAppointmentId(appointment.id()).orElse(null);
         if (existing != null) {
-            if (existing.getStatus() == PaymentStatus.PAID || existing.getStatus() == PaymentStatus.COMPLETED) {
+            if (!matchesAppointmentIdentity(existing, appointment)) {
+                if (isRecoverableStaleConflict(existing)) {
+                    log.info(
+                            "Auto-reconciling stale payment identity mismatch for appointmentId={}, paymentId={}, status={}",
+                            appointment.id(),
+                            existing.getId(),
+                            existing.getStatus());
+                    reconcileStalePaymentRecord(existing, appointment);
+                } else {
+                    String conflictReference = buildConflictReference();
+                    log.warn(
+                            "Payment identity mismatch [{}] appointmentId={}, paymentId={}, paymentPatientId={}, appointmentPatientId={}, paymentDoctorId={}, appointmentDoctorId={}, status={}",
+                            conflictReference,
+                            appointment.id(),
+                            existing.getId(),
+                            existing.getPatientId(),
+                            appointment.patientId(),
+                            existing.getDoctorId(),
+                            appointment.doctorId(),
+                            existing.getStatus());
+                    throw new ConflictException(
+                            "Payment record conflict detected for this appointment. Please contact support with reference "
+                                    + conflictReference
+                                    + ".");
+                }
+            }
+
+            if (isSuccessfulStatus(existing.getStatus())) {
+                // Keep appointment-service in sync when payment-service already holds a paid status.
+                if (!isAppointmentMarkedPaid(appointment)) {
+                    syncAppointmentPaymentStatus(
+                            existing,
+                            existing.getStatus().name(),
+                            existing.getPaidAt(),
+                            existing.getTelemedicineSessionUrl());
+
+                    AppointmentSnapshot refreshedAppointment = refreshAppointmentSnapshot(appointment.id());
+                    if (refreshedAppointment != null && isAppointmentMarkedPaid(refreshedAppointment)) {
+                        throw new ConflictException("Appointment is already paid");
+                    }
+
+                    String conflictReference = buildConflictReference();
+                    log.warn(
+                            "Paid status mismatch after sync [{}] appointmentId={}, paymentId={}, paymentStatus={}, appointmentPaymentHint={}",
+                            conflictReference,
+                            appointment.id(),
+                            existing.getId(),
+                            existing.getStatus(),
+                            appointment.paymentStatusHint());
+                    throw new ConflictException(
+                            "Payment is already recorded as paid, but appointment status is still syncing. Please refresh in a moment. Reference "
+                                    + conflictReference
+                                    + ".");
+                }
+
                 throw new ConflictException("Appointment is already paid");
             }
 
             if (StringUtils.hasText(existing.getStripeCheckoutSessionId()) && existing.getStatus() == PaymentStatus.CHECKOUT_CREATED) {
-                return PaymentMapper.toCheckoutResponse(existing);
+                if (StringUtils.hasText(existing.getCheckoutUrl())) {
+                    return PaymentMapper.toCheckoutResponse(existing);
+                }
+                clearCheckoutSessionState(existing);
             }
         }
 
@@ -373,6 +430,65 @@ public class PaymentServiceImpl implements PaymentService {
 
         if (appointment.status() == null || !"CONFIRMED".equalsIgnoreCase(appointment.status())) {
             throw new ConflictException("Payment is available only after doctor approval");
+        }
+    }
+
+    private boolean matchesAppointmentIdentity(PaymentTransaction transaction, AppointmentSnapshot appointment) {
+        return transaction.getPatientId() != null
+                && transaction.getDoctorId() != null
+                && transaction.getPatientId().equals(appointment.patientId())
+                && transaction.getDoctorId().equals(appointment.doctorId());
+    }
+
+    private boolean isSuccessfulStatus(PaymentStatus status) {
+        return status == PaymentStatus.PAID || status == PaymentStatus.COMPLETED;
+    }
+
+    private boolean isRecoverableStaleConflict(PaymentTransaction transaction) {
+        return transaction.getStatus() != null && !isSuccessfulStatus(transaction.getStatus());
+    }
+
+    private void reconcileStalePaymentRecord(PaymentTransaction transaction, AppointmentSnapshot appointment) {
+        clearCheckoutSessionState(transaction);
+        transaction.setStripeRefundId(null);
+        transaction.setFailureReason(null);
+        transaction.setRefundReason(null);
+        transaction.setStatus(PaymentStatus.CREATED);
+        transaction.setAppointmentId(appointment.id());
+        transaction.setPatientId(appointment.patientId());
+        transaction.setDoctorId(appointment.doctorId());
+        transaction.setAppointmentDate(appointment.appointmentDate());
+        transaction.setStartTime(appointment.startTime());
+        transaction.setEndTime(appointment.endTime());
+        transaction.setAppointmentType(appointment.appointmentType());
+    }
+
+    private void clearCheckoutSessionState(PaymentTransaction transaction) {
+        transaction.setStripeCheckoutSessionId(null);
+        transaction.setCheckoutUrl(null);
+        transaction.setStripePaymentIntentId(null);
+    }
+
+    private boolean isAppointmentMarkedPaid(AppointmentSnapshot appointment) {
+        String paymentHint = appointment.paymentStatusHint();
+        if (!StringUtils.hasText(paymentHint)) {
+            return false;
+        }
+
+        String normalizedHint = paymentHint.trim().toUpperCase(Locale.ROOT);
+        return "PAID".equals(normalizedHint) || "COMPLETED".equals(normalizedHint);
+    }
+
+    private String buildConflictReference() {
+        return "PMT-CONFLICT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
+    }
+
+    private AppointmentSnapshot refreshAppointmentSnapshot(Long appointmentId) {
+        try {
+            return appointmentClient.getAppointmentById(appointmentId);
+        } catch (Exception ex) {
+            log.warn("Unable to refresh appointment snapshot for {}: {}", appointmentId, ex.getMessage());
+            return null;
         }
     }
 

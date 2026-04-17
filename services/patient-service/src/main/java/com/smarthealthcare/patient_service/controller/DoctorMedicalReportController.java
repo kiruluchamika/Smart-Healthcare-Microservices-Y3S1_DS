@@ -39,7 +39,7 @@ public class DoctorMedicalReportController {
     public ResponseEntity<ApiResponse<List<MedicalReportResponse>>> getPatientReportsForDoctor(
             @AuthenticationPrincipal AuthenticatedPatient principal,
             @RequestHeader(name = "X-Doctor-Id") Long doctorId,
-            @PathVariable Long patientAuthUserId,
+            @PathVariable("patientAuthUserId") Long patientAuthUserId,
             @RequestParam(name = "type", required = false) ReportType type) {
 
         List<MedicalReportResponse> reports = medicalReportService.getReportsForDoctor(
@@ -55,8 +55,8 @@ public class DoctorMedicalReportController {
     public ResponseEntity<Resource> downloadPatientReportForDoctor(
             @AuthenticationPrincipal AuthenticatedPatient principal,
             @RequestHeader(name = "X-Doctor-Id") Long doctorId,
-            @PathVariable Long patientAuthUserId,
-            @PathVariable Long id) {
+            @PathVariable("patientAuthUserId") Long patientAuthUserId,
+            @PathVariable("id") Long id) {
 
         Resource resource = medicalReportService.downloadReportAsResourceForDoctor(
             doctorId,
@@ -84,7 +84,7 @@ public class DoctorMedicalReportController {
     public ResponseEntity<ApiResponse<PatientProfileResponse>> getPatientProfileForDoctor(
             @AuthenticationPrincipal AuthenticatedPatient principal,
             @RequestHeader(name = "X-Doctor-Id") Long doctorId,
-            @PathVariable Long patientAuthUserId) {
+            @PathVariable("patientAuthUserId") Long patientAuthUserId) {
 
         PatientProfileResponse response = patientProfileService.getProfileForDoctor(
                 doctorId,

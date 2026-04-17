@@ -41,7 +41,7 @@ public class MedicalHistoryController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<MedicalHistoryResponse>> updateHistoryEntry(
             @AuthenticationPrincipal AuthenticatedPatient principal,
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @RequestBody MedicalHistoryRequest request) {
 
         MedicalHistoryResponse response = medicalHistoryService.updateEntry(principal.getAuthUserId(), id, request);
@@ -51,7 +51,7 @@ public class MedicalHistoryController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteHistoryEntry(
             @AuthenticationPrincipal AuthenticatedPatient principal,
-            @PathVariable Long id) {
+            @PathVariable("id") Long id) {
 
         medicalHistoryService.deleteEntry(principal.getAuthUserId(), id);
         return ResponseEntity.ok(ApiResponse.success("History entry deleted successfully", null));

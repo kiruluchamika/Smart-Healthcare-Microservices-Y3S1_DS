@@ -17,6 +17,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import {
   createCheckoutSession,
   getMyPayments,
+  PaymentApiError,
   type PaymentResponse,
 } from '../services/paymentApi';
 import {
@@ -234,6 +235,7 @@ export default function MyAppointments() {
   const [activeFilter, setActiveFilter] = useState<AppointmentFilter>('ALL');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [paymentWarning, setPaymentWarning] = useState('');
   const [activeRescheduleId, setActiveRescheduleId] = useState<number | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleSlot, setRescheduleSlot] = useState<GeneratedAvailabilitySlot | null>(null);
@@ -302,6 +304,9 @@ export default function MyAppointments() {
       setIsLoading(true);
     }
     setError('');
+    if (!silent) {
+      setPaymentWarning('');
+    }
 
     try {
       const appointmentResponse = await getMyAppointments();
@@ -316,8 +321,9 @@ export default function MyAppointments() {
             return acc;
           }, {}),
         );
+        setPaymentWarning('');
       } catch {
-        setPaymentMap({});
+        setPaymentWarning('Payment status could not be refreshed just now. Showing last known payment details.');
       }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load appointments');
@@ -692,6 +698,7 @@ export default function MyAppointments() {
   const handlePayNow = async (appointment: AppointmentResponse) => {
     setPaymentLoadingId(appointment.id);
     setError('');
+    setPaymentWarning('');
 
     try {
       const origin = window.location.origin;
@@ -707,7 +714,28 @@ export default function MyAppointments() {
 
       window.location.assign(response.checkoutUrl);
     } catch (paymentError) {
-      setError(paymentError instanceof Error ? paymentError.message : 'Failed to start payment flow');
+      const paymentErrorMessage = paymentError instanceof Error ? paymentError.message : '';
+      const normalizedMessage = paymentErrorMessage.toLowerCase();
+
+      if (normalizedMessage.includes('already paid')) {
+        await loadAppointments(true);
+        setError('Payment is already completed for this appointment. Status has been refreshed.');
+      } else if (
+        paymentError instanceof PaymentApiError &&
+        paymentError.status === 409 &&
+        normalizedMessage.includes('payment record conflict detected')
+      ) {
+        await loadAppointments(true);
+
+        const referenceMatch = paymentErrorMessage.match(/PMT-CONFLICT-[A-Z0-9]+/i);
+        const referenceText = referenceMatch ? ` Support reference: ${referenceMatch[0].toUpperCase()}.` : '';
+
+        setPaymentWarning(
+          `Payment details are out of sync for this appointment. We refreshed your status.${referenceText} Please contact support to reconcile this booking before retrying payment.`,
+        );
+      } else {
+        setError(paymentError instanceof Error ? paymentError.message : 'Failed to start payment flow');
+      }
     } finally {
       setPaymentLoadingId(null);
     }
@@ -1222,6 +1250,12 @@ export default function MyAppointments() {
         {error && (
           <div className="mb-8 rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-red-600">
             {error}
+          </div>
+        )}
+
+        {paymentWarning && (
+          <div className="mb-8 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-700">
+            {paymentWarning}
           </div>
         )}
 

@@ -1,6 +1,6 @@
 import { useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Activity, CalendarRange, UserCircle, Settings } from 'lucide-react';
+import { Activity, CalendarRange, FileText, UserCircle, Settings } from 'lucide-react';
 
 interface DoctorTopNavProps {
   doctorId?: number;
@@ -30,6 +30,14 @@ export function DoctorTopNav({ doctorId }: DoctorTopNavProps) {
       disabled: !hasDoctorId,
     },
     {
+      id: 'reports',
+      label: 'Patient Reports',
+      icon: FileText,
+      href: '/doctor/reports',
+      isActive: path === '/doctor/reports',
+      disabled: false,
+    },
+    {
       id: 'profile',
       label: 'Public Profile',
       icon: UserCircle,
@@ -49,7 +57,7 @@ export function DoctorTopNav({ doctorId }: DoctorTopNavProps) {
 
   return (
     <div className="mb-8 w-full">
-      <nav className="mx-auto flex max-w-fit items-center gap-2 overflow-x-auto rounded-full border border-white bg-white/70 p-2 shadow-lg shadow-teal-900/[0.04] backdrop-blur-xl">
+      <nav className="mx-auto flex max-w-fit items-center gap-2 overflow-x-auto rounded-full border border-white/80 bg-white/75 p-2 shadow-[0_18px_50px_rgba(13,55,78,0.12)] backdrop-blur-xl">
         {tabs.map((tab) => {
           const active = tab.isActive;
           const disabled = tab.disabled;
@@ -68,13 +76,13 @@ export function DoctorTopNav({ doctorId }: DoctorTopNavProps) {
                 key={tab.id}
                 to={tab.href}
                 className={`relative flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-all ${
-                  active ? 'text-white shadow-sm' : 'text-slate-600 hover:bg-white/50 hover:text-slate-900'
+                  active ? 'text-white shadow-sm' : 'text-slate-600 hover:bg-white/80 hover:text-slate-900'
                 }`}
               >
                 {active && (
                   <motion.div
                     layoutId="doctor-nav-pill"
-                    className="absolute inset-0 z-0 rounded-full bg-teal-600"
+                    className="absolute inset-0 z-0 rounded-full bg-gradient-to-r from-teal-600 to-cyan-500"
                     transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                   />
                 )}

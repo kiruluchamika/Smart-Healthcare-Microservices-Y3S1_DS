@@ -71,12 +71,14 @@ services:
       dockerfile: Dockerfile
     container_name: api-gateway
     environment:
+      APPOINTMENT_SERVICE_URL: http://appointment-service:8082
       DOCTOR_SERVICE_URL: http://host.docker.internal:8083
       TELEMEDICINE_SERVICE_URL: http://telemedicine-service:8087
       AI_DOCTOR_SUGGESTION_SERVICE_URL: http://ai-doctor-suggestion-service:8092
       AI_SYMPTOM_SERVICE_URL: http://ai-symptom-service:8093
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
     depends_on:
+      - appointment-service
       - telemedicine-service
       - ai-doctor-suggestion-service
       - ai-symptom-service
@@ -99,6 +101,48 @@ services:
       timeout: 5s
       retries: 10
 
+  mysql-appointment:
+    image: mysql:8.0
+    container_name: mysql-appointment
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: appointment_service_db
+    ports:
+      - "3311:3306"
+    volumes:
+      - mysql-appointment-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  appointment-service:
+    build:
+      context: ./services/appointment-service
+      dockerfile: Dockerfile
+    container_name: appointment-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-appointment:3306/appointment_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+      APP_SERVICES_AUTH_BASE_URL: http://auth-service:8080/auth
+      APP_SERVICES_DOCTOR_BASE_URL: http://host.docker.internal:8083/api/v1/doctors
+      DOCTOR_SERVICE_USERNAME: doctor
+      DOCTOR_SERVICE_PASSWORD: doctor123
+      NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8084
+      APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
+      SERVER_PORT: 8082
+    depends_on:
+      mysql-appointment:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+    ports:
+      - "8082:8082"
+
   patient-service:
     build:
       context: ./services/patient-service
@@ -110,10 +154,13 @@ services:
       SPRING_DATASOURCE_PASSWORD: 123456
       APP_JWT_SECRET: smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
+      APPOINTMENT_SERVICE_BASE_URL: http://appointment-service:8082
       DOCTOR_SERVICE_BASE_URL: http://host.docker.internal:8083
     depends_on:
       mysql-patient:
         condition: service_healthy
+      appointment-service:
+        condition: service_started
     ports:
       - "8085:8085"
     volumes:
@@ -290,7 +337,7 @@ services:
       SPRING_DATASOURCE_PASSWORD: payment_pass
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
-      APPOINTMENT_SERVICE_BASE_URL: http://host.docker.internal:8082
+      APPOINTMENT_SERVICE_BASE_URL: http://appointment-service:8082
       DOCTOR_SERVICE_BASE_URL: http://host.docker.internal:8083/api/v1/doctors
       DOCTOR_SERVICE_USERNAME: doctor
       DOCTOR_SERVICE_PASSWORD: doctor123
@@ -312,6 +359,7 @@ volumes:
   mysql-auth-data:
   mysql-doctor-data:
   mysql-patient-data:
+  mysql-appointment-data:
   patient-uploads:
   mysql-ai-suggestion-data:
   mysql-ai-symptom-data:
