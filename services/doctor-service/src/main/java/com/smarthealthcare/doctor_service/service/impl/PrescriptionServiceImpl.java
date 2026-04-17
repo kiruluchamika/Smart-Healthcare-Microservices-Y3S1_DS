@@ -1,7 +1,10 @@
 package com.smarthealthcare.doctor_service.service.impl;
 
+import com.smarthealthcare.doctor_service.client.AppointmentServiceClient;
+import com.smarthealthcare.doctor_service.dto.integration.AppointmentLookupResponse;
 import com.smarthealthcare.doctor_service.entity.Prescription;
-import com.smarthealthcare.doctor_service.entity.PrescriptionItem;
+import com.smarthealthcare.doctor_service.exception.BadRequestException;
+import com.smarthealthcare.doctor_service.exception.ResourceNotFoundException;
 import com.smarthealthcare.doctor_service.repository.PrescriptionRepository;
 import com.smarthealthcare.doctor_service.service.PrescriptionService;
 import jakarta.transaction.Transactional;
@@ -16,6 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PrescriptionServiceImpl implements PrescriptionService {
     private final PrescriptionRepository prescriptionRepository;
+    private final AppointmentServiceClient appointmentServiceClient;
 
     @Override
     @Transactional
@@ -24,20 +28,21 @@ public class PrescriptionServiceImpl implements PrescriptionService {
         prescription.setIssuedAt(LocalDateTime.now());
         prescription.setRxNumber(UUID.randomUUID().toString());
         prescription.setVersion(1);
-
-        List<PrescriptionItem> requestedItems = prescription.getItems() == null
-                ? new ArrayList<>()
-                : new ArrayList<>(prescription.getItems());
-
-        prescription.setItems(new ArrayList<>());
-        Prescription savedPrescription = prescriptionRepository.save(prescription);
-
-        if (!requestedItems.isEmpty()) {
-            savedPrescription.setItems(requestedItems);
-            savedPrescription = prescriptionRepository.save(savedPrescription);
+        if (prescription.getItems() == null) {
+            prescription.setItems(new ArrayList<>());
         }
+        return prescriptionRepository.save(prescription);
+    }
 
-        return savedPrescription;
+    @Override
+    public void validateDoctorAppointmentAccess(Long appointmentId, Long patientId, Long doctorId) {
+        AppointmentLookupResponse appointment = appointmentServiceClient.getAppointmentById(appointmentId);
+        if (!doctorId.equals(appointment.getDoctorId())) {
+            throw new BadRequestException("You can only create prescriptions for your own appointments");
+        }
+        if (!patientId.equals(appointment.getPatientId())) {
+            throw new BadRequestException("Prescription patient does not match the appointment");
+        }
     }
 
     @Override
@@ -45,6 +50,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
     public Prescription signPrescription(Long prescriptionId, Long doctorId) {
         Prescription prescription = prescriptionRepository.findById(prescriptionId)
                 .orElseThrow(() -> new RuntimeException("Prescription not found"));
+        validateDoctorAppointmentAccess(prescription.getAppointmentId(), prescription.getPatientId(), doctorId);
         if (!prescription.getDoctorId().equals(doctorId)) {
             throw new RuntimeException("Unauthorized");
         }
@@ -62,13 +68,25 @@ public class PrescriptionServiceImpl implements PrescriptionService {
     public Prescription getPrescription(Long prescriptionId, Long requesterId, String role) {
         Prescription prescription = prescriptionRepository.findById(prescriptionId)
                 .orElseThrow(() -> new RuntimeException("Prescription not found"));
+        authorizePrescriptionAccess(prescription, requesterId, role);
+        return prescription;
+    }
+
+    @Override
+    public Prescription getPrescriptionByAppointment(Long appointmentId, Long requesterId, String role) {
+        Prescription prescription = prescriptionRepository.findByAppointmentId(appointmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prescription not found"));
+        authorizePrescriptionAccess(prescription, requesterId, role);
+        return prescription;
+    }
+
+    private void authorizePrescriptionAccess(Prescription prescription, Long requesterId, String role) {
         if (role.equals("DOCTOR") && !prescription.getDoctorId().equals(requesterId)) {
             throw new RuntimeException("Unauthorized");
         }
         if (role.equals("PATIENT") && !prescription.getPatientId().equals(requesterId)) {
             throw new RuntimeException("Unauthorized");
         }
-        return prescription;
     }
 
     @Override
