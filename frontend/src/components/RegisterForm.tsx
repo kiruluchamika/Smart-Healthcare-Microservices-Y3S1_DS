@@ -4,7 +4,9 @@ import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../services/authApi';
 import { setAuthSession } from '../services/authSession';
+import { patientApi } from '../services/patientApi';
 import { LAST_NAME_PLACEHOLDER } from '../utils/name';
+import { isPatientProfileComplete } from '../utils/patientProfile';
 
 interface RegisterFormProps {
   onSwitch: () => void;
@@ -19,7 +21,7 @@ interface FormErrors {
 
 type RegisterRole = 'PATIENT' | 'DOCTOR';
 
-const NAME_PATTERN = /^[A-Za-z -]+$/;
+const NAME_PATTERN = /^[A-Za-z ]+$/;
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._#^()\-+=])[A-Za-z\d@$!%*?&._#^()\-+=]{8,64}$/;
 
 export function RegisterForm({ onSwitch }: RegisterFormProps) {
@@ -55,7 +57,7 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
     } else if (normalizedName.length < 2) {
       newErrors.name = 'Full name must be at least 2 characters';
     } else if (!NAME_PATTERN.test(normalizedName)) {
-      newErrors.name = 'Name can only contain letters, spaces, and hyphens';
+      newErrors.name = 'Name can only contain letters and spaces';
     }
 
     if (!email) {
@@ -103,7 +105,23 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
       setAuthSession(response);
 
       setIsLoading(false);
-      navigate('/dashboard');
+      let redirectPath = '/dashboard';
+      let navigationState: Record<string, unknown> | undefined;
+
+      if (response.user.role === 'PATIENT') {
+        try {
+          const profileResponse = await patientApi.getProfile();
+          if (!isPatientProfileComplete(profileResponse.data)) {
+            redirectPath = '/profile';
+            navigationState = { onboarding: true };
+          }
+        } catch {
+          redirectPath = '/profile';
+          navigationState = { onboarding: true };
+        }
+      }
+
+      navigate(redirectPath, { state: navigationState });
     } catch (error) {
       setIsLoading(false);
       setServerError(error instanceof Error ? error.message : 'Registration failed');

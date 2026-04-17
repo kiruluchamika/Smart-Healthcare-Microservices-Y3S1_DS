@@ -33,6 +33,14 @@ spring:
               - "*"
             allowCredentials: true
       routes:
+        - id: appointment-service
+          uri: ${APPOINTMENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/appointments/**
+          filters:
+            - RewritePath=/api/appointments/?(?<segment>.*), /appointments/${segment}
+            - PreserveHostHeader
+
         - id: doctor-service
           uri: ${DOCTOR_SERVICE_URL:http://localhost:8083}
           predicates:

@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  FileText,
   Mail,
   MoreHorizontal,
   Search,
@@ -386,6 +387,20 @@ export default function DoctorDashboard() {
                     {summary.specialization}
                   </div>
                 </div>
+
+                <Link
+                  to="/doctor/reports"
+                  className="mt-4 flex items-center justify-between rounded-[1.2rem] border border-teal-100 bg-gradient-to-r from-teal-50 to-cyan-50 p-4 transition-transform hover:-translate-y-0.5"
+                >
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">Patient Records</p>
+                    <p className="mt-1 text-sm font-bold text-slate-900">Open reports for confirmed patients</p>
+                    <p className="mt-1 text-xs text-slate-600">Read-only access to linked reports and downloads.</p>
+                  </div>
+                  <div className="ml-3 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-teal-600 text-white shadow-lg shadow-teal-600/20">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                </Link>
               </div>
             </div>
           </motion.section>

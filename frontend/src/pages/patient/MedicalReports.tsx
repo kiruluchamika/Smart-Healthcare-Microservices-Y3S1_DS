@@ -101,8 +101,21 @@ const MedicalReports: React.FC = () => {
       if (res.success) {
          setReports(reports.filter(r => r.id !== id));
       }
-    } catch (err: any) {
-      setError('Failed to delete report.');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const serverMessage = err.response?.data?.message;
+
+        if (status === 401) {
+          setError('Your session has expired. Please log in again and retry the delete.');
+        } else if (status === 404) {
+          setError('Report was not found. Refresh the page and try again.');
+        } else {
+          setError((typeof serverMessage === 'string' && serverMessage) || err.message || 'Failed to delete report.');
+        }
+      } else {
+        setError('Failed to delete report.');
+      }
     }
   };
 
@@ -117,8 +130,21 @@ const MedicalReports: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
-    } catch (err: any) {
-      setError('Failed to download the document stream.');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const serverMessage = err.response?.data?.message;
+
+        if (status === 401) {
+          setError('Your session has expired. Please log in again and retry the download.');
+        } else if (status === 404) {
+          setError('Report file was not found on the server.');
+        } else {
+          setError((typeof serverMessage === 'string' && serverMessage) || err.message || 'Failed to download the document stream.');
+        }
+      } else {
+        setError('Failed to download the document stream.');
+      }
     }
   };
 
