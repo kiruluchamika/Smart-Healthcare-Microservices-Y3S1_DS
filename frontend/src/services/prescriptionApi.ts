@@ -1,6 +1,8 @@
 import axios from 'axios';
+import { getAuthUser } from './authSession';
 
 const API_URL = '/api/prescriptions';
+const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
 
 function getBasicAuthHeader() {
   const username = import.meta.env.VITE_DOCTOR_USER || 'doctor';
@@ -9,8 +11,13 @@ function getBasicAuthHeader() {
 }
 
 const getHeaders = () => {
+  const user = getAuthUser();
+  const doctorId = localStorage.getItem(DOCTOR_PROFILE_ID_KEY) || (user?.id ? String(user.id) : null);
+
   return {
+    'Content-Type': 'application/json',
     Authorization: getBasicAuthHeader(),
+    ...(doctorId ? { 'X-Doctor-Id': doctorId } : {}),
   };
 };
 
@@ -26,6 +33,11 @@ export const signPrescription = async (id: number) => {
 
 export const getPrescription = async (id: number) => {
   const response = await axios.get(`${API_URL}/${id}`, { headers: getHeaders() });
+  return response.data;
+};
+
+export const getPrescriptionByAppointment = async (appointmentId: number) => {
+  const response = await axios.get(`${API_URL}/by-appointment/${appointmentId}`, { headers: getHeaders() });
   return response.data;
 };
 
