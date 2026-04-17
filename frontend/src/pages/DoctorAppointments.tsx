@@ -21,6 +21,8 @@ import type { PatientProfile } from '../types/patient';
 import { formatDisplayAmount } from '../utils/currency';
 import { getConsultationAccessState } from '../utils/telemedicine/telemedicineFlow';
 import PrescriptionForm from '../components/doctor/PrescriptionForm';
+import PrescriptionDetail from '../components/patient/PrescriptionDetail';
+import { getPrescriptionByAppointment } from '../services/prescriptionApi';
 
 const VIDEO_FIXED_FEE = 15;
 const PHYSICAL_FIXED_FEE = 20;
@@ -132,6 +134,8 @@ export default function DoctorAppointments() {
   const [acceptExtraFeeReason, setAcceptExtraFeeReason] = useState('');
   const [acceptFormError, setAcceptFormError] = useState('');
   const [prescriptionModalAppointment, setPrescriptionModalAppointment] = useState<AppointmentResponse | null>(null);
+  const [prescriptionByAppointmentId, setPrescriptionByAppointmentId] = useState<Record<number, any>>({});
+  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<number | null>(null);
   const [confirmation, setConfirmation] = useState<PendingConfirmation>(null);
   const [isConfirming, setIsConfirming] = useState(false);
   const acceptFeeInputRef = useRef<HTMLInputElement | null>(null);
@@ -167,6 +171,52 @@ export default function DoctorAppointments() {
       window.clearInterval(refreshTimer);
     };
   }, [loadAppointments]);
+
+  useEffect(() => {
+    const candidateAppointments = appointments.filter(
+      (appointment) => appointment.status === 'CONFIRMED' || appointment.status === 'COMPLETED',
+    );
+    const missingAppointmentIds = candidateAppointments
+      .map((appointment) => appointment.id)
+      .filter((appointmentId) => prescriptionByAppointmentId[appointmentId] === undefined);
+
+    if (!missingAppointmentIds.length) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadPrescriptionStates = async () => {
+      const entries = await Promise.all(
+        missingAppointmentIds.map(async (appointmentId) => {
+          try {
+            const prescription = await getPrescriptionByAppointment(appointmentId);
+            return [appointmentId, prescription] as const;
+          } catch {
+            return [appointmentId, null] as const;
+          }
+        }),
+      );
+
+      if (!isActive) {
+        return;
+      }
+
+      setPrescriptionByAppointmentId((current) => {
+        const next = { ...current };
+        entries.forEach(([appointmentId, prescription]) => {
+          next[appointmentId] = prescription;
+        });
+        return next;
+      });
+    };
+
+    void loadPrescriptionStates();
+
+    return () => {
+      isActive = false;
+    };
+  }, [appointments, prescriptionByAppointmentId]);
 
   useEffect(() => {
     const authUser = getAuthUser();
@@ -469,6 +519,8 @@ export default function DoctorAppointments() {
                                 consultationState?.canOpenPage;
                               const showPhysicalComplete =
                                 appointment.appointmentType !== 'VIDEO' && canComplete;
+                              const existingPrescription = prescriptionByAppointmentId[appointment.id];
+                              const hasPrescription = Boolean(existingPrescription?.id);
 
                               return (
                                 <tr key={appointment.id} className="align-top text-sm text-slate-700">
@@ -538,13 +590,28 @@ export default function DoctorAppointments() {
                                         </button>
                                       )}
                                       {(canComplete || appointment.status === 'COMPLETED') && (
-                                        <button
-                                          type="button"
-                                          onClick={() => setPrescriptionModalAppointment(appointment)}
-                                          className="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700"
-                                        >
-                                          Write Prescription
-                                        </button>
+                                        hasPrescription ? (
+                                          <>
+                                            <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                                              Prescription Issued
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => setSelectedPrescriptionId(existingPrescription.id)}
+                                              className="rounded-lg px-3 py-2 text-xs font-semibold text-indigo-700 border border-indigo-200 bg-indigo-50 transition hover:bg-indigo-100"
+                                            >
+                                              View Prescription
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => setPrescriptionModalAppointment(appointment)}
+                                            className="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700"
+                                          >
+                                            Write Prescription
+                                          </button>
+                                        )
                                       )}
                                     </div>
                                   </td>
@@ -587,6 +654,8 @@ export default function DoctorAppointments() {
                         consultationState?.canOpenPage;
                       const showPhysicalComplete =
                         appointment.appointmentType !== 'VIDEO' && canComplete;
+                      const existingPrescription = prescriptionByAppointmentId[appointment.id];
+                      const hasPrescription = Boolean(existingPrescription?.id);
 
                       return (
                         <motion.div
@@ -787,13 +856,28 @@ export default function DoctorAppointments() {
                                 </button>
                               )}
                               {(canComplete || appointment.status === 'COMPLETED') && (
-                                <button
-                                  type="button"
-                                  onClick={() => setPrescriptionModalAppointment(appointment)}
-                                  className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700"
-                                >
-                                  Write Prescription
-                                </button>
+                                hasPrescription ? (
+                                  <>
+                                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                                      Prescription Issued
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedPrescriptionId(existingPrescription.id)}
+                                      className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                                    >
+                                      View Prescription
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPrescriptionModalAppointment(appointment)}
+                                    className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700"
+                                  >
+                                    Write Prescription
+                                  </button>
+                                )
                               )}
                             </div>
                           </div>
@@ -866,11 +950,36 @@ export default function DoctorAppointments() {
             <PrescriptionForm
               patientId={prescriptionModalAppointment.patientId}
               appointmentId={prescriptionModalAppointment.id}
-              onCreated={() => {
+              onCreated={(prescription) => {
+                if (prescription?.id) {
+                  setPrescriptionByAppointmentId((current) => ({
+                    ...current,
+                    [prescriptionModalAppointment.id]: prescription,
+                  }));
+                  setSelectedPrescriptionId(prescription.id);
+                }
                 setPrescriptionModalAppointment(null);
                 void loadAppointments();
               }}
               onCancel={() => setPrescriptionModalAppointment(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {selectedPrescriptionId && (
+        <div className="fixed inset-0 z-[70] overflow-y-auto flex p-4 sm:p-8 justify-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setSelectedPrescriptionId(null)}
+          />
+          <div className="relative z-10 w-full h-max mt-4 sm:mt-10 pb-20 flex justify-center">
+            <PrescriptionDetail
+              prescriptionId={selectedPrescriptionId}
+              onClose={() => setSelectedPrescriptionId(null)}
+              allowPrint={false}
             />
           </div>
         </div>
