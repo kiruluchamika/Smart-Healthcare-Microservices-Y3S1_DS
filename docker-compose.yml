@@ -67,6 +67,24 @@ services:
       timeout: 5s
       retries: 10
 
+  mysql-payment:
+    image: mysql:8.0
+    container_name: mysql-payment
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: payment_service_db
+      MYSQL_USER: payment_user
+      MYSQL_PASSWORD: payment_pass
+    ports:
+      - "3312:3306"
+    volumes:
+      - mysql-payment-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   auth-service:
     build:
       context: ./services/auth-service
@@ -147,6 +165,32 @@ services:
     volumes:
       - patient-uploads:/app/uploads
 
+  payment-service:
+    build:
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-payment:3306/payment_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: payment_user
+      SPRING_DATASOURCE_PASSWORD: payment_pass
+      SERVER_PORT: 8086
+      APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
+      APPOINTMENT_SERVICE_BASE_URL: http://appointment-service:8082
+      DOCTOR_SERVICE_BASE_URL: http://doctor-service:8083/api/v1/doctors
+      DOCTOR_SERVICE_USERNAME: doctor
+      DOCTOR_SERVICE_PASSWORD: doctor123
+      APP_JWT_SECRET: smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes
+      PAYMENT_CHECKOUT_SUCCESS_URL: http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}
+      PAYMENT_CHECKOUT_CANCEL_URL: http://localhost:5173/payments/cancel
+    depends_on:
+      mysql-payment:
+        condition: service_healthy
+      appointment-service:
+        condition: service_started
+    ports:
+      - "8086:8086"
+
   api-gateway:
     build:
       context: ./api-gateway
@@ -179,5 +223,6 @@ volumes:
   mysql-doctor-data:
   mysql-appointment-data:
   mysql-patient-data:
+  mysql-payment-data:
   doctor-uploads:
   patient-uploads:
