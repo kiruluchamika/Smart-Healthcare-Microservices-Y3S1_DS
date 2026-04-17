@@ -41,6 +41,14 @@ spring:
             - RewritePath=/api/doctors/(?<segment>.*), /api/v1/doctors/${segment}
             - PreserveHostHeader
 
+        - id: prescription-service-routes
+          uri: ${DOCTOR_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/prescriptions/**
+          filters:
+            - RewritePath=/api/prescriptions/(?<segment>.*), /api/v1/prescriptions/${segment}
+            - PreserveHostHeader
+
         - id: payment-service
           uri: ${PAYMENT_SERVICE_URL:http://localhost:8086}
           predicates:

@@ -20,6 +20,9 @@ import {
 import type { PatientProfile } from '../types/patient';
 import { formatDisplayAmount } from '../utils/currency';
 import { getConsultationAccessState } from '../utils/telemedicine/telemedicineFlow';
+import PrescriptionForm from '../components/doctor/PrescriptionForm';
+import PrescriptionDetail from '../components/patient/PrescriptionDetail';
+import { getPrescriptionByAppointment } from '../services/prescriptionApi';
 
 const VIDEO_FIXED_FEE = 15;
 const PHYSICAL_FIXED_FEE = 20;
@@ -130,6 +133,9 @@ export default function DoctorAppointments() {
   const [acceptExtraFee, setAcceptExtraFee] = useState('0');
   const [acceptExtraFeeReason, setAcceptExtraFeeReason] = useState('');
   const [acceptFormError, setAcceptFormError] = useState('');
+  const [prescriptionModalAppointment, setPrescriptionModalAppointment] = useState<AppointmentResponse | null>(null);
+  const [prescriptionByAppointmentId, setPrescriptionByAppointmentId] = useState<Record<number, any>>({});
+  const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<number | null>(null);
   const [confirmation, setConfirmation] = useState<PendingConfirmation>(null);
   const [isConfirming, setIsConfirming] = useState(false);
   const acceptFeeInputRef = useRef<HTMLInputElement | null>(null);
@@ -165,6 +171,52 @@ export default function DoctorAppointments() {
       window.clearInterval(refreshTimer);
     };
   }, [loadAppointments]);
+
+  useEffect(() => {
+    const candidateAppointments = appointments.filter(
+      (appointment) => appointment.status === 'CONFIRMED' || appointment.status === 'COMPLETED',
+    );
+    const missingAppointmentIds = candidateAppointments
+      .map((appointment) => appointment.id)
+      .filter((appointmentId) => prescriptionByAppointmentId[appointmentId] === undefined);
+
+    if (!missingAppointmentIds.length) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadPrescriptionStates = async () => {
+      const entries = await Promise.all(
+        missingAppointmentIds.map(async (appointmentId) => {
+          try {
+            const prescription = await getPrescriptionByAppointment(appointmentId);
+            return [appointmentId, prescription] as const;
+          } catch {
+            return [appointmentId, null] as const;
+          }
+        }),
+      );
+
+      if (!isActive) {
+        return;
+      }
+
+      setPrescriptionByAppointmentId((current) => {
+        const next = { ...current };
+        entries.forEach(([appointmentId, prescription]) => {
+          next[appointmentId] = prescription;
+        });
+        return next;
+      });
+    };
+
+    void loadPrescriptionStates();
+
+    return () => {
+      isActive = false;
+    };
+  }, [appointments, prescriptionByAppointmentId]);
 
   useEffect(() => {
     const authUser = getAuthUser();
@@ -368,34 +420,13 @@ export default function DoctorAppointments() {
       return;
     }
 
-    const parsedExtraFee = Number(acceptExtraFee.trim() || '0');
-    if (!Number.isFinite(parsedExtraFee) || parsedExtraFee < 0) {
-      setAcceptFormError('Extra fee must be a valid non-negative number');
-      return;
-    }
-
-    const baseFee = resolveBaseFee(acceptModalAppointment);
-    const maxExtraFee = Number((baseFee * EXTRA_FEE_CAP_MULTIPLIER).toFixed(2));
-    if (parsedExtraFee > maxExtraFee) {
-      setAcceptFormError(
-        `Extra fee cannot exceed ${formatMoney(maxExtraFee, acceptModalAppointment.feeCurrency || 'USD')}`,
-      );
-      return;
-    }
-
-    const normalizedReason = acceptExtraFeeReason.trim();
-    if (parsedExtraFee > 0 && !normalizedReason) {
-      setAcceptFormError('Reason is required when adding an extra fee');
-      return;
-    }
-
     setActionLoadingId(acceptModalAppointment.id);
     setError('');
     setAcceptFormError('');
     try {
       await acceptAppointmentWithFee(acceptModalAppointment.id, {
-        extraFee: parsedExtraFee,
-        extraFeeReason: normalizedReason,
+        extraFee: 0,
+        extraFeeReason: '',
       });
       closeAcceptModal();
       await loadAppointments();
@@ -488,6 +519,8 @@ export default function DoctorAppointments() {
                                 consultationState?.canOpenPage;
                               const showPhysicalComplete =
                                 appointment.appointmentType !== 'VIDEO' && canComplete;
+                              const existingPrescription = prescriptionByAppointmentId[appointment.id];
+                              const hasPrescription = Boolean(existingPrescription?.id);
 
                               return (
                                 <tr key={appointment.id} className="align-top text-sm text-slate-700">
@@ -509,14 +542,18 @@ export default function DoctorAppointments() {
                                     <div className="font-semibold text-slate-900">
                                       {paymentAmount != null ? formatMoney(paymentAmount, paymentCurrency) : 'TBD'}
                                     </div>
-                                    <div className={`mt-1 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                                      isPaymentSettled ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'
-                                    }`}>
+                                    <div
+                                      className={`mt-1 inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                        isPaymentSettled ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'
+                                      }`}
+                                    >
                                       {isPaymentSettled ? 'PAID' : 'UNPAID'}
                                     </div>
                                   </td>
                                   <td className="px-4 py-4">
-                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClasses(appointment.status)}`}>
+                                    <span
+                                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClasses(appointment.status)}`}
+                                    >
                                       {appointment.status}
                                     </span>
                                   </td>
@@ -552,6 +589,30 @@ export default function DoctorAppointments() {
                                           Complete
                                         </button>
                                       )}
+                                      {(canComplete || appointment.status === 'COMPLETED') && (
+                                        hasPrescription ? (
+                                          <>
+                                            <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                                              Prescription Issued
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() => setSelectedPrescriptionId(existingPrescription.id)}
+                                              className="rounded-lg px-3 py-2 text-xs font-semibold text-indigo-700 border border-indigo-200 bg-indigo-50 transition hover:bg-indigo-100"
+                                            >
+                                              View Prescription
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => setPrescriptionModalAppointment(appointment)}
+                                            className="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700"
+                                          >
+                                            Write Prescription
+                                          </button>
+                                        )
+                                      )}
                                     </div>
                                   </td>
                                 </tr>
@@ -571,230 +632,258 @@ export default function DoctorAppointments() {
                     )}
 
                     {group.appointments.map((appointment) => {
-                    const isBusy = actionLoadingId === appointment.id;
-                    const patient = patientMap[appointment.patientId];
-                    const patientName = getPatientDisplayName(patient, appointment.patientId);
-                    const canAcceptOrReject = appointment.status === 'PENDING';
-                    const canComplete = appointment.status === 'CONFIRMED';
-                    const paymentStatus = (appointment.paymentStatusHint || 'UNPAID').toUpperCase();
-                    const isPaymentSettled =
-                      paymentStatus === 'PAID' || paymentStatus === 'COMPLETED';
-                    const paymentAmount =
-                      appointment.finalFee ?? appointment.fixedFeeSnapshot ?? appointment.doctorExtraFee ?? null;
-                    const paymentCurrency = appointment.feeCurrency || 'USD';
-                    const telemedicineSession = telemedicineMap[appointment.id];
-                    const consultationState =
-                      appointment.appointmentType === 'VIDEO'
-                        ? getConsultationAccessState(appointment, telemedicineSession, 'DOCTOR')
-                        : null;
-                    const showConsultationLink =
-                      appointment.appointmentType === 'VIDEO' &&
-                      appointment.status !== 'PENDING' &&
-                      consultationState?.canOpenPage;
-                    const showPhysicalComplete =
-                      appointment.appointmentType !== 'VIDEO' && canComplete;
+                      const isBusy = actionLoadingId === appointment.id;
+                      const patient = patientMap[appointment.patientId];
+                      const patientName = getPatientDisplayName(patient, appointment.patientId);
+                      const canAcceptOrReject = appointment.status === 'PENDING';
+                      const canComplete = appointment.status === 'CONFIRMED';
+                      const paymentStatus = (appointment.paymentStatusHint || 'UNPAID').toUpperCase();
+                      const isPaymentSettled =
+                        paymentStatus === 'PAID' || paymentStatus === 'COMPLETED';
+                      const paymentAmount =
+                        appointment.finalFee ?? appointment.fixedFeeSnapshot ?? appointment.doctorExtraFee ?? null;
+                      const paymentCurrency = appointment.feeCurrency || 'USD';
+                      const telemedicineSession = telemedicineMap[appointment.id];
+                      const consultationState =
+                        appointment.appointmentType === 'VIDEO'
+                          ? getConsultationAccessState(appointment, telemedicineSession, 'DOCTOR')
+                          : null;
+                      const showConsultationLink =
+                        appointment.appointmentType === 'VIDEO' &&
+                        appointment.status !== 'PENDING' &&
+                        consultationState?.canOpenPage;
+                      const showPhysicalComplete =
+                        appointment.appointmentType !== 'VIDEO' && canComplete;
+                      const existingPrescription = prescriptionByAppointmentId[appointment.id];
+                      const hasPrescription = Boolean(existingPrescription?.id);
 
-                    return (
-                      <motion.div
-                        key={appointment.id}
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="rounded-2xl border border-gray-200/40 bg-white p-5 shadow-lg"
-                      >
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                          <div className="min-w-0">
-                            <div className="mb-2 flex flex-wrap items-center gap-2">
-                              <h3 className="text-xl font-semibold text-gray-900">
-                                {patientName}
-                              </h3>
-                              <span
-                                className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClasses(appointment.status)}`}
-                              >
-                                {appointment.status}
-                              </span>
-                            </div>
-                            <p className="mb-3 text-sm text-slate-500">Patient ID: {appointment.patientId}</p>
-
-                            <div
-                              className={`mb-4 rounded-2xl border px-4 py-4 ${
-                                isPaymentSettled
-                                  ? 'border-emerald-200 bg-emerald-50'
-                                  : 'border-orange-200 bg-orange-50'
-                              }`}
-                            >
-                              <div className="flex flex-wrap items-center gap-2">
+                      return (
+                        <motion.div
+                          key={appointment.id}
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="rounded-2xl border border-gray-200/40 bg-white p-5 shadow-lg"
+                        >
+                          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                            <div className="min-w-0">
+                              <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <h3 className="text-xl font-semibold text-gray-900">
+                                  {patientName}
+                                </h3>
                                 <span
-                                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                                    isPaymentSettled
-                                      ? 'bg-emerald-100 text-emerald-700'
-                                      : 'bg-orange-100 text-orange-700'
-                                  }`}
+                                  className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClasses(appointment.status)}`}
                                 >
-                                  {isPaymentSettled ? 'PAID' : 'UNPAID'}
-                                </span>
-                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
-                                  {appointment.status === 'CONFIRMED' ? 'Ready for consultation' : 'Awaiting doctor decision'}
+                                  {appointment.status}
                                 </span>
                               </div>
+                              <p className="mb-3 text-sm text-slate-500">Patient ID: {appointment.patientId}</p>
 
-                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                <div>
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                    Amount
-                                  </p>
-                                  <p className="mt-1 text-2xl font-bold text-slate-900">
-                                    {paymentAmount != null
-                                      ? formatMoney(paymentAmount, paymentCurrency)
-                                      : 'TBD'}
-                                  </p>
+                              <div
+                                className={`mb-4 rounded-2xl border px-4 py-4 ${
+                                  isPaymentSettled
+                                    ? 'border-emerald-200 bg-emerald-50'
+                                    : 'border-orange-200 bg-orange-50'
+                                }`}
+                              >
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span
+                                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                                      isPaymentSettled
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : 'bg-orange-100 text-orange-700'
+                                    }`}
+                                  >
+                                    {isPaymentSettled ? 'PAID' : 'UNPAID'}
+                                  </span>
+                                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                                    {appointment.status === 'CONFIRMED'
+                                      ? 'Ready for consultation'
+                                      : 'Awaiting doctor decision'}
+                                  </span>
                                 </div>
-                                <div>
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                                    Payment note
-                                  </p>
-                                  <p className="mt-1 text-sm text-slate-700">
-                                    {isPaymentSettled
-                                      ? 'Payment has been confirmed for this appointment.'
-                                      : appointment.status === 'CONFIRMED'
-                                        ? 'Collect payment before starting the consultation.'
-                                        : 'Payment will appear after you accept the appointment.'}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
 
-                            {appointment.doctorExtraFee != null && appointment.doctorExtraFee > 0 && (
-                              <p className="text-xs text-orange-700">
-                                Includes extra fee {formatMoney(appointment.doctorExtraFee, appointment.feeCurrency || 'USD')}
-                                {appointment.extraFeeReason ? ` (${appointment.extraFeeReason})` : ''}
-                              </p>
-                            )}
-
-                            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-600">
-                              <span className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 text-blue-600" />
-                                {formatDateLabel(appointment.appointmentDate)}
-                              </span>
-                              <span className="flex items-center gap-2">
-                                <Clock className="h-4 w-4 text-blue-600" />
-                                {formatTimeLabel(appointment.startTime)} -{' '}
-                                {formatTimeLabel(appointment.endTime)}
-                              </span>
-                              <span className="flex items-center gap-2">
-                                {appointment.appointmentType === 'VIDEO' ? (
-                                  <Video className="h-4 w-4 text-blue-600" />
-                                ) : (
-                                  <MapPin className="h-4 w-4 text-blue-600" />
-                                )}
-                                {appointment.appointmentType === 'VIDEO'
-                                  ? 'Video Consultation'
-                                  : 'In-Person Visit'}
-                              </span>
-                            </div>
-
-                            <div className="mt-4 rounded-xl bg-blue-50/70 px-4 py-3">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
-                                Reason for Visit
-                              </p>
-                              <p className="mt-1 text-sm text-gray-700">{appointment.reasonForVisit}</p>
-                            </div>
-
-                            {appointment.statusReason && (
-                              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                                {appointment.statusReason}
-                              </div>
-                            )}
-
-                            {consultationState && (
-                              <div className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div className="mt-3 grid gap-3 sm:grid-cols-2">
                                   <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">
-                                      Consultation Flow
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                      Amount
                                     </p>
-                                    <h4 className="mt-1 text-sm font-bold text-slate-900">
-                                      {consultationState.primaryLabel}
-                                    </h4>
-                                    <p className="mt-1 text-sm text-slate-700">{consultationState.message}</p>
-                                    {telemedicineSession?.consultationSummary && (
-                                      <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                                          Recorded Summary
-                                        </p>
-                                        <p className="mt-1">{telemedicineSession.consultationSummary}</p>
-                                      </div>
+                                    <p className="mt-1 text-2xl font-bold text-slate-900">
+                                      {paymentAmount != null
+                                        ? formatMoney(paymentAmount, paymentCurrency)
+                                        : 'TBD'}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                      Payment note
+                                    </p>
+                                    <p className="mt-1 text-sm text-slate-700">
+                                      {isPaymentSettled
+                                        ? 'Payment has been confirmed for this appointment.'
+                                        : appointment.status === 'CONFIRMED'
+                                          ? 'Collect payment before starting the consultation.'
+                                          : 'Payment will appear after you accept the appointment.'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {appointment.doctorExtraFee != null && appointment.doctorExtraFee > 0 && (
+                                <p className="text-xs text-orange-700">
+                                  Includes extra fee {formatMoney(appointment.doctorExtraFee, appointment.feeCurrency || 'USD')}
+                                  {appointment.extraFeeReason ? ` (${appointment.extraFeeReason})` : ''}
+                                </p>
+                              )}
+
+                              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-600">
+                                <span className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-blue-600" />
+                                  {formatDateLabel(appointment.appointmentDate)}
+                                </span>
+                                <span className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-blue-600" />
+                                  {formatTimeLabel(appointment.startTime)} -{' '}
+                                  {formatTimeLabel(appointment.endTime)}
+                                </span>
+                                <span className="flex items-center gap-2">
+                                  {appointment.appointmentType === 'VIDEO' ? (
+                                    <Video className="h-4 w-4 text-blue-600" />
+                                  ) : (
+                                    <MapPin className="h-4 w-4 text-blue-600" />
+                                  )}
+                                  {appointment.appointmentType === 'VIDEO'
+                                    ? 'Video Consultation'
+                                    : 'In-Person Visit'}
+                                </span>
+                              </div>
+
+                              <div className="mt-4 rounded-xl bg-blue-50/70 px-4 py-3">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">
+                                  Reason for Visit
+                                </p>
+                                <p className="mt-1 text-sm text-gray-700">{appointment.reasonForVisit}</p>
+                              </div>
+
+                              {appointment.statusReason && (
+                                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                                  {appointment.statusReason}
+                                </div>
+                              )}
+
+                              {consultationState && (
+                                <div className="mt-4 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-4">
+                                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">
+                                        Consultation Flow
+                                      </p>
+                                      <h4 className="mt-1 text-sm font-bold text-slate-900">
+                                        {consultationState.primaryLabel}
+                                      </h4>
+                                      <p className="mt-1 text-sm text-slate-700">{consultationState.message}</p>
+                                      {telemedicineSession?.consultationSummary && (
+                                        <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
+                                          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                                            Recorded Summary
+                                          </p>
+                                          <p className="mt-1">{telemedicineSession.consultationSummary}</p>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {showConsultationLink && (
+                                      <Link
+                                        to={`/consultation/${encodeURIComponent(String(appointment.id))}`}
+                                        className="inline-flex shrink-0 items-center justify-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
+                                      >
+                                        {consultationState.primaryLabel}
+                                      </Link>
                                     )}
                                   </div>
-
-                                  {showConsultationLink && (
-                                    <Link
-                                      to={`/consultation/${encodeURIComponent(String(appointment.id))}`}
-                                      className="inline-flex shrink-0 items-center justify-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
-                                    >
-                                      {consultationState.primaryLabel}
-                                    </Link>
-                                  )}
                                 </div>
-                              </div>
-                            )}
-                          </div>
+                              )}
+                            </div>
 
-                          <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col">
-                            <button
-                              type="button"
-                              disabled={!canAcceptOrReject || isBusy}
-                              onClick={() => openAcceptModal(appointment)}
-                              className="rounded-lg border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {isBusy && canAcceptOrReject ? 'Working...' : 'Accept'}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={!canAcceptOrReject || isBusy}
-                              onClick={() =>
-                                setConfirmation({
-                                  title: 'Reject Appointment',
-                                  message:
-                                    'This will decline the pending request while preserving the existing appointment record.',
-                                  confirmLabel: 'Confirm Rejection',
-                                  tone: 'danger',
-                                  details: buildAppointmentSummary(appointment),
-                                  action: async () => {
-                                    await handleAction(appointment.id, rejectAppointment);
-                                  },
-                                })
-                              }
-                              className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              Reject
-                            </button>
-                            {showPhysicalComplete && (
+                            <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col">
                               <button
                                 type="button"
-                                disabled={isBusy || !isPaymentSettled}
+                                disabled={!canAcceptOrReject || isBusy}
+                                onClick={() => openAcceptModal(appointment)}
+                                className="rounded-lg border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {isBusy && canAcceptOrReject ? 'Working...' : 'Accept'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!canAcceptOrReject || isBusy}
                                 onClick={() =>
                                   setConfirmation({
-                                    title: 'Complete Appointment',
+                                    title: 'Reject Appointment',
                                     message:
-                                      'This will mark the consultation as completed using the current doctor workflow.',
-                                    confirmLabel: 'Confirm Completion',
-                                    tone: 'success',
+                                      'This will decline the pending request while preserving the existing appointment record.',
+                                    confirmLabel: 'Confirm Rejection',
+                                    tone: 'danger',
                                     details: buildAppointmentSummary(appointment),
                                     action: async () => {
-                                      await handleAction(appointment.id, completeAppointment);
+                                      await handleAction(appointment.id, rejectAppointment);
                                     },
                                   })
                                 }
-                                className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                className="rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                               >
-                                Complete
+                                Reject
                               </button>
-                            )}
+                              {showPhysicalComplete && (
+                                <button
+                                  type="button"
+                                  disabled={isBusy || !isPaymentSettled}
+                                  onClick={() =>
+                                    setConfirmation({
+                                      title: 'Complete Appointment',
+                                      message:
+                                        'This will mark the consultation as completed using the current doctor workflow.',
+                                      confirmLabel: 'Confirm Completion',
+                                      tone: 'success',
+                                      details: buildAppointmentSummary(appointment),
+                                      action: async () => {
+                                        await handleAction(appointment.id, completeAppointment);
+                                      },
+                                    })
+                                  }
+                                  className="rounded-lg border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Complete
+                                </button>
+                              )}
+                              {(canComplete || appointment.status === 'COMPLETED') && (
+                                hasPrescription ? (
+                                  <>
+                                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                                      Prescription Issued
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedPrescriptionId(existingPrescription.id)}
+                                      className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                                    >
+                                      View Prescription
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPrescriptionModalAppointment(appointment)}
+                                    className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700"
+                                  >
+                                    Write Prescription
+                                  </button>
+                                )
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 )}
               </section>
@@ -808,50 +897,17 @@ export default function DoctorAppointments() {
           <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
             <h3 className="text-xl font-bold text-slate-900">Accept Appointment</h3>
             <p className="mt-1 text-sm text-slate-600">
-              Set an optional extra fee before confirming this appointment.
+              Please review the system base fee and confirm the appointment.
             </p>
 
             <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
               {(() => {
                 const baseFee = resolveBaseFee(acceptModalAppointment);
-                const maxExtraFee = Number((baseFee * EXTRA_FEE_CAP_MULTIPLIER).toFixed(2));
                 const currency = acceptModalAppointment.feeCurrency || 'USD';
                 return (
-                  <>
-                    <p>Base fee: {formatMoney(baseFee, currency)}</p>
-                    <p>Max allowed extra fee: {formatMoney(maxExtraFee, currency)}</p>
-                  </>
+                  <p className="font-semibold text-slate-900">System Base Fee: {formatMoney(baseFee, currency)}</p>
                 );
               })()}
-            </div>
-
-            <div className="mt-4 space-y-4">
-              <label className="block">
-                <span className="mb-1 block text-sm font-semibold text-slate-700">Extra Fee (optional)</span>
-                <input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={acceptExtraFee}
-                  ref={acceptFeeInputRef}
-                  onChange={(event) => setAcceptExtraFee(event.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  placeholder="0.00"
-                />
-              </label>
-
-              <label className="block">
-                <span className="mb-1 block text-sm font-semibold text-slate-700">
-                  Extra Fee Reason {Number(acceptExtraFee || '0') > 0 ? '(required)' : '(optional)'}
-                </span>
-                <textarea
-                  rows={3}
-                  value={acceptExtraFeeReason}
-                  onChange={(event) => setAcceptExtraFeeReason(event.target.value)}
-                  className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  placeholder="Explain why this extra fee is needed"
-                />
-              </label>
             </div>
 
             {acceptFormError && (
@@ -878,6 +934,53 @@ export default function DoctorAppointments() {
                 {actionLoadingId === acceptModalAppointment.id ? 'Accepting...' : 'Confirm Accept'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {prescriptionModalAppointment && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto flex p-4 sm:p-8 justify-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setPrescriptionModalAppointment(null)}
+          />
+          <div className="relative z-10 w-full h-max mt-4 sm:mt-10 pb-20 flex justify-center">
+            <PrescriptionForm
+              patientId={prescriptionModalAppointment.patientId}
+              appointmentId={prescriptionModalAppointment.id}
+              onCreated={(prescription) => {
+                if (prescription?.id) {
+                  setPrescriptionByAppointmentId((current) => ({
+                    ...current,
+                    [prescriptionModalAppointment.id]: prescription,
+                  }));
+                  setSelectedPrescriptionId(prescription.id);
+                }
+                setPrescriptionModalAppointment(null);
+                void loadAppointments();
+              }}
+              onCancel={() => setPrescriptionModalAppointment(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {selectedPrescriptionId && (
+        <div className="fixed inset-0 z-[70] overflow-y-auto flex p-4 sm:p-8 justify-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
+            onClick={() => setSelectedPrescriptionId(null)}
+          />
+          <div className="relative z-10 w-full h-max mt-4 sm:mt-10 pb-20 flex justify-center">
+            <PrescriptionDetail
+              prescriptionId={selectedPrescriptionId}
+              onClose={() => setSelectedPrescriptionId(null)}
+              allowPrint={false}
+            />
           </div>
         </div>
       )}

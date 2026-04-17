@@ -128,9 +128,9 @@ function App() {
         <Route path="/patient-rights-consent" element={<Layout><PatientRightsConsentPage /></Layout>} />
         <Route path="/accessibility" element={<Layout><AccessibilityStatementPage /></Layout>} />
         <Route path="/emergency-disclaimer" element={<Layout><EmergencyDisclaimerPage /></Layout>} />
-        <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
-        <Route path="/login" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
-        <Route path="/register" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
+        <Route path="/auth" element={<PublicOnlyRoute><Layout><Auth /></Layout></PublicOnlyRoute>} />
+        <Route path="/login" element={<PublicOnlyRoute><Layout><Auth /></Layout></PublicOnlyRoute>} />
+        <Route path="/register" element={<PublicOnlyRoute><Layout><Auth /></Layout></PublicOnlyRoute>} />
         <Route path="/admin" element={<AdminPublicRoute><Navigate to="/admin/login" replace /></AdminPublicRoute>} />
         <Route path="/admin/login" element={<AdminPublicRoute><AdminLogin /></AdminPublicRoute>} />
 
