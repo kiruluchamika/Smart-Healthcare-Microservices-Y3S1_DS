@@ -40,6 +40,11 @@ export function setAuthSession(response: AuthResponse) {
 }
 
 export function updateAuthUser(patch: Record<string, unknown>) {
+  const authStorage = getAuthStorage();
+  if (!authStorage) {
+    return;
+  }
+
   const current = getAuthUser();
   if (!current) {
     return;
