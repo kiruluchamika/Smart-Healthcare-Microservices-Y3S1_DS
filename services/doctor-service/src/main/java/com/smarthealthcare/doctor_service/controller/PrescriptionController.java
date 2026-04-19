@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,13 +27,16 @@ public class PrescriptionController {
             @RequestHeader(value = "X-Doctor-Id", required = false) String doctorHeader,
             @RequestHeader(value = "X-Patient-Id", required = false) String patientHeader) {
         Long doctorId = getUserId(authentication, doctorHeader, patientHeader);
+        prescriptionService.validateDoctorAppointmentAccess(request.getAppointmentId(), request.getPatientId(), doctorId);
         Prescription prescription = new Prescription();
         prescription.setPatientId(request.getPatientId());
         prescription.setDoctorId(doctorId);
         prescription.setAppointmentId(request.getAppointmentId());
         prescription.setDiagnosis(request.getDiagnosis());
         prescription.setNotes(request.getNotes());
-        prescription.setItems(request.getItems().stream().map(itemReq -> {
+        List<PrescriptionCreateRequest.PrescriptionItemRequest> requestedItems =
+                request.getItems() == null ? Collections.emptyList() : request.getItems();
+        prescription.setItems(requestedItems.stream().map(itemReq -> {
             PrescriptionItem item = new PrescriptionItem();
             item.setMedicineName(itemReq.getMedicineName());
             item.setMedicineCode(itemReq.getMedicineCode());
@@ -71,6 +75,18 @@ public class PrescriptionController {
         Long userId = getUserId(authentication, doctorHeader, patientHeader);
         String role = getRole(authentication, doctorHeader, patientHeader);
         Prescription prescription = prescriptionService.getPrescription(id, userId, role);
+        return ResponseEntity.ok(toResponse(prescription));
+    }
+
+    @GetMapping("/by-appointment/{appointmentId}")
+    public ResponseEntity<PrescriptionResponse> getPrescriptionByAppointment(
+            @PathVariable Long appointmentId,
+            Authentication authentication,
+            @RequestHeader(value = "X-Doctor-Id", required = false) String doctorHeader,
+            @RequestHeader(value = "X-Patient-Id", required = false) String patientHeader) {
+        Long userId = getUserId(authentication, doctorHeader, patientHeader);
+        String role = getRole(authentication, doctorHeader, patientHeader);
+        Prescription prescription = prescriptionService.getPrescriptionByAppointment(appointmentId, userId, role);
         return ResponseEntity.ok(toResponse(prescription));
     }
 

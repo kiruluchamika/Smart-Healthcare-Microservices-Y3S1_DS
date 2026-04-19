@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, Building2, CalendarDays, PencilLine, Plus, ShieldCheck, Stethoscope, Trash2, LayoutDashboard } from 'lucide-react';
+import axios from 'axios';
 import { patientApi } from '../../services/patientApi';
 import { EventType, MedicalHistory, MedicalHistoryRequest } from '../../types/patient';
 import { Link } from 'react-router-dom';
@@ -99,8 +100,13 @@ const MedicalHistoryPage: React.FC = () => {
       setShowModal(false);
       setFormData(emptyFormState());
       setEditingId(null);
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to save history entry.');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const serverMessage = err.response?.data?.message;
+        setError((typeof serverMessage === 'string' && serverMessage) || err.message || 'Failed to save history entry.');
+      } else {
+        setError('Failed to save history entry.');
+      }
     } finally {
       setSaving(false);
     }
@@ -112,8 +118,13 @@ const MedicalHistoryPage: React.FC = () => {
       setError(null);
       await patientApi.deleteHistory(id);
       setHistory((prev) => prev.filter((h) => h.id !== id));
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Failed to delete history entry.');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const serverMessage = err.response?.data?.message;
+        setError((typeof serverMessage === 'string' && serverMessage) || err.message || 'Failed to delete history entry.');
+      } else {
+        setError('Failed to delete history entry.');
+      }
     }
   };
 

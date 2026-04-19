@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { createPrescription } from '../../services/prescriptionApi';
+import { createPrescription, signPrescription } from '../../services/prescriptionApi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, CheckCircle, FileSignature, Stethoscope } from 'lucide-react';
 
@@ -44,10 +44,28 @@ export default function PrescriptionForm({ patientId, appointmentId, onCreated, 
     
     try {
       const data = { patientId, appointmentId, diagnosis, notes, items: validItems };
-      const resp = await createPrescription(data);
-      if (onCreated) onCreated(resp);
+      const createdPrescription = await createPrescription(data);
+      let signedPrescription = createdPrescription;
+      if (createdPrescription?.id) {
+        try {
+          signedPrescription = await signPrescription(createdPrescription.id);
+        } catch (signErr: any) {
+          const fieldErrors = signErr?.response?.data?.fieldErrors;
+          const firstFieldError = fieldErrors ? Object.values(fieldErrors)[0] : null;
+          setError(
+            firstFieldError ||
+            signErr?.response?.data?.message ||
+            signErr?.message ||
+            'Prescription was created, but signing failed.',
+          );
+          return;
+        }
+      }
+      if (onCreated) onCreated(signedPrescription);
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Failed to create prescription');
+      const fieldErrors = err?.response?.data?.fieldErrors;
+      const firstFieldError = fieldErrors ? Object.values(fieldErrors)[0] : null;
+      setError(firstFieldError || err?.response?.data?.message || err?.message || 'Failed to create prescription');
     } finally {
       setLoading(false);
     }
@@ -196,7 +214,7 @@ export default function PrescriptionForm({ patientId, appointmentId, onCreated, 
                 disabled={loading}
             >
                 {loading ? (
-                    <span className="flex items-center gap-2"><svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Issuing...</span>
+                    <span className="flex items-center gap-2"><svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Issuing and Signing...</span>
                 ) : (
                     <><FileSignature className="w-5 h-5" /> Issue Prescription</>
                 )}

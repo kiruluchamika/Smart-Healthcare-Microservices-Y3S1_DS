@@ -23,6 +23,7 @@ import DoctorProfileManager from './pages/doctor/DoctorProfileManager';
 import DoctorMyProfile from './pages/doctor/DoctorMyProfile';
 import DoctorAvailabilityManager from './pages/doctor/DoctorAvailabilityManager';
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
+import DoctorPatientReports from './pages/doctor/DoctorPatientReports';
 import DoctorVerificationAdmin from './pages/doctor/DoctorVerificationAdmin';
 import NotificationsCenter from './pages/NotificationsCenter';
 import AdminLogin from './pages/admin/AdminLogin';
@@ -196,6 +197,14 @@ function App() {
         <Route path="/payments/success" element={<PatientProtectedRoute><Layout><PaymentSuccess /></Layout></PatientProtectedRoute>} />
         <Route path="/payments/cancel" element={<PatientProtectedRoute><Layout><PaymentCancel /></Layout></PatientProtectedRoute>} />
         <Route path="/doctor/appointments" element={<ProtectedRoute><Layout><DoctorAppointments /></Layout></ProtectedRoute>} />
+        <Route
+          path="/doctor/reports"
+          element={
+            <ProtectedRoleRoute allowedRoles={['DOCTOR']}>
+              <Layout><DoctorPatientReports /></Layout>
+            </ProtectedRoleRoute>
+          }
+        />
         <Route
           path="/consultation/:id"
           element={

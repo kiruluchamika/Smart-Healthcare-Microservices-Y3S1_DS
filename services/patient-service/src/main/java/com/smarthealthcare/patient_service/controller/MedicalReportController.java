@@ -58,7 +58,7 @@ public class MedicalReportController {
     @GetMapping("/{id}/download")
     public ResponseEntity<Resource> downloadReport(
             @AuthenticationPrincipal AuthenticatedPatient principal,
-            @PathVariable Long id) {
+            @PathVariable("id") Long id) {
 
         Resource resource = medicalReportService.downloadReportAsResource(principal.getAuthUserId(), id);
         MedicalReport reportInfo = medicalReportService.getReportRaw(principal.getAuthUserId(), id);
@@ -77,7 +77,7 @@ public class MedicalReportController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteReport(
             @AuthenticationPrincipal AuthenticatedPatient principal,
-            @PathVariable Long id) {
+            @PathVariable("id") Long id) {
 
         medicalReportService.deleteReport(principal.getAuthUserId(), id);
         return ResponseEntity.ok(ApiResponse.success("Report deleted successfully", null));

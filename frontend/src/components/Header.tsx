@@ -38,6 +38,7 @@ export default function Header() {
   const isDoctorWorkspaceRoute =
     location.pathname === '/dashboard' ||
     location.pathname === '/doctor/appointments' ||
+    location.pathname === '/doctor/reports' ||
     /^\/doctors\/profile(?:\/manage)?$/.test(location.pathname) ||
     /^\/doctors\/\d+\/(?:dashboard|availability)$/.test(location.pathname);
   const isDoctorCompactNavRoute =
@@ -219,6 +220,7 @@ export default function Header() {
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Doctor Profile', href: '/doctors/profile' },
     { label: 'Appointments', href: '/doctor/appointments' },
+    { label: 'Patient Reports', href: '/doctor/reports' },
   ];
 
   const adminNavItems = [
@@ -451,6 +453,14 @@ export default function Header() {
                       className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
                     >
                       Appointments
+                    </Link>
+                    <Link
+                      to="/doctor/reports"
+                      role="menuitem"
+                      onClick={() => setIsDoctorMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                    >
+                      Patient Reports
                     </Link>
                     <button
                       type="button"

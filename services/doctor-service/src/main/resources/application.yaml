@@ -57,5 +57,8 @@ logging:
     com.smarthealthcare.doctor_service: INFO
 
 app:
+  services:
+    appointment:
+      base-url: ${APP_SERVICES_APPOINTMENT_BASE_URL:http://localhost:8082/appointments}
   upload:
     dir: ${APP_UPLOAD_DIR:uploads}

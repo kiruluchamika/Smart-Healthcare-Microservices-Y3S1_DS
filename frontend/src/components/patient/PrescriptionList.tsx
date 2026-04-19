@@ -3,9 +3,16 @@ import { getPrescriptionsByPatient } from '../../services/prescriptionApi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Calendar, Activity, Pill, CheckCircle, Clock } from 'lucide-react';
 import PrescriptionDetail from './PrescriptionDetail';
+import { getDoctorById } from '../../services/doctor/doctorApi';
+
+function formatDoctorName(doctor: any) {
+  const fullName = `${doctor?.firstName || ''} ${doctor?.lastName || ''}`.trim();
+  return fullName ? `Dr. ${fullName}` : null;
+}
 
 export default function PrescriptionList({ patientId }: { patientId: number }) {
   const [prescriptions, setPrescriptions] = useState<any[]>([]);
+  const [doctorNameMap, setDoctorNameMap] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedPrescriptionId, setSelectedPrescriptionId] = useState<number | null>(null);
@@ -17,6 +24,49 @@ export default function PrescriptionList({ patientId }: { patientId: number }) {
       .catch(() => setError('Failed to load prescriptions'))
       .finally(() => setLoading(false));
   }, [patientId]);
+
+  useEffect(() => {
+    const doctorIds = [...new Set(prescriptions.map((rx) => rx.doctorId).filter(Boolean))].filter(
+      (doctorId) => !doctorNameMap[doctorId],
+    );
+
+    if (!doctorIds.length) {
+      return;
+    }
+
+    let isActive = true;
+
+    const loadDoctors = async () => {
+      const entries = await Promise.all(
+        doctorIds.map(async (doctorId) => {
+          try {
+            const doctor = await getDoctorById(doctorId);
+            return [doctorId, formatDoctorName(doctor) || `Doctor #${doctorId}`] as const;
+          } catch {
+            return [doctorId, `Doctor #${doctorId}`] as const;
+          }
+        }),
+      );
+
+      if (!isActive) {
+        return;
+      }
+
+      setDoctorNameMap((current) => {
+        const next = { ...current };
+        entries.forEach(([doctorId, doctorName]) => {
+          next[doctorId] = doctorName;
+        });
+        return next;
+      });
+    };
+
+    void loadDoctors();
+
+    return () => {
+      isActive = false;
+    };
+  }, [prescriptions, doctorNameMap]);
 
   if (loading) return (
       <div className="flex justify-center items-center py-20">
@@ -74,6 +124,9 @@ export default function PrescriptionList({ patientId }: { patientId: number }) {
                 <div className="mb-6">
                     <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1"><Activity className="w-3 h-3" /> Diagnosis</p>
                     <p className="text-lg font-bold text-slate-800 leading-snug">{rx.diagnosis}</p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Prescribed by {doctorNameMap[rx.doctorId] || `Doctor #${rx.doctorId}`}
+                    </p>
                 </div>
 
                 <div className="space-y-3 mb-6">
