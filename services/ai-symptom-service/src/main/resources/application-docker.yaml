@@ -6,3 +6,9 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql-ai-symptom:3306/ai_symptom_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:123456}
+
+gemini:
+  base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-2.0-flash}
+  timeout-ms: ${GEMINI_TIMEOUT_MS:15000}

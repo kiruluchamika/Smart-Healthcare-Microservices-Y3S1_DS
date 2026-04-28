@@ -9,9 +9,9 @@ spring:
       stop:
         command: down
   datasource:
-    url: jdbc:mysql://localhost:3315/notification_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: notification_user
-    password: notification_pass
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3315/notification_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${SPRING_DATASOURCE_USERNAME:notification_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:notification_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -23,17 +23,17 @@ spring:
         dialect: org.hibernate.dialect.MySQLDialect
     show-sql: false
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: gamindukalmadu8@gmail.com
-    password: bnnbdilpxngkpmtz
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
-          auth: true
+          auth: ${MAIL_SMTP_AUTH:false}
           starttls:
-            enable: true
-            required: true
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
+            required: ${MAIL_SMTP_STARTTLS_REQUIRED:false}
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
@@ -42,15 +42,15 @@ server:
   port: 8084
 
 twilio:
-  account-sid: AC1870d6fd6e1e2c9e28c955cdbd749651
-  auth-token: b2b7d4716ccd47ee60976b3e5fa63044
-  phone-number: +94767955166
+  account-sid: ${TWILIO_ACCOUNT_SID:}
+  auth-token: ${TWILIO_AUTH_TOKEN:}
+  phone-number: ${TWILIO_PHONE_NUMBER:}
 
 app:
   notification:
-    from-email: gamindukalmadu8@gmail.com
-    reply-to-email: gamindukalmadu8@gmail.com
-    subject-prefix: Smart Healthcare
+    from-email: ${APP_NOTIFICATION_FROM_EMAIL:no-reply@smarthealthcare.local}
+    reply-to-email: ${APP_NOTIFICATION_REPLY_TO_EMAIL:no-reply@smarthealthcare.local}
+    subject-prefix: ${APP_NOTIFICATION_SUBJECT_PREFIX:Smart Healthcare}
   integrations:
     auth-base-url: http://localhost:8080/auth
     doctor-base-url: http://localhost:8083/api/v1/doctors

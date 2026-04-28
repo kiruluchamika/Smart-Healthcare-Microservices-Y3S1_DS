@@ -64,6 +64,11 @@ public class NotificationServiceImpl implements NotificationService {
 
     @PostConstruct
     void initTwilio() {
+        if (!StringUtils.hasText(twilioProperties.accountSid()) || !StringUtils.hasText(twilioProperties.authToken())) {
+            log.warn("Twilio credentials are not configured. SMS delivery is disabled until valid credentials are provided.");
+            return;
+        }
+
         Twilio.init(twilioProperties.accountSid(), twilioProperties.authToken());
         String normalizedSender = normalizePhone(twilioProperties.phoneNumber());
         if (!StringUtils.hasText(normalizedSender)) {

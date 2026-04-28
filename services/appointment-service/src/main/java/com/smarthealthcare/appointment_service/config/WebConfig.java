@@ -10,7 +10,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    @Value("${app.security.allowed-origins:http://localhost:5173,http://localhost:80}")
+    @Value("${app.security.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:*,http://127.0.0.1:*}")
     private String allowedOrigins;
 
     @Override
@@ -20,9 +20,9 @@ public class WebConfig implements WebMvcConfigurer {
                 .filter(origin -> !origin.isEmpty())
                 .toList();
 
-        registry.addMapping("/appointments/**")
-                .allowedOrigins(origins.toArray(String[]::new))
-                .allowedMethods("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS")
+        registry.addMapping("/**")
+                .allowedOriginPatterns(origins.toArray(String[]::new))
+                .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .exposedHeaders("Authorization")
                 .allowCredentials(true);
