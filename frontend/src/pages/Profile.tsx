@@ -462,19 +462,30 @@ export default function Profile() {
           dateOfBirth: res.data.dateOfBirth || prev.dateOfBirth,
           emergencyContactPhone: res.data.emergencyContactPhone || prev.emergencyContactPhone || '',
         }));
-        updateAuthUser({
-          firstName: res.data.firstName,
-          lastName: res.data.lastName,
-          email: res.data.email,
-        });
-        notifyProfileUpdated();
+        try {
+          // Keep navigation on success even if local session sync fails.
+          updateAuthUser({
+            firstName: res.data.firstName,
+            lastName: res.data.lastName,
+            email: res.data.email,
+          });
+          notifyProfileUpdated();
+        } catch {
+          // Non-blocking: backend save already succeeded.
+        }
         setSuccessMsg('Profile updated successfully!');
 
         navigate('/dashboard#quick-access', { replace: true });
         return;
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to update profile. Server error.');
+      setError(res.message || 'Failed to update profile.');
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const backendMessage = err.response?.data?.message;
+        setError((typeof backendMessage === 'string' && backendMessage) || 'Failed to update profile. Server error.');
+      } else {
+        setError('Failed to update profile. Server error.');
+      }
     } finally {
       setSaving(false);
     }
