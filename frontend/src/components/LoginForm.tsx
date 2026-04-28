@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../services/authApi';
 import { setAuthSession } from '../services/authSession';
+import { patientApi } from '../services/patientApi';
+import { isPatientProfileComplete } from '../utils/patientProfile';
 
 interface LoginFormProps {
   onSwitch: () => void;
@@ -48,133 +50,105 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
       const response = await login(email, password);
       setAuthSession(response);
 
+      let redirectPath = '/dashboard';
+      let navigationState: Record<string, unknown> | undefined;
+
+      if (response.user.role === 'PATIENT') {
+        try {
+          const profileResponse = await patientApi.getProfile();
+          if (!isPatientProfileComplete(profileResponse.data)) {
+            redirectPath = '/profile';
+            navigationState = { onboarding: true };
+          }
+        } catch {
+          redirectPath = '/profile';
+          navigationState = { onboarding: true };
+        }
+      }
+
       setIsLoading(false);
       setEmail('');
       setPassword('');
-      navigate('/dashboard');
+      navigate(redirectPath, { state: navigationState });
     } catch (error) {
       setIsLoading(false);
       setServerError(error instanceof Error ? error.message : 'Login failed');
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-  };
-
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="w-full"
-    >
-      <motion.h2 variants={itemVariants} className="text-3xl font-bold text-white mb-2">
-        Welcome Back
-      </motion.h2>
-      <motion.p variants={itemVariants} className="text-gray-400 mb-8">
-        Sign in to your account to continue
-      </motion.p>
+    <div className="w-full">
+      <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+      <p className="text-gray-600 mb-8">Sign in to your account to continue</p>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {serverError && (
-          <motion.p
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-red-400 text-sm"
-          >
+          <div className="bg-red-50 border border-red-200/30 rounded-lg p-4 text-red-700 text-sm">
             {serverError}
-          </motion.p>
+          </div>
         )}
 
-        <motion.div variants={itemVariants} className="relative">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email address"
-            className={`w-full bg-white/10 border-b-2 py-3 px-0 focus:outline-none placeholder-gray-500 text-white transition-colors ${
-              errors.email ? 'border-red-500' : 'border-gray-600 focus:border-cyan-400'
-            }`}
-          />
-          {errors.email && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-red-400 text-sm mt-1"
-            >
-              {errors.email}
-            </motion.p>
-          )}
-        </motion.div>
-
-        <motion.div variants={itemVariants} className="relative">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
           <div className="relative">
+            <Mail className="absolute left-4 top-3.5 w-5 h-5 text-blue-600" />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50/50 text-gray-900 ${
+                errors.email ? 'border-red-300 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'
+              }`}
+            />
+          </div>
+          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+          <div className="relative">
+            <Lock className="absolute left-4 top-3.5 w-5 h-5 text-blue-600" />
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className={`w-full bg-white/10 border-b-2 py-3 px-0 focus:outline-none placeholder-gray-500 text-white transition-colors ${
-                errors.password ? 'border-red-500' : 'border-gray-600 focus:border-cyan-400'
+              placeholder="••••••••"
+              className={`w-full pl-12 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50/50 text-gray-900 ${
+                errors.password ? 'border-red-300 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'
               }`}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-0 top-3 text-gray-400 hover:text-gray-300 transition-colors"
+              className="absolute right-4 top-3.5 text-gray-400 hover:text-blue-600 transition-colors"
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
-          {errors.password && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-red-400 text-sm mt-1"
-            >
-              {errors.password}
-            </motion.p>
-          )}
-        </motion.div>
+          {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+        </div>
 
-        <motion.div variants={itemVariants} className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between">
           <label className="flex items-center cursor-pointer">
-            <input type="checkbox" className="w-4 h-4 rounded bg-white/10 border-gray-600" />
-            <span className="ml-3 text-gray-400 text-sm">Remember me</span>
+            <input type="checkbox" className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" />
+            <span className="ml-2 text-sm text-gray-600">Remember me</span>
           </label>
-          <a href="#" className="text-cyan-400 hover:text-cyan-300 text-sm transition-colors">
+          <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-700">
             Forgot password?
           </a>
-        </motion.div>
+        </div>
 
         <motion.button
-          variants={itemVariants}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           type="submit"
           disabled={isLoading}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full mt-8 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2"
+          className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 disabled:opacity-70 text-white font-semibold py-3 rounded-lg shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <>
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-              />
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               Signing in...
             </>
           ) : (
@@ -183,17 +157,14 @@ export function LoginForm({ onSwitch }: LoginFormProps) {
         </motion.button>
       </form>
 
-      <motion.div variants={itemVariants} className="mt-8 text-center">
-        <p className="text-gray-400">
+      <div className="mt-8 text-center text-sm">
+        <p className="text-gray-600">
           Don't have an account?{' '}
-          <button
-            onClick={onSwitch}
-            className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
-          >
+          <button onClick={onSwitch} className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
             Create one
           </button>
         </p>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

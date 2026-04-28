@@ -24,7 +24,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      // Match the existing Docker frontend's localhost-oriented behavior as closely as possible.
       host: 'localhost',
       proxy: {
         '/api/auth': createProxyOptions(authTarget, (path) => path.replace(/^\/api\/auth/, '/auth')),
@@ -39,6 +38,10 @@ export default defineConfig(({ mode }) => {
         '/api/doctors': createProxyOptions(
           doctorTarget,
           (path) => path.replace(/^\/api\/doctors/, '/api/v1/doctors'),
+        ),
+        '/api/prescriptions': createProxyOptions(
+          doctorTarget,
+          (path) => path.replace(/^\/api\/prescriptions/, '/api/v1/prescriptions'),
         ),
         '/api/notifications': createProxyOptions(
           notificationTarget,

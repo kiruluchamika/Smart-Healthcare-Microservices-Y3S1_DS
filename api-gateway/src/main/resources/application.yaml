@@ -33,6 +33,14 @@ spring:
               - "*"
             allowCredentials: true
       routes:
+        - id: appointment-service
+          uri: ${APPOINTMENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/appointments/**
+          filters:
+            - RewritePath=/api/appointments/?(?<segment>.*), /appointments/${segment}
+            - PreserveHostHeader
+
         - id: doctor-service
           uri: ${DOCTOR_SERVICE_URL:http://localhost:8083}
           predicates:
@@ -41,6 +49,45 @@ spring:
             - RewritePath=/api/doctors/(?<segment>.*), /api/v1/doctors/${segment}
             - PreserveHostHeader
 
+        - id: prescription-service-routes
+          uri: ${DOCTOR_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/prescriptions/**
+          filters:
+            - RewritePath=/api/prescriptions/(?<segment>.*), /api/v1/prescriptions/${segment}
+            - PreserveHostHeader
+
+        - id: payment-service
+          uri: ${PAYMENT_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/payments/**
+          filters:
+            - RewritePath=/api/payments/(?<segment>.*), /api/v1/payments/${segment}
+            - PreserveHostHeader
+
+        - id: telemedicine-service
+          uri: ${TELEMEDICINE_SERVICE_URL:http://localhost:8087}
+          predicates:
+            - Path=/api/telemedicine/**
+          filters:
+            - RewritePath=/api/telemedicine/(?<segment>.*), /api/v1/telemedicine/${segment}
+            - PreserveHostHeader
+
+        - id: ai-doctor-suggestion-service
+          uri: ${AI_DOCTOR_SUGGESTION_SERVICE_URL:http://localhost:8092}
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - RewritePath=/api/ai/(?<segment>.*), /api/v1/ai/${segment}
+            - PreserveHostHeader
+
+        - id: ai-symptom-service
+          uri: ${AI_SYMPTOM_SERVICE_URL:http://localhost:8093}
+          predicates:
+            - Path=/api/ai-symptoms/**
+          filters:
+            - RewritePath=/api/ai-symptoms/(?<segment>.*), /api/v1/ai-symptoms/${segment}
+            - PreserveHostHeader
 server:
   port: ${SERVER_PORT:8088}
 

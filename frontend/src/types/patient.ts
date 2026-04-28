@@ -52,6 +52,8 @@ export interface MedicalHistory {
 }
 
 export interface CreateOrUpdateProfileRequest {
+  firstName?: string;
+  lastName?: string;
   dateOfBirth?: string;
   gender?: Gender;
   bloodGroup?: string;

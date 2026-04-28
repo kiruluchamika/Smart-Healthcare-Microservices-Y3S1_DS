@@ -3,7 +3,11 @@ spring:
     name: notification-service
   docker:
     compose:
-      enabled: false
+      enabled: ${SPRING_DOCKER_COMPOSE_ENABLED:true}
+      file: ${SPRING_DOCKER_COMPOSE_FILE:services/notification-service/docker-compose.yaml}
+      lifecycle-management: start-and-stop
+      stop:
+        command: down
   datasource:
     url: jdbc:mysql://localhost:3315/notification_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: notification_user

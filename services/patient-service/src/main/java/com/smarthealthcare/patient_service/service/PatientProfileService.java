@@ -98,15 +98,17 @@ public class PatientProfileService {
                                                 CreateOrUpdateProfileRequest request) {
         PatientProfile profile = getOrCreateProfileEntity(principal.getAuthUserId());
 
+        profile.setFirstName(sanitizeRequiredText(request.getFirstName()));
+        profile.setLastName(sanitizeRequiredText(request.getLastName()));
         profile.setDateOfBirth(request.getDateOfBirth());
         profile.setGender(request.getGender());
-        profile.setBloodGroup(request.getBloodGroup());
-        profile.setAddress(request.getAddress());
-        profile.setEmergencyContactName(request.getEmergencyContactName());
-        profile.setEmergencyContactPhone(request.getEmergencyContactPhone());
-        profile.setAllergies(request.getAllergies());
-        profile.setChronicConditions(request.getChronicConditions());
-        profile.setBio(request.getBio());
+        profile.setBloodGroup(sanitizeOptionalText(request.getBloodGroup()));
+        profile.setAddress(sanitizeRequiredText(request.getAddress()));
+        profile.setEmergencyContactName(sanitizeOptionalText(request.getEmergencyContactName()));
+        profile.setEmergencyContactPhone(sanitizeRequiredText(request.getEmergencyContactPhone()));
+        profile.setAllergies(sanitizeOptionalText(request.getAllergies()));
+        profile.setChronicConditions(sanitizeOptionalText(request.getChronicConditions()));
+        profile.setBio(sanitizeOptionalText(request.getBio()));
         syncIdentity(profile, principal);
 
         PatientProfile savedProfile = patientProfileRepository.save(profile);
@@ -234,9 +236,28 @@ public class PatientProfileService {
     }
 
     private void syncIdentity(PatientProfile profile, AuthenticatedPatient principal) {
-        profile.setFirstName(principal.getFirstName());
-        profile.setLastName(principal.getLastName());
+        if (isBlank(profile.getFirstName())) {
+            profile.setFirstName(sanitizeOptionalText(principal.getFirstName()));
+        }
+
+        if (isBlank(profile.getLastName())) {
+            profile.setLastName(sanitizeOptionalText(principal.getLastName()));
+        }
+
         profile.setEmail(principal.getEmail());
+    }
+
+    private String sanitizeRequiredText(String value) {
+        return value == null ? null : value.trim();
+    }
+
+    private String sanitizeOptionalText(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private void validateDoctorAccess(Long doctorId, String doctorRole, Long patientAuthUserId) {

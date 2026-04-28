@@ -1,31 +1,92 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Save, AlertCircle, CheckCircle, User as UserIcon, Activity, Heart, Shield, MapPin, Upload, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { patientApi } from '../services/patientApi';
-import { notifyProfileUpdated } from '../services/authSession';
+import { notifyProfileUpdated, updateAuthUser } from '../services/authSession';
 import { CreateOrUpdateProfileRequest, PatientProfile } from '../types/patient';
 import { getDisplayName } from '../utils/name';
+import {
+  calculateAgeYears,
+  isDateOfBirthValid,
+  isPatientAddressValid,
+  isPatientContactNumberValid,
+  isPatientNameValid,
+  normalizeContactNumber,
+  normalizePlainText,
+} from '../utils/patientProfile';
 import axios from 'axios';
 
 const MAX_PROFILE_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_PROFILE_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
 
+const DOB_MONTH_OPTIONS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
+const DOB_DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+const DOB_YEAR_OPTIONS = Array.from({ length: 121 }, (_, i) => String(new Date().getFullYear() - i));
+
+const buildDobFromParts = (year: string, month: string, day: string) => {
+  if (!year || !month || !day) {
+    return '';
+  }
+
+  const yearNumber = Number(year);
+  const monthNumber = Number(month);
+  const dayNumber = Number(day);
+
+  const date = new Date(yearNumber, monthNumber - 1, dayNumber);
+  const isValidDate =
+    date.getFullYear() === yearNumber &&
+    date.getMonth() === monthNumber - 1 &&
+    date.getDate() === dayNumber;
+
+  if (!isValidDate) {
+    return '';
+  }
+
+  return `${year}-${month}-${day}`;
+};
+
+type ProfileFormErrors = Partial<Record<keyof CreateOrUpdateProfileRequest, string>>;
+
 export default function Profile() {
+  const navigate = useNavigate();
+
   const [profile, setProfile] = useState<PatientProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [imageSaving, setImageSaving] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<ProfileFormErrors>({});
+  const [dobDay, setDobDay] = useState('');
+  const [dobMonth, setDobMonth] = useState('');
+  const [dobYear, setDobYear] = useState('');
   const [selectedProfileFile, setSelectedProfileFile] = useState<File | null>(null);
   const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const profileImageObjectUrlRef = useRef<string | null>(null);
   const profilePreviewObjectUrlRef = useRef<string | null>(null);
+  const fieldRefs = useRef<Partial<Record<keyof CreateOrUpdateProfileRequest, HTMLElement | null>>>({});
   
   const [formData, setFormData] = useState<CreateOrUpdateProfileRequest>({
+    firstName: '',
+    lastName: '',
     dateOfBirth: '',
-    gender: 'OTHER',
+    gender: undefined,
     bloodGroup: '',
     address: '',
     emergencyContactName: '',
@@ -36,6 +97,7 @@ export default function Profile() {
   });
 
   const displayName = getDisplayName(profile?.firstName, profile?.lastName);
+  const dateOfBirthAge = calculateAgeYears(formData.dateOfBirth || null);
 
   const clearProfileImageObjectUrl = () => {
     if (profileImageObjectUrlRef.current) {
@@ -77,9 +139,15 @@ export default function Profile() {
         const res = await patientApi.getProfile();
         if (res.success) {
           setProfile(res.data);
+          const [year = '', month = '', day = ''] = (res.data.dateOfBirth || '').split('-');
+          setDobYear(year);
+          setDobMonth(month);
+          setDobDay(day);
           setFormData({
+            firstName: res.data.firstName || '',
+            lastName: res.data.lastName || '',
             dateOfBirth: res.data.dateOfBirth || '',
-            gender: res.data.gender || 'OTHER',
+            gender: res.data.gender || undefined,
             bloodGroup: res.data.bloodGroup || '',
             address: res.data.address || '',
             emergencyContactName: res.data.emergencyContactName || '',
@@ -118,11 +186,122 @@ export default function Profile() {
     };
   }, []);
 
+  useEffect(() => {
+    const builtDate = buildDobFromParts(dobYear, dobMonth, dobDay);
+    setFormData((prev) => {
+      if (prev.dateOfBirth === builtDate) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        dateOfBirth: builtDate,
+      };
+    });
+  }, [dobDay, dobMonth, dobYear]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    let nextValue = value;
+    if (name === 'firstName' || name === 'lastName') {
+      nextValue = value.replace(/[^A-Za-z ]/g, '');
+    }
+
+    if (name === 'emergencyContactPhone') {
+      nextValue = normalizeContactNumber(value);
+    }
+
+    if (name === 'gender' && value === '') {
+      setFormData({ ...formData, gender: undefined });
+    } else {
+      setFormData({ ...formData, [name]: nextValue });
+    }
+
+    if (fieldErrors[name as keyof CreateOrUpdateProfileRequest]) {
+      setFieldErrors((prev) => ({ ...prev, [name]: undefined }));
+    }
     // Clear alerts on edit
     if (error) setError('');
     if (successMsg) setSuccessMsg('');
+  };
+
+  const handleDobPartChange = (part: 'day' | 'month' | 'year', value: string) => {
+    if (part === 'day') {
+      setDobDay(value);
+    }
+
+    if (part === 'month') {
+      setDobMonth(value);
+    }
+
+    if (part === 'year') {
+      setDobYear(value);
+    }
+
+    if (fieldErrors.dateOfBirth) {
+      setFieldErrors((prev) => ({ ...prev, dateOfBirth: undefined }));
+    }
+
+    if (error) setError('');
+    if (successMsg) setSuccessMsg('');
+  };
+
+  const focusFirstInvalidField = (errors: ProfileFormErrors) => {
+    const orderedFields: Array<keyof CreateOrUpdateProfileRequest> = [
+      'firstName',
+      'lastName',
+      'dateOfBirth',
+      'gender',
+      'address',
+      'emergencyContactPhone',
+    ];
+
+    const firstErrorField = orderedFields.find((field) => errors[field]);
+    if (!firstErrorField) {
+      return;
+    }
+
+    const target = fieldRefs.current[firstErrorField];
+    if (!target) {
+      return;
+    }
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (typeof (target as HTMLInputElement).focus === 'function') {
+      (target as HTMLInputElement).focus();
+    }
+  };
+
+  const validateProfileForm = () => {
+    const errors: ProfileFormErrors = {};
+
+    if (!isPatientNameValid(formData.firstName)) {
+      errors.firstName = 'First name can only contain letters and spaces (2-100 chars).';
+    }
+
+    if (!isPatientNameValid(formData.lastName)) {
+      errors.lastName = 'Last name can only contain letters and spaces (2-100 chars).';
+    }
+
+    if (!isDateOfBirthValid(formData.dateOfBirth)) {
+      errors.dateOfBirth = 'Date of birth must be valid and between ages 0 and 120.';
+    }
+
+    if (!formData.gender) {
+      errors.gender = 'Please select your gender.';
+    }
+
+    if (!isPatientAddressValid(formData.address)) {
+      errors.address = 'Address is required and should be at least 5 characters.';
+    }
+
+    if (!isPatientContactNumberValid(formData.emergencyContactPhone)) {
+      errors.emergencyContactPhone = 'Contact number must contain exactly 10 digits.';
+    }
+
+    setFieldErrors(errors);
+    return errors;
   };
 
   const handleProfileFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -242,16 +421,57 @@ export default function Profile() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const validationErrors = validateProfileForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setError('Please correct the highlighted fields before saving.');
+      focusFirstInvalidField(validationErrors);
+      return;
+    }
+
     setSaving(true);
     setError('');
     setSuccessMsg('');
+
+    const payload: CreateOrUpdateProfileRequest = {
+      ...formData,
+      firstName: normalizePlainText(formData.firstName),
+      lastName: normalizePlainText(formData.lastName),
+      dateOfBirth: formData.dateOfBirth,
+      address: normalizePlainText(formData.address),
+      emergencyContactName: normalizePlainText(formData.emergencyContactName),
+      emergencyContactPhone: normalizeContactNumber(formData.emergencyContactPhone),
+      allergies: normalizePlainText(formData.allergies),
+      chronicConditions: normalizePlainText(formData.chronicConditions),
+      bio: normalizePlainText(formData.bio),
+    };
+
     try {
-      const res = await patientApi.updateProfile(formData);
+      const res = await patientApi.updateProfile(payload);
       if (res.success) {
         setProfile(res.data);
+        const [year = '', month = '', day = ''] = (res.data.dateOfBirth || '').split('-');
+        setDobYear(year);
+        setDobMonth(month);
+        setDobDay(day);
+        setFormData((prev) => ({
+          ...prev,
+          firstName: res.data.firstName || prev.firstName || '',
+          lastName: res.data.lastName || prev.lastName || '',
+          gender: res.data.gender || prev.gender,
+          dateOfBirth: res.data.dateOfBirth || prev.dateOfBirth,
+          emergencyContactPhone: res.data.emergencyContactPhone || prev.emergencyContactPhone || '',
+        }));
+        updateAuthUser({
+          firstName: res.data.firstName,
+          lastName: res.data.lastName,
+          email: res.data.email,
+        });
+        notifyProfileUpdated();
         setSuccessMsg('Profile updated successfully!');
-        // Auto-hide success message after 5 seconds
-        setTimeout(() => setSuccessMsg(''), 5000);
+
+        navigate('/dashboard#quick-access', { replace: true });
+        return;
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update profile. Server error.');
@@ -387,20 +607,58 @@ export default function Profile() {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-10">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Date of Birth</label>
-                      <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="patient-input" />
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">First Name <span className="text-rose-600">*</span></label>
+                      <input ref={(element) => { fieldRefs.current.firstName = element; }} type="text" name="firstName" value={formData.firstName || ''} onChange={handleChange} placeholder="Only letters allowed" className="patient-input" />
+                      {fieldErrors.firstName && <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.firstName}</p>}
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Biological Gender</label>
-                      <select name="gender" value={formData.gender} onChange={handleChange} className="patient-input">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Last Name <span className="text-rose-600">*</span></label>
+                      <input ref={(element) => { fieldRefs.current.lastName = element; }} type="text" name="lastName" value={formData.lastName || ''} onChange={handleChange} placeholder="Only letters allowed" className="patient-input" />
+                      {fieldErrors.lastName && <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.lastName}</p>}
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Date of Birth <span className="text-rose-600">*</span></label>
+                      <div ref={(element) => { fieldRefs.current.dateOfBirth = element; }} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <select value={dobDay} onChange={(e) => handleDobPartChange('day', e.target.value)} className="patient-input">
+                          <option value="">Day</option>
+                          {DOB_DAY_OPTIONS.map((day) => (
+                            <option key={day} value={day}>{day}</option>
+                          ))}
+                        </select>
+                        <select value={dobMonth} onChange={(e) => handleDobPartChange('month', e.target.value)} className="patient-input">
+                          <option value="">Month</option>
+                          {DOB_MONTH_OPTIONS.map((month) => (
+                            <option key={month.value} value={month.value}>{month.label}</option>
+                          ))}
+                        </select>
+                        <select value={dobYear} onChange={(e) => handleDobPartChange('year', e.target.value)} className="patient-input">
+                          <option value="">Year</option>
+                          {DOB_YEAR_OPTIONS.map((year) => (
+                            <option key={year} value={year}>{year}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-500">Pick Day, Month, and Year. Allowed age range is 0 to 120 years.</p>
+                      {dateOfBirthAge !== null && (
+                        <span className="mt-2 inline-block rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
+                          Age: {dateOfBirthAge} years
+                        </span>
+                      )}
+                      {fieldErrors.dateOfBirth && <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.dateOfBirth}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Biological Gender <span className="text-rose-600">*</span></label>
+                      <select ref={(element) => { fieldRefs.current.gender = element; }} name="gender" value={formData.gender || ''} onChange={handleChange} className="patient-input">
+                        <option value="">Select Gender...</option>
                         <option value="MALE">Male</option>
                         <option value="FEMALE">Female</option>
                         <option value="OTHER">Other</option>
                       </select>
+                      {fieldErrors.gender && <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.gender}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Blood Group</label>
-                      <select name="bloodGroup" value={formData.bloodGroup} onChange={handleChange} className="patient-input">
+                      <select name="bloodGroup" value={formData.bloodGroup || ''} onChange={handleChange} className="patient-input">
                         <option value="">Select Blood Group...</option>
                         <option value="A+">A Positive (A+)</option><option value="A-">A Negative (A-)</option>
                         <option value="B+">B Positive (B+)</option><option value="B-">B Negative (B-)</option>
@@ -421,16 +679,19 @@ export default function Profile() {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-10">
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Registered Address</label>
-                      <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="Unit, Street Name, City, Zip Code" className="patient-input" />
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Registered Address <span className="text-rose-600">*</span></label>
+                      <input ref={(element) => { fieldRefs.current.address = element; }} type="text" name="address" value={formData.address || ''} onChange={handleChange} placeholder="Unit, Street Name, City, Zip Code" className="patient-input" />
+                      {fieldErrors.address && <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.address}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Emergency Contact Name</label>
-                      <input type="text" name="emergencyContactName" value={formData.emergencyContactName} onChange={handleChange} placeholder="E.g. Jane Doe" className="patient-input" />
+                      <input type="text" name="emergencyContactName" value={formData.emergencyContactName || ''} onChange={handleChange} placeholder="E.g. Jane Doe" className="patient-input" />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Emergency Phone</label>
-                      <input type="tel" name="emergencyContactPhone" value={formData.emergencyContactPhone} onChange={handleChange} placeholder="+1 234 567 890" className="patient-input" />
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Contact Number <span className="text-rose-600">*</span></label>
+                      <input ref={(element) => { fieldRefs.current.emergencyContactPhone = element; }} type="tel" name="emergencyContactPhone" value={formData.emergencyContactPhone || ''} onChange={handleChange} placeholder="10 digit contact number" className="patient-input" />
+                      <p className="mt-2 text-xs text-slate-500">Numbers only. Maximum 10 digits.</p>
+                      {fieldErrors.emergencyContactPhone && <p className="mt-2 text-xs font-semibold text-rose-600">{fieldErrors.emergencyContactPhone}</p>}
                     </div>
                   </div>
                 </section>
@@ -446,15 +707,15 @@ export default function Profile() {
                   <div className="grid grid-cols-1 gap-6 pl-10">
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Known Allergies</label>
-                      <textarea name="allergies" value={formData.allergies} onChange={handleChange} rows={2} placeholder="Penicillin, Peanuts, Latex..." className="patient-input resize-none"></textarea>
+                      <textarea name="allergies" value={formData.allergies || ''} onChange={handleChange} rows={2} placeholder="Penicillin, Peanuts, Latex..." className="patient-input resize-none"></textarea>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Chronic Conditions</label>
-                      <textarea name="chronicConditions" value={formData.chronicConditions} onChange={handleChange} rows={2} placeholder="Asthma, Type 2 Diabetes..." className="patient-input resize-none"></textarea>
+                      <textarea name="chronicConditions" value={formData.chronicConditions || ''} onChange={handleChange} rows={2} placeholder="Asthma, Type 2 Diabetes..." className="patient-input resize-none"></textarea>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Personal Medical Bio / Notes</label>
-                      <textarea name="bio" value={formData.bio} onChange={handleChange} rows={3} placeholder="Any other health-related notes you want to present to your clinical team." className="patient-input resize-none"></textarea>
+                      <textarea name="bio" value={formData.bio || ''} onChange={handleChange} rows={3} placeholder="Any other health-related notes you want to present to your clinical team." className="patient-input resize-none"></textarea>
                     </div>
                   </div>
                 </section>

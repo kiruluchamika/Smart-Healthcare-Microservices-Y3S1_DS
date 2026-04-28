@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../services/authApi';
 import { setAuthSession } from '../services/authSession';
+import { patientApi } from '../services/patientApi';
 import { LAST_NAME_PLACEHOLDER } from '../utils/name';
+import { isPatientProfileComplete } from '../utils/patientProfile';
 
 interface RegisterFormProps {
   onSwitch: () => void;
@@ -19,7 +21,7 @@ interface FormErrors {
 
 type RegisterRole = 'PATIENT' | 'DOCTOR';
 
-const NAME_PATTERN = /^[A-Za-z -]+$/;
+const NAME_PATTERN = /^[A-Za-z ]+$/;
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&._#^()\-+=])[A-Za-z\d@$!%*?&._#^()\-+=]{8,64}$/;
 
 export function RegisterForm({ onSwitch }: RegisterFormProps) {
@@ -55,7 +57,7 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
     } else if (normalizedName.length < 2) {
       newErrors.name = 'Full name must be at least 2 characters';
     } else if (!NAME_PATTERN.test(normalizedName)) {
-      newErrors.name = 'Name can only contain letters, spaces, and hyphens';
+      newErrors.name = 'Name can only contain letters and spaces';
     }
 
     if (!email) {
@@ -103,31 +105,31 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
       setAuthSession(response);
 
       setIsLoading(false);
-      navigate('/dashboard');
+      let redirectPath = '/dashboard';
+      let navigationState: Record<string, unknown> | undefined;
+
+      if (response.user.role === 'PATIENT') {
+        try {
+          const profileResponse = await patientApi.getProfile();
+          if (!isPatientProfileComplete(profileResponse.data)) {
+            redirectPath = '/profile';
+            navigationState = { onboarding: true };
+          }
+        } catch {
+          redirectPath = '/profile';
+          navigationState = { onboarding: true };
+        }
+      }
+
+      navigate(redirectPath, { state: navigationState });
     } catch (error) {
       setIsLoading(false);
       setServerError(error instanceof Error ? error.message : 'Registration failed');
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.08,
-        delayChildren: 0.2,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-  };
-
   const strengthColor: Record<number, string> = {
-    0: 'bg-gray-500',
+    0: 'bg-gray-300',
     1: 'bg-red-500',
     2: 'bg-orange-500',
     3: 'bg-yellow-500',
@@ -138,194 +140,147 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
   const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
 
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      className="w-full"
-    >
-      <motion.h2 variants={itemVariants} className="text-3xl font-bold text-white mb-2">
-        Join Clinexa
-      </motion.h2>
-      <motion.p variants={itemVariants} className="text-gray-400 mb-8">
-        Create your account to get started
-      </motion.p>
+    <div className="w-full">
+      <h2 className="text-3xl font-bold text-gray-900 mb-2">Join Clinexa</h2>
+      <p className="text-gray-600 mb-8">Create your account to get started</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {serverError && (
-          <motion.p
-            initial={{ opacity: 0, y: -5 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-red-400 text-sm"
-          >
+          <div className="bg-red-50 border border-red-200/30 rounded-lg p-4 text-red-700 text-sm">
             {serverError}
-          </motion.p>
+          </div>
         )}
 
-        <motion.div variants={itemVariants} className="relative">
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Full name"
-            className={`w-full bg-white/10 border-b-2 py-3 px-0 focus:outline-none placeholder-gray-500 text-white transition-colors ${
-              errors.name ? 'border-red-500' : 'border-gray-600 focus:border-cyan-400'
-            }`}
-          />
-          {errors.name && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-red-400 text-sm mt-1"
-            >
-              {errors.name}
-            </motion.p>
-          )}
-        </motion.div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+          <div className="relative">
+            <User className="absolute left-4 top-3.5 w-5 h-5 text-blue-600" />
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="John Doe"
+              className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50/50 text-gray-900 ${
+                errors.name ? 'border-red-300 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'
+              }`}
+            />
+          </div>
+          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+        </div>
 
-        <motion.div variants={itemVariants} className="relative">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email address"
-            className={`w-full bg-white/10 border-b-2 py-3 px-0 focus:outline-none placeholder-gray-500 text-white transition-colors ${
-              errors.email ? 'border-red-500' : 'border-gray-600 focus:border-cyan-400'
-            }`}
-          />
-          {errors.email && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-red-400 text-sm mt-1"
-            >
-              {errors.email}
-            </motion.p>
-          )}
-        </motion.div>
+        <div>
+           <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+           <div className="relative">
+            <Mail className="absolute left-4 top-3.5 w-5 h-5 text-blue-600" />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className={`w-full pl-12 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50/50 text-gray-900 ${
+                errors.email ? 'border-red-300 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'
+              }`}
+            />
+          </div>
+          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+        </div>
 
-        <motion.div variants={itemVariants} className="relative">
-          <label className="block text-xs uppercase tracking-wide text-gray-400 mb-2">
-            Register as
-          </label>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Register as</label>
           <select
             value={role}
             onChange={(e) => setRole(e.target.value as RegisterRole)}
-            className="w-full bg-white/10 border-b-2 border-gray-600 py-3 px-0 focus:outline-none focus:border-cyan-400 text-white transition-colors"
+            className="w-full bg-gray-50/50 border border-gray-200 rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 transition-all appearance-none"
           >
-            <option value="PATIENT" className="text-gray-900">Patient</option>
-            <option value="DOCTOR" className="text-gray-900">Doctor</option>
+            <option value="PATIENT">Patient</option>
+            <option value="DOCTOR">Doctor</option>
           </select>
-        </motion.div>
+        </div>
 
-        <motion.div variants={itemVariants} className="relative">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
           <div className="relative">
+             <Lock className="absolute left-4 top-3.5 w-5 h-5 text-blue-600" />
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className={`w-full bg-white/10 border-b-2 py-3 px-0 focus:outline-none placeholder-gray-500 text-white transition-colors ${
-                errors.password ? 'border-red-500' : 'border-gray-600 focus:border-cyan-400'
+              placeholder="••••••••"
+              className={`w-full pl-12 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50/50 text-gray-900 ${
+                errors.password ? 'border-red-300 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'
               }`}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-0 top-3 text-gray-400 hover:text-gray-300 transition-colors"
+              className="absolute right-4 top-3.5 text-gray-400 hover:text-blue-600 transition-colors"
             >
               {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
-          {errors.password && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-red-400 text-sm mt-1"
-            >
-              {errors.password}
-            </motion.p>
-          )}
+          {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+          
           {password && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-2 flex items-center gap-2"
-            >
-              <div className="flex-1 h-1 bg-gray-700 rounded-full overflow-hidden">
+            <div className="mt-2 flex items-center gap-2">
+              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(strength / 4) * 100}%` }}
                   transition={{ duration: 0.3 }}
-                  className={`h-full ${strengthColor[strength] || 'bg-gray-500'}`}
+                  className={`h-full ${strengthColor[strength] || 'bg-gray-300'}`}
                 />
               </div>
-              <span className="text-xs font-semibold text-gray-400">
+              <span className="text-xs font-semibold text-gray-500 w-12 text-right">
                 {strengthLabels[strength]}
               </span>
-            </motion.div>
+            </div>
           )}
-        </motion.div>
+        </div>
 
-        <motion.div variants={itemVariants} className="relative">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
           <div className="relative">
+            <Lock className="absolute left-4 top-3.5 w-5 h-5 text-blue-600" />
             <input
               type={showConfirm ? 'text' : 'password'}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm password"
-              className={`w-full bg-white/10 border-b-2 py-3 px-0 focus:outline-none placeholder-gray-500 text-white transition-colors ${
-                errors.confirmPassword ? 'border-red-500' : 'border-gray-600 focus:border-cyan-400'
+              placeholder="••••••••"
+              className={`w-full pl-12 pr-12 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-all bg-gray-50/50 text-gray-900 ${
+                errors.confirmPassword ? 'border-red-300 focus:ring-red-500' : 'border-gray-200 focus:ring-blue-500'
               }`}
             />
             <button
               type="button"
               onClick={() => setShowConfirm(!showConfirm)}
-              className="absolute right-0 top-3 text-gray-400 hover:text-gray-300 transition-colors"
+              className="absolute right-4 top-3.5 text-gray-400 hover:text-blue-600 transition-colors"
             >
               {showConfirm ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
-          {errors.confirmPassword && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-red-400 text-sm mt-1"
-            >
-              {errors.confirmPassword}
-            </motion.p>
-          )}
-        </motion.div>
+          {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+        </div>
 
-        <motion.div variants={itemVariants} className="flex items-start pt-2">
-          <input type="checkbox" className="w-4 h-4 rounded bg-white/10 border-gray-600 mt-1" />
-          <span className="ml-3 text-gray-400 text-sm">
+        <div className="flex items-start pt-2">
+          <input type="checkbox" className="w-4 h-4 rounded text-blue-600 border-gray-300 mt-0.5 focus:ring-blue-500" required />
+          <span className="ml-2 text-sm text-gray-600">
             I agree to the{' '}
-            <a href="#" className="text-cyan-400 hover:text-cyan-300 transition-colors">
-              Terms of Service
-            </a>{' '}
-            and{' '}
-            <a href="#" className="text-cyan-400 hover:text-cyan-300 transition-colors">
-              Privacy Policy
-            </a>
+            <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">Terms of Service</a>
+            {' '}and{' '}
+            <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">Privacy Policy</a>
           </span>
-        </motion.div>
+        </div>
 
         <motion.button
-          variants={itemVariants}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
           type="submit"
           disabled={isLoading}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="w-full mt-6 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-lg transition-all duration-300 flex items-center justify-center gap-2"
+          className="w-full mt-6 bg-gradient-to-r from-blue-600 to-cyan-500 hover:opacity-90 disabled:opacity-70 text-white font-semibold py-3 rounded-lg shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <>
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-              />
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               Creating account...
             </>
           ) : (
@@ -334,17 +289,14 @@ export function RegisterForm({ onSwitch }: RegisterFormProps) {
         </motion.button>
       </form>
 
-      <motion.div variants={itemVariants} className="mt-6 text-center">
-        <p className="text-gray-400">
+      <div className="mt-6 text-center text-sm">
+        <p className="text-gray-600">
           Already have an account?{' '}
-          <button
-            onClick={onSwitch}
-            className="text-cyan-400 hover:text-cyan-300 font-semibold transition-colors"
-          >
+          <button onClick={onSwitch} className="font-semibold text-blue-600 hover:text-blue-700 transition-colors">
             Sign in
           </button>
         </p>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
