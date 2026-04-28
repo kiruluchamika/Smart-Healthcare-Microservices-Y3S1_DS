@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.success("Validation Failed", errors));
+                .body(new ApiResponse<>(false, "Validation Failed", errors));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

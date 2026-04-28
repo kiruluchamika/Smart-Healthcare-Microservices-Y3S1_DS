@@ -5,6 +5,7 @@ import com.smarthealthcare.patient_service.dto.CreateOrUpdateProfileRequest;
 import com.smarthealthcare.patient_service.dto.PatientProfileResponse;
 import com.smarthealthcare.patient_service.security.AuthenticatedPatient;
 import com.smarthealthcare.patient_service.service.PatientProfileService;
+import jakarta.validation.Valid;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -43,7 +44,7 @@ public class PatientController {
     @PutMapping("/me")
     public ResponseEntity<ApiResponse<PatientProfileResponse>> updateMyProfile(
             @AuthenticationPrincipal AuthenticatedPatient principal,
-            @RequestBody CreateOrUpdateProfileRequest request) {
+            @Valid @RequestBody CreateOrUpdateProfileRequest request) {
 
         PatientProfileResponse response = patientProfileService.updateProfile(
                 principal, principal.getFirstName(), principal.getLastName(), request);
