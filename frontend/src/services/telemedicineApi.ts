@@ -1,7 +1,7 @@
 import { getAuthToken, getAuthUser, getAuthUserRole } from './authSession';
+import { resolveDoctorProfileId } from './doctorIdentity';
 
 const API_BASE = import.meta.env.VITE_TELEMEDICINE_API_BASE || '/api/telemedicine';
-const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
 
 export interface CreateTelemedicineSessionPayload {
   appointmentId: number;
@@ -46,19 +46,17 @@ export interface TelemedicineSessionResponse {
   joinAllowed?: boolean;
 }
 
-function buildHeaders(includeJson = true) {
+async function buildHeaders(includeJson = true) {
   const token = getAuthToken();
   const user = getAuthUser();
   const role = getAuthUserRole();
-  const storedDoctorProfileId = localStorage.getItem(DOCTOR_PROFILE_ID_KEY);
-  const doctorId =
-    role === 'DOCTOR' ? storedDoctorProfileId || (user?.id ? String(user.id) : null) : null;
+  const doctorId = role === 'DOCTOR' ? await resolveDoctorProfileId() : null;
 
   return {
     ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(role === 'PATIENT' && user?.id ? { 'X-Patient-Id': String(user.id) } : {}),
-    ...(role === 'DOCTOR' && doctorId ? { 'X-Doctor-Id': doctorId } : {}),
+    ...(role === 'DOCTOR' && doctorId ? { 'X-Doctor-Id': String(doctorId) } : {}),
   };
 }
 
@@ -66,7 +64,7 @@ async function request<T>(path: string, init?: RequestInit) {
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
-      ...buildHeaders(),
+      ...(await buildHeaders()),
       ...(init?.headers || {}),
     },
   });
@@ -104,8 +102,17 @@ export function getMyPatientTelemedicineSessions(patientId: number) {
   });
 }
 
-export function getMyDoctorTelemedicineSessions(doctorId: number | string) {
-  return request<TelemedicineSessionResponse[]>(`/sessions/doctor/${encodeURIComponent(String(doctorId))}`, {
+export async function getMyDoctorTelemedicineSessions(doctorId?: number | string) {
+  const resolvedDoctorId =
+    doctorId == null || doctorId === ''
+      ? await resolveDoctorProfileId()
+      : Number(doctorId);
+
+  if (!resolvedDoctorId) {
+    throw new Error('Doctor profile not found for the current session');
+  }
+
+  return request<TelemedicineSessionResponse[]>(`/sessions/doctor/${encodeURIComponent(String(resolvedDoctorId))}`, {
     method: 'GET',
   });
 }

@@ -88,13 +88,8 @@ spring:
           filters:
             - RewritePath=/api/ai-symptoms/(?<segment>.*), /api/v1/ai-symptoms/${segment}
             - PreserveHostHeader
-
 server:
   port: ${SERVER_PORT:8088}
-
-ai-suggestion:
-  service:
-    base-url: ${AI_SUGGESTION_SERVICE_BASE_URL:http://localhost:8092}
 
 management:
   endpoints:

@@ -12,11 +12,11 @@ import {
   rejectAppointment,
   type AppointmentResponse,
 } from '../services/appointmentsApi';
-import { getAuthUser } from '../services/authSession';
 import {
   getMyDoctorTelemedicineSessions,
   type TelemedicineSessionResponse,
 } from '../services/telemedicineApi';
+import { resolveDoctorProfileId } from '../services/doctorIdentity';
 import type { PatientProfile } from '../types/patient';
 import { formatDisplayAmount } from '../utils/currency';
 import { getConsultationAccessState } from '../utils/telemedicine/telemedicineFlow';
@@ -219,19 +219,18 @@ export default function DoctorAppointments() {
   }, [appointments, prescriptionByAppointmentId]);
 
   useEffect(() => {
-    const authUser = getAuthUser();
-    const doctorProfileId = localStorage.getItem('doctorProfileId');
-    const doctorId = doctorProfileId || (authUser?.id ? String(authUser.id) : null);
-
-    if (!doctorId) {
-      setTelemedicineMap({});
-      return;
-    }
-
     let isActive = true;
 
     const loadTelemedicineSessions = async () => {
       try {
+        const doctorId = await resolveDoctorProfileId();
+        if (!doctorId) {
+          if (isActive) {
+            setTelemedicineMap({});
+          }
+          return;
+        }
+
         const sessions = await getMyDoctorTelemedicineSessions(doctorId);
         if (!isActive) {
           return;

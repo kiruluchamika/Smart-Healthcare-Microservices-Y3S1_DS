@@ -44,6 +44,7 @@ import { getConsultationAccessState } from '../utils/telemedicine/telemedicineFl
 
 const DISMISSED_CANCELLED_STORAGE_KEY = 'smarthealth.dismissedCancelledAppointments';
 const DISMISSED_REJECTED_STORAGE_KEY = 'smarthealth.dismissedRejectedAppointments';
+const DISMISSED_EXPIRED_STORAGE_KEY = 'smarthealth.dismissedExpiredAppointments';
 
 type AppointmentFilter =
   | 'ALL'
@@ -232,6 +233,9 @@ export default function MyAppointments() {
   const [dismissedRejectedIds, setDismissedRejectedIds] = useState<number[]>(() =>
     readDismissedIds(DISMISSED_REJECTED_STORAGE_KEY),
   );
+  const [dismissedExpiredIds, setDismissedExpiredIds] = useState<number[]>(() =>
+    readDismissedIds(DISMISSED_EXPIRED_STORAGE_KEY),
+  );
   const [activeFilter, setActiveFilter] = useState<AppointmentFilter>('ALL');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -262,8 +266,8 @@ export default function MyAppointments() {
       },
       {
         value: 'UPCOMING',
-        label: 'Upcoming',
-        description: 'Active future appointments that still need your attention.',
+        label: 'Paid',
+        description: 'Appointments with successful payment already recorded.',
       },
       {
         value: 'PENDING',
@@ -272,8 +276,8 @@ export default function MyAppointments() {
       },
       {
         value: 'CONFIRMED',
-        label: 'Confirmed',
-        description: 'Appointments approved by the doctor.',
+        label: 'Accepted (Payment Due)',
+        description: 'Doctor-approved appointments that still need payment.',
       },
       {
         value: 'CANCELLED',
@@ -512,6 +516,8 @@ export default function MyAppointments() {
         appointment.status === 'CANCELLED' && dismissedCancelled.has(appointment.id);
       const isDismissedRejected =
         appointment.status === 'REJECTED' && dismissedRejectedIds.includes(appointment.id);
+      const isDismissedExpired =
+        appointment.status === 'EXPIRED' && dismissedExpiredIds.includes(appointment.id);
 
       if (isDismissedCancelled && activeFilter !== 'HISTORY') {
         return false;
@@ -521,21 +527,29 @@ export default function MyAppointments() {
         return false;
       }
 
+      if (isDismissedExpired && activeFilter !== 'HISTORY') {
+        return false;
+      }
+
       if (activeFilter === 'ALL') {
         return true;
       }
 
       if (activeFilter === 'UPCOMING') {
-        return isUpcomingAppointment(appointment);
+        return isAppointmentPaid(appointment, paymentMap[appointment.id]);
       }
 
       if (activeFilter === 'HISTORY') {
         return isHistoryAppointment(appointment);
       }
 
+      if (activeFilter === 'CONFIRMED') {
+        return appointment.status === 'CONFIRMED' && !isAppointmentPaid(appointment, paymentMap[appointment.id]);
+      }
+
       return appointment.status === activeFilter;
     });
-  }, [activeFilter, appointments, dismissedCancelledIds, dismissedRejectedIds]);
+  }, [activeFilter, appointments, dismissedCancelledIds, dismissedExpiredIds, dismissedRejectedIds, paymentMap]);
 
   const filterCounts = useMemo(() => {
     const counts = {
@@ -551,16 +565,19 @@ export default function MyAppointments() {
 
     const dismissedCancelled = new Set(dismissedCancelledIds);
     const dismissedRejected = new Set(dismissedRejectedIds);
+    const dismissedExpired = new Set(dismissedExpiredIds);
 
     appointments.forEach((appointment) => {
       const isDismissedCancelled =
         appointment.status === 'CANCELLED' && dismissedCancelled.has(appointment.id);
+      const isDismissedExpired =
+        appointment.status === 'EXPIRED' && dismissedExpired.has(appointment.id);
 
-      if (!isDismissedCancelled) {
+      if (!isDismissedCancelled && !isDismissedExpired) {
         counts.ALL += 1;
       }
 
-      if (isUpcomingAppointment(appointment)) {
+      if (isAppointmentPaid(appointment, paymentMap[appointment.id])) {
         counts.UPCOMING += 1;
       }
 
@@ -569,7 +586,9 @@ export default function MyAppointments() {
       }
 
       if (appointment.status === 'CONFIRMED') {
-        counts.CONFIRMED += 1;
+        if (!isAppointmentPaid(appointment, paymentMap[appointment.id])) {
+          counts.CONFIRMED += 1;
+        }
       }
 
       if (appointment.status === 'CANCELLED' && !isDismissedCancelled) {
@@ -592,32 +611,20 @@ export default function MyAppointments() {
     });
 
     return counts;
-  }, [appointments, dismissedCancelledIds, dismissedRejectedIds]);
+  }, [appointments, dismissedCancelledIds, dismissedExpiredIds, dismissedRejectedIds, paymentMap]);
 
   const activeFilterMeta = useMemo(
     () => filterOptions.find((option) => option.value === activeFilter) || filterOptions[0],
     [activeFilter, filterOptions],
   );
-  const upcomingPaymentDueAppointments = useMemo(
-    () =>
-      filteredAppointments.filter(
-        (appointment) => !isAppointmentPaid(appointment, paymentMap[appointment.id]),
-      ),
-    [filteredAppointments, paymentMap],
-  );
-  const upcomingPaidAppointments = useMemo(
-    () =>
-      filteredAppointments.filter((appointment) =>
-        isAppointmentPaid(appointment, paymentMap[appointment.id]),
-      ),
-    [filteredAppointments, paymentMap],
-  );
-
   const hiddenCancelledCount = dismissedCancelledIds.filter((id) =>
     appointments.some((appointment) => appointment.id === id && appointment.status === 'CANCELLED'),
   ).length;
   const hiddenRejectedCount = dismissedRejectedIds.filter((id) =>
     appointments.some((appointment) => appointment.id === id && appointment.status === 'REJECTED'),
+  ).length;
+  const hiddenExpiredCount = dismissedExpiredIds.filter((id) =>
+    appointments.some((appointment) => appointment.id === id && appointment.status === 'EXPIRED'),
   ).length;
 
   const closeConfirmation = () => {
@@ -775,6 +782,19 @@ export default function MyAppointments() {
     writeDismissedIds(DISMISSED_REJECTED_STORAGE_KEY, []);
   };
 
+  const dismissExpiredAppointment = async (appointmentId: number) => {
+    setDismissedExpiredIds((currentIds) => {
+      const nextIds = currentIds.includes(appointmentId) ? currentIds : [...currentIds, appointmentId];
+      writeDismissedIds(DISMISSED_EXPIRED_STORAGE_KEY, nextIds);
+      return nextIds;
+    });
+  };
+
+  const restoreDismissedExpiredAppointments = () => {
+    setDismissedExpiredIds([]);
+    writeDismissedIds(DISMISSED_EXPIRED_STORAGE_KEY, []);
+  };
+
   const goToBookingPage = (appointment: AppointmentResponse) => {
     const params = new URLSearchParams({
       doctorId: String(appointment.doctorId),
@@ -850,6 +870,13 @@ export default function MyAppointments() {
                 )}
               {appointment.status === 'REJECTED' &&
                 dismissedRejectedIds.includes(appointment.id) &&
+                activeFilter === 'HISTORY' && (
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                    Closed From Current View
+                  </span>
+                )}
+              {appointment.status === 'EXPIRED' &&
+                dismissedExpiredIds.includes(appointment.id) &&
                 activeFilter === 'HISTORY' && (
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                     Closed From Current View
@@ -1115,6 +1142,28 @@ export default function MyAppointments() {
                 Remove
               </button>
             )}
+            {appointment.status === 'EXPIRED' && !dismissedExpiredIds.includes(appointment.id) && (
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmation({
+                    title: 'Close Expired Card',
+                    message:
+                      'This only hides the expired appointment card from your current views. The record will remain available in History if you need it later.',
+                    confirmLabel: 'Close Card',
+                    tone: 'primary',
+                    details: summaryCard,
+                    action: async () => {
+                      await dismissExpiredAppointment(appointment.id);
+                    },
+                  })
+                }
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                <X className="h-4 w-4" />
+                Close
+              </button>
+            )}
           </div>
         </div>
 
@@ -1305,6 +1354,15 @@ export default function MyAppointments() {
                       Restore Closed Rejected Cards ({hiddenRejectedCount})
                     </button>
                   )}
+                  {hiddenExpiredCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={restoreDismissedExpiredAppointments}
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      Restore Closed Expired Cards ({hiddenExpiredCount})
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1348,50 +1406,8 @@ export default function MyAppointments() {
                 <p className="text-gray-600">{activeFilterMeta.description}</p>
               </div>
             ) : activeFilter === 'UPCOMING' ? (
-              <div className="space-y-6">
-                <section className="rounded-3xl border border-orange-200 bg-orange-50/40 p-5 shadow-sm">
-                  <div className="mb-4">
-                    <h2 className="text-xl font-bold text-slate-900">Payment Due</h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Upcoming appointments that still need payment before consultation.
-                    </p>
-                  </div>
-
-                  {upcomingPaymentDueAppointments.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-orange-200 bg-white/70 p-6 text-center">
-                      <p className="font-semibold text-slate-900">No payment due appointments</p>
-                      <p className="mt-1 text-sm text-slate-600">
-                        All of your current upcoming appointments are already paid.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {upcomingPaymentDueAppointments.map((appointment) => renderAppointmentCard(appointment))}
-                    </div>
-                  )}
-                </section>
-
-                <section className="rounded-3xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-sm">
-                  <div className="mb-4">
-                    <h2 className="text-xl font-bold text-slate-900">Paid Appointments</h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Upcoming appointments with successful payment already recorded.
-                    </p>
-                  </div>
-
-                  {upcomingPaidAppointments.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-emerald-200 bg-white/70 p-6 text-center">
-                      <p className="font-semibold text-slate-900">No paid upcoming appointments</p>
-                      <p className="mt-1 text-sm text-slate-600">
-                        Paid upcoming appointment cards will appear here once payment is completed.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {upcomingPaidAppointments.map((appointment) => renderAppointmentCard(appointment))}
-                    </div>
-                  )}
-                </section>
+              <div className="space-y-4">
+                {filteredAppointments.map((appointment) => renderAppointmentCard(appointment))}
               </div>
             ) : (
               <div className="space-y-4">

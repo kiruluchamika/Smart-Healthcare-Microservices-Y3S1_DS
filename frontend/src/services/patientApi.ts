@@ -8,12 +8,11 @@ import {
   MedicalHistoryRequest
 } from '../types/patient';
 import { getAuthToken, getAuthUser } from './authSession';
+import { resolveDoctorProfileId } from './doctorIdentity';
 
 // Uses NGINX proxy just like authApi
 const API_URL = '/api/patients/me';
 const DOCTOR_REPORTS_API_URL = '/api/patients/doctor/reports';
-const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
-
 interface ApiResponse<T> {
   success: boolean;
   message: string;
@@ -31,19 +30,17 @@ const getHeaders = () => {
   };
 };
 
-const getDoctorHeaders = () => {
+const getDoctorHeaders = async () => {
   const token = getAuthToken();
   if (!token) {
     throw new Error('Session expired. Please login again.');
   }
 
-  const user = getAuthUser();
-  const storedDoctorProfileId = localStorage.getItem(DOCTOR_PROFILE_ID_KEY);
-  const doctorId = storedDoctorProfileId || (user?.id ? String(user.id) : null);
+  const doctorId = await resolveDoctorProfileId();
 
   return {
     Authorization: `Bearer ${token}`,
-    ...(doctorId ? { 'X-Doctor-Id': doctorId } : {}),
+    ...(doctorId ? { 'X-Doctor-Id': String(doctorId) } : {}),
   };
 };
 
@@ -106,7 +103,7 @@ export const patientApi = {
     const query = params.toString();
     const url = `${DOCTOR_REPORTS_API_URL}/patient/${patientAuthUserId}${query ? `?${query}` : ''}`;
     const response = await axios.get<ApiResponse<MedicalReport[]>>(url, {
-      headers: getDoctorHeaders(),
+      headers: await getDoctorHeaders(),
     });
     return response.data;
   },
@@ -115,7 +112,7 @@ export const patientApi = {
     const response = await axios.get<ApiResponse<PatientProfile>>(
       `${DOCTOR_REPORTS_API_URL}/patient/${patientAuthUserId}/profile`,
       {
-        headers: getDoctorHeaders(),
+        headers: await getDoctorHeaders(),
       },
     );
     return response.data;
@@ -152,7 +149,7 @@ export const patientApi = {
 
   downloadPatientReportBlobForDoctor: async (patientAuthUserId: number, id: number) => {
     const response = await axios.get(`${DOCTOR_REPORTS_API_URL}/patient/${patientAuthUserId}/${id}/download`, {
-      headers: getDoctorHeaders(),
+      headers: await getDoctorHeaders(),
       responseType: 'blob',
     });
     return response;

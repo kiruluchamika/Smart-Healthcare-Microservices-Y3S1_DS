@@ -64,6 +64,10 @@ export function formatDayOfWeek(day: string) {
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
+export function formatDaysOfWeek(days: string[]) {
+  return days.map((day) => formatDayOfWeek(day).slice(0, 3)).join(', ');
+}
+
 export function formatTime(value: string) {
   if (!value) {
     return '--';

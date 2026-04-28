@@ -1,5 +1,7 @@
 package com.smarthealthcare.payment_service.security;
 
+import com.smarthealthcare.payment_service.client.DoctorClient;
+import com.smarthealthcare.payment_service.dto.integration.DoctorSnapshot;
 import io.jsonwebtoken.Claims;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -8,9 +10,11 @@ import org.springframework.util.StringUtils;
 public class AccessControlService {
 
     private final JwtService jwtService;
+    private final DoctorClient doctorClient;
 
-    public AccessControlService(JwtService jwtService) {
+    public AccessControlService(JwtService jwtService, DoctorClient doctorClient) {
         this.jwtService = jwtService;
+        this.doctorClient = doctorClient;
     }
 
     public Long requirePatientAccess(String authorizationHeader, Long patientId) {
@@ -24,11 +28,21 @@ public class AccessControlService {
 
     public Long requireDoctorAccess(String authorizationHeader, Long doctorId) {
         Claims claims = requireRole(authorizationHeader, "DOCTOR");
-        Long tokenUserId = jwtService.extractUserId(claims);
-        if (tokenUserId == null || !tokenUserId.equals(doctorId)) {
+        if (doctorId == null) {
             throw new ForbiddenException("Doctor access is required for this payment operation");
         }
-        return tokenUserId;
+
+        String tokenEmail = jwtService.extractEmail(claims);
+        if (!StringUtils.hasText(tokenEmail)) {
+            throw new ForbiddenException("Doctor access is required for this payment operation");
+        }
+
+        DoctorSnapshot doctor = doctorClient.getDoctorByEmail(tokenEmail);
+        if (doctor == null || doctor.id() == null || !doctor.id().equals(doctorId)) {
+            throw new ForbiddenException("Doctor access is required for this payment operation");
+        }
+
+        return doctor.id();
     }
 
     public void requireAdminAccess(String authorizationHeader) {

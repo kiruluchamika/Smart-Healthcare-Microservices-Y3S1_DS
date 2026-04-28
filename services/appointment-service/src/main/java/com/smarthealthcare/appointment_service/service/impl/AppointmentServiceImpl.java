@@ -690,12 +690,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     private boolean matchesAppointmentDate(
             DoctorAvailabilityLookupResponse availability,
             LocalDate appointmentDate) {
-
-        if (availability.getEffectiveFrom() != null && availability.getEffectiveTo() != null) {
-            return true;
-        }
-
-        return availability.getDayOfWeek() == appointmentDate.getDayOfWeek();
+        return availability.appliesTo(appointmentDate.getDayOfWeek());
     }
 
     private int resolveSlotDuration(Integer slotDuration) {

@@ -1,64 +1,63 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    host: '127.0.0.1',
-    proxy: {
-      '/api/auth': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/auth/, '/auth'),
-      },
-      '/api/appointments': {
-        target: 'http://localhost:8082',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/appointments/, '/appointments'),
-      },
-      '/api/patients': {
-        target: 'http://localhost:8085',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/patients/, '/patients'),
-      },
-      '/api/doctors': {
-        target: 'http://localhost:8083',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/doctors/, '/api/v1/doctors'),
-      },
-      '/api/prescriptions': {
-        target: 'http://localhost:8083',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/prescriptions/, '/api/v1/prescriptions'),
-      },
-      '/api/notifications': {
-        target: 'http://localhost:8084',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/notifications/, '/api/v1/notifications'),
-      },
-      '/api/payments': {
-        target: 'http://localhost:8086',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/payments/, '/api/v1/payments'),
-      },
-      '/api/telemedicine': {
-        target: 'http://localhost:8087',
-        changeOrigin: true,
-      },
-      '/api/ai-symptoms': {
-        target: 'http://localhost:8093',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/ai-symptoms/, '/api/v1/ai-symptoms'),
-      },
-      '/api/ai': {
-        target: 'http://localhost:8092',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/ai/, '/api/v1/ai'),
+function createProxyOptions(target: string, rewrite?: ProxyOptions['rewrite']): ProxyOptions {
+  return {
+    target,
+    changeOrigin: false,
+    xfwd: true,
+    ...(rewrite ? { rewrite } : {}),
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const authTarget = env.VITE_DEV_AUTH_PROXY_TARGET || 'http://localhost:8080';
+  const appointmentTarget = env.VITE_DEV_APPOINTMENT_PROXY_TARGET || 'http://localhost:8082';
+  const patientTarget = env.VITE_DEV_PATIENT_PROXY_TARGET || 'http://localhost:8085';
+  const doctorTarget = env.VITE_DEV_DOCTOR_PROXY_TARGET || 'http://localhost:8083';
+  const notificationTarget = env.VITE_DEV_NOTIFICATION_PROXY_TARGET || 'http://localhost:8084';
+  const paymentTarget = env.VITE_DEV_PAYMENT_PROXY_TARGET || 'http://localhost:8086';
+  const telemedicineTarget = env.VITE_DEV_TELEMEDICINE_PROXY_TARGET || 'http://localhost:8087';
+  const gatewayTarget = env.VITE_DEV_GATEWAY_PROXY_TARGET || 'http://localhost:8088';
+
+  return {
+    plugins: [react()],
+    server: {
+      host: 'localhost',
+      proxy: {
+        '/api/auth': createProxyOptions(authTarget, (path) => path.replace(/^\/api\/auth/, '/auth')),
+        '/api/appointments': createProxyOptions(
+          appointmentTarget,
+          (path) => path.replace(/^\/api\/appointments/, '/appointments'),
+        ),
+        '/api/patients': createProxyOptions(
+          patientTarget,
+          (path) => path.replace(/^\/api\/patients/, '/patients'),
+        ),
+        '/api/doctors': createProxyOptions(
+          doctorTarget,
+          (path) => path.replace(/^\/api\/doctors/, '/api/v1/doctors'),
+        ),
+        '/api/prescriptions': createProxyOptions(
+          doctorTarget,
+          (path) => path.replace(/^\/api\/prescriptions/, '/api/v1/prescriptions'),
+        ),
+        '/api/notifications': createProxyOptions(
+          notificationTarget,
+          (path) => path.replace(/^\/api\/notifications/, '/api/v1/notifications'),
+        ),
+        '/api/payments': createProxyOptions(
+          paymentTarget,
+          (path) => path.replace(/^\/api\/payments/, '/api/v1/payments'),
+        ),
+        '/api/telemedicine': createProxyOptions(telemedicineTarget),
+        '/api/ai-symptoms': createProxyOptions(gatewayTarget),
+        '/api/ai': createProxyOptions(gatewayTarget),
       },
     },
-  },
-  optimizeDeps: {
-    exclude: ['lucide-react'],
-  },
+    optimizeDeps: {
+      exclude: ['lucide-react'],
+    },
+  };
 });

@@ -2,19 +2,20 @@ package com.smarthealthcare.doctor_service.dto;
 
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
 public class DoctorAvailabilityUpdateRequest {
 
-    @NotNull(message = "Day of week is required")
     private DayOfWeek dayOfWeek;
+
+    private List<DayOfWeek> daysOfWeek;
 
     @NotNull(message = "Start time is required")
     private LocalTime startTime;
@@ -54,5 +55,10 @@ public class DoctorAvailabilityUpdateRequest {
         }
 
         return slotDuration == 15 || slotDuration == 30 || slotDuration == 45 || slotDuration == 60;
+    }
+
+    @AssertTrue(message = "At least one day of week is required")
+    public boolean isDaysOfWeekValid() {
+        return (daysOfWeek != null && !daysOfWeek.isEmpty()) || dayOfWeek != null;
     }
 }

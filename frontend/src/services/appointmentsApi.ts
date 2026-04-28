@@ -1,6 +1,5 @@
 import { getAuthToken, getAuthUser } from './authSession';
-
-const DOCTOR_PROFILE_ID_KEY = 'doctorProfileId';
+import { resolveDoctorProfileId } from './doctorIdentity';
 
 export interface BookedSlot {
   appointmentId: number;
@@ -102,16 +101,14 @@ function buildHeaders(includeJson = true) {
   };
 }
 
-function buildDoctorHeaders(includeJson = true) {
+async function buildDoctorHeaders(includeJson = true) {
   const token = getAuthToken();
-  const user = getAuthUser();
-  const storedDoctorProfileId = localStorage.getItem(DOCTOR_PROFILE_ID_KEY);
-  const doctorId = storedDoctorProfileId || (user?.id ? String(user.id) : null);
+  const doctorId = await resolveDoctorProfileId();
 
   return {
     ...(includeJson ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(doctorId ? { 'X-Doctor-Id': doctorId } : {}),
+    ...(doctorId ? { 'X-Doctor-Id': String(doctorId) } : {}),
   };
 }
 
@@ -223,7 +220,7 @@ export async function getMyDoctorAppointments() {
 
   const response = await fetch(`${API_BASE}/doctor/me`, {
     method: 'GET',
-    headers: buildDoctorHeaders(),
+    headers: await buildDoctorHeaders(),
   });
 
   const payload = await response.json().catch(() => null);
@@ -239,7 +236,7 @@ export async function getMyDoctorAppointments() {
 async function doctorAction(path: string, bodyPayload?: unknown) {
   const response = await fetch(`${API_BASE}${path}`, {
     method: 'PATCH',
-    headers: buildDoctorHeaders(),
+    headers: await buildDoctorHeaders(),
     body: bodyPayload ? JSON.stringify(bodyPayload) : undefined,
   });
 

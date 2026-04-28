@@ -37,5 +37,11 @@ public class DoctorSchemaReconciler {
         } catch (Exception ex) {
             LOGGER.debug("Skipping doctor_availabilities.slot_duration add-column reconciliation: {}", ex.getMessage());
         }
+
+        try {
+            jdbcTemplate.execute("ALTER TABLE doctor_availabilities MODIFY COLUMN day_of_week VARCHAR(64) NOT NULL");
+        } catch (Exception ex) {
+            LOGGER.debug("Skipping doctor_availabilities.day_of_week widen-column reconciliation: {}", ex.getMessage());
+        }
     }
 }

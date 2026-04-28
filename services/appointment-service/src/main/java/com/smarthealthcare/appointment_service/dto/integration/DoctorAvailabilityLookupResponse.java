@@ -3,12 +3,14 @@ package com.smarthealthcare.appointment_service.dto.integration;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 
 public class DoctorAvailabilityLookupResponse {
 
     private Long id;
     private Long doctorId;
     private DayOfWeek dayOfWeek;
+    private List<DayOfWeek> daysOfWeek;
     private LocalTime startTime;
     private LocalTime endTime;
     private Integer slotDuration;
@@ -38,6 +40,14 @@ public class DoctorAvailabilityLookupResponse {
 
     public void setDayOfWeek(DayOfWeek dayOfWeek) {
         this.dayOfWeek = dayOfWeek;
+    }
+
+    public List<DayOfWeek> getDaysOfWeek() {
+        return daysOfWeek;
+    }
+
+    public void setDaysOfWeek(List<DayOfWeek> daysOfWeek) {
+        this.daysOfWeek = daysOfWeek;
     }
 
     public LocalTime getStartTime() {
@@ -86,5 +96,13 @@ public class DoctorAvailabilityLookupResponse {
 
     public void setEffectiveTo(LocalDate effectiveTo) {
         this.effectiveTo = effectiveTo;
+    }
+
+    public boolean appliesTo(DayOfWeek targetDay) {
+        if (daysOfWeek != null && !daysOfWeek.isEmpty()) {
+            return daysOfWeek.contains(targetDay);
+        }
+
+        return dayOfWeek == targetDay;
     }
 }

@@ -2,15 +2,12 @@ package com.smarthealthcare.doctor_service.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -36,9 +33,8 @@ public class DoctorAvailability {
     @Column(nullable = false)
     private Long doctorId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 15)
-    private DayOfWeek dayOfWeek;
+    @Column(name = "day_of_week", nullable = false, length = 64)
+    private String daysOfWeek;
 
     @Column(nullable = false)
     private LocalTime startTime;
