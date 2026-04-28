@@ -383,6 +383,8 @@ services:
     ports:
       - "5173:80"
 
+      
+
 volumes:
   mysql-auth-data:
   mysql-doctor-data:
@@ -395,3 +397,4 @@ volumes:
   mysql-telemedicine-data:
   doctor-uploads:
   patient-uploads:
+
