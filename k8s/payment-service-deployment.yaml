@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: payment-service
+  template:
+    metadata:
+      labels:
+        app: payment-service
+    spec:
+      containers:
+        - name: payment-service
+          image: payment-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8086
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-payment:3306/payment_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: payment_user
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: payment_pass
+            - name: SERVER_PORT
+              value: "8086"
+            - name: APP_SECURITY_ALLOWED_ORIGINS
+              value: http://localhost:*,http://127.0.0.1:*
+            - name: APPOINTMENT_SERVICE_BASE_URL
+              value: http://appointment-service:8082
+            - name: DOCTOR_SERVICE_BASE_URL
+              value: http://doctor-service:8083/api/v1/doctors
+            - name: DOCTOR_SERVICE_USERNAME
+              value: doctor
+            - name: DOCTOR_SERVICE_PASSWORD
+              value: doctor123
+            - name: TELEMEDICINE_SERVICE_BASE_URL
+              value: http://telemedicine-service:8087
+            - name: NOTIFICATION_SERVICE_BASE_URL
+              value: http://notification-service:8084
+            - name: APP_JWT_SECRET
+              value: smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes
+            - name: PAYMENT_CHECKOUT_SUCCESS_URL
+              value: http://localhost:5173/payments/success?session_id={CHECKOUT_SESSION_ID}
+            - name: PAYMENT_CHECKOUT_CANCEL_URL
+              value: http://localhost:5173/payments/cancel

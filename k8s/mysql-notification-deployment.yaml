@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-notification
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-notification
+  template:
+    metadata:
+      labels:
+        app: mysql-notification
+    spec:
+      containers:
+        - name: mysql-notification
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "123456"
+            - name: MYSQL_DATABASE
+              value: notification_service_db
+            - name: MYSQL_USER
+              value: notification_user
+            - name: MYSQL_PASSWORD
+              value: notification_pass
+          volumeMounts:
+            - name: mysql-notification-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-notification-storage
+          persistentVolumeClaim:
+            claimName: mysql-notification-pvc

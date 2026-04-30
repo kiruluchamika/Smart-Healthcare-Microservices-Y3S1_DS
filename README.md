@@ -180,3 +180,117 @@ Use only these steps for every teammate.
 3. Start `ai-doctor-suggestion-service`
 
 No extra setup is required for normal flow.
+
+## Kubernetes Setup Instructions
+
+The Kubernetes manifests live in `k8s/` and currently cover the backend services, API gateway, and MySQL databases. The frontend is not included in Kubernetes, so run it separately from `frontend/` with `npm run dev`.
+
+### Build Backend Images
+
+Run these commands from the repository root:
+
+```bash
+docker build -t auth-service:latest ./services/auth-service
+docker build -t doctor-service:latest ./services/doctor-service
+docker build -t patient-service:latest ./services/patient-service
+docker build -t appointment-service:latest ./services/appointment-service
+docker build -t payment-service:latest ./services/payment-service
+docker build -t notification-service:latest ./services/notification-service
+docker build -t telemedicine-service:latest ./services/telemedicine-service
+docker build -t ai-symptom-service:latest ./services/ai-symptom-service
+docker build -t ai-doctor-suggestion-service:latest ./services/ai-doctor-suggestion-service
+docker build -t api-gateway:latest ./api-gateway
+```
+
+### Minikube
+
+Start Minikube:
+
+```bash
+minikube start
+kubectl config use-context minikube
+```
+
+Load locally built images into Minikube:
+
+```bash
+minikube image load auth-service:latest
+minikube image load doctor-service:latest
+minikube image load patient-service:latest
+minikube image load appointment-service:latest
+minikube image load payment-service:latest
+minikube image load notification-service:latest
+minikube image load telemedicine-service:latest
+minikube image load ai-symptom-service:latest
+minikube image load ai-doctor-suggestion-service:latest
+minikube image load api-gateway:latest
+```
+
+Apply all manifests:
+
+```bash
+kubectl apply -f k8s/
+```
+
+Validate the deployment:
+
+```bash
+kubectl get pods
+kubectl get services
+kubectl get deployments
+```
+
+Expose the API gateway locally:
+
+```bash
+kubectl port-forward service/api-gateway 8088:8088
+```
+
+Run the frontend separately:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Docker Desktop Kubernetes
+
+Enable Kubernetes in Docker Desktop, then use the Docker Desktop Kubernetes context:
+
+```bash
+kubectl config use-context docker-desktop
+```
+
+Build the images with Docker as shown above. Docker Desktop Kubernetes can use images from the local Docker engine, so skip all `minikube image load` commands.
+
+Apply and validate:
+
+```bash
+kubectl apply -f k8s/
+kubectl get pods
+kubectl get services
+kubectl get deployments
+kubectl port-forward service/api-gateway 8088:8088
+```
+
+Run the frontend separately:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Docker Desktop Differences
+
+- Skip `minikube image load`; it is only needed for Minikube.
+- Use `kubectl config use-context docker-desktop`.
+- Keep local backend image references as `<service-name>:latest`.
+- Keep `imagePullPolicy: IfNotPresent` for local images.
+- `ClusterIP` services plus `kubectl port-forward` are valid for both Minikube and Docker Desktop.
+- No YAML changes are strictly required just because a teammate uses Docker Desktop Kubernetes instead of Minikube.
+
+### Current Gateway Coverage
+
+The API gateway runs on port `8088`. Current gateway routes cover appointment, doctor, prescription, payment, telemedicine, AI doctor suggestion, and AI symptom APIs. Auth, patient, and notification Kubernetes services exist, but they are not currently routed through the API gateway configuration.

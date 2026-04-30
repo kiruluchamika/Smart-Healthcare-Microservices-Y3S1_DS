@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-payment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-payment
+  template:
+    metadata:
+      labels:
+        app: mysql-payment
+    spec:
+      containers:
+        - name: mysql-payment
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "123456"
+            - name: MYSQL_DATABASE
+              value: payment_service_db
+            - name: MYSQL_USER
+              value: payment_user
+            - name: MYSQL_PASSWORD
+              value: payment_pass
+          volumeMounts:
+            - name: mysql-payment-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-payment-storage
+          persistentVolumeClaim:
+            claimName: mysql-payment-pvc

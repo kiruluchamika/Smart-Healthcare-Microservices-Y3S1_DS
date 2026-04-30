@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-ai-suggestion
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-ai-suggestion
+  template:
+    metadata:
+      labels:
+        app: mysql-ai-suggestion
+    spec:
+      containers:
+        - name: mysql-ai-suggestion
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: root
+            - name: MYSQL_DATABASE
+              value: ai_doctor_suggestion_db
+          volumeMounts:
+            - name: mysql-ai-suggestion-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-ai-suggestion-storage
+          persistentVolumeClaim:
+            claimName: mysql-ai-suggestion-pvc

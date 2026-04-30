@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-doctor-suggestion-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-doctor-suggestion-service
+  template:
+    metadata:
+      labels:
+        app: ai-doctor-suggestion-service
+    spec:
+      containers:
+        - name: ai-doctor-suggestion-service
+          image: ai-doctor-suggestion-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8092
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: docker
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-ai-suggestion:3306/ai_doctor_suggestion_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: root
+            - name: SERVER_PORT
+              value: "8092"
+            - name: DOCTOR_SERVICE_BASE_URL
+              value: http://doctor-service:8083
+            - name: DOCTOR_SERVICE_USERNAME
+              value: doctor
+            - name: DOCTOR_SERVICE_PASSWORD
+              value: doctor123
+            - name: OLLAMA_BASE_URL
+              value: http://host.docker.internal:11434
+            - name: OLLAMA_EMBEDDING_MODEL
+              value: nomic-embed-text
+            - name: OLLAMA_STARTUP_ENABLED
+              value: "false"
+            - name: OLLAMA_STARTUP_AUTO_START_CLI
+              value: "false"
+            - name: OLLAMA_STARTUP_AUTO_PULL_MODEL
+              value: "false"
+            - name: OLLAMA_STARTUP_FAIL_FAST
+              value: "false"
