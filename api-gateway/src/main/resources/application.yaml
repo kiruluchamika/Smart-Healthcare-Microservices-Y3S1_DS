@@ -33,6 +33,14 @@ spring:
               - "*"
             allowCredentials: true
       routes:
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URL:http://localhost:8080}
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - RewritePath=/api/auth/?(?<segment>.*), /auth/${segment}
+            - PreserveHostHeader
+
         - id: appointment-service
           uri: ${APPOINTMENT_SERVICE_URL:http://localhost:8082}
           predicates:
@@ -55,6 +63,22 @@ spring:
             - Path=/api/prescriptions/**
           filters:
             - RewritePath=/api/prescriptions/(?<segment>.*), /api/v1/prescriptions/${segment}
+            - PreserveHostHeader
+
+        - id: patient-service
+          uri: ${PATIENT_SERVICE_URL:http://localhost:8085}
+          predicates:
+            - Path=/api/patients/**,/api/patient/**
+          filters:
+            - RewritePath=/api/patients?/?(?<segment>.*), /patients/${segment}
+            - PreserveHostHeader
+
+        - id: notification-service
+          uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/notifications/**,/api/notification/**
+          filters:
+            - RewritePath=/api/notifications?/?(?<segment>.*), /api/v1/notifications/${segment}
             - PreserveHostHeader
 
         - id: payment-service

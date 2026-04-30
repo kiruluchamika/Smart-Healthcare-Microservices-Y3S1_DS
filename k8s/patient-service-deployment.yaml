@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patient-service
+  template:
+    metadata:
+      labels:
+        app: patient-service
+    spec:
+      containers:
+        - name: patient-service
+          image: patient-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8085
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-patient:3306/patient_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "123456"
+            - name: SERVER_PORT
+              value: "8085"
+            - name: APPOINTMENT_SERVICE_BASE_URL
+              value: http://appointment-service:8082
+            - name: AUTH_SERVICE_BASE_URL
+              value: http://auth-service:8080/auth
+            - name: DOCTOR_SERVICE_BASE_URL
+              value: http://doctor-service:8083
+            - name: APP_JWT_SECRET
+              value: smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes
+            - name: APP_SECURITY_ALLOWED_ORIGINS
+              value: http://localhost:*,http://127.0.0.1:*

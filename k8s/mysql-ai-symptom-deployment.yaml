@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-ai-symptom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-ai-symptom
+  template:
+    metadata:
+      labels:
+        app: mysql-ai-symptom
+    spec:
+      containers:
+        - name: mysql-ai-symptom
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "123456"
+            - name: MYSQL_DATABASE
+              value: ai_symptom_service_db
+          volumeMounts:
+            - name: mysql-ai-symptom-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-ai-symptom-storage
+          persistentVolumeClaim:
+            claimName: mysql-ai-symptom-pvc

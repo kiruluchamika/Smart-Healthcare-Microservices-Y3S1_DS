@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appointment-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: appointment-service
+  template:
+    metadata:
+      labels:
+        app: appointment-service
+    spec:
+      containers:
+        - name: appointment-service
+          image: appointment-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-appointment:3306/appointment_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: "123456"
+            - name: SERVER_PORT
+              value: "8082"
+            - name: APP_SERVICES_AUTH_BASE_URL
+              value: http://auth-service:8080/auth
+            - name: APP_SERVICES_DOCTOR_BASE_URL
+              value: http://doctor-service:8083/api/v1/doctors
+            - name: DOCTOR_SERVICE_USERNAME
+              value: doctor
+            - name: DOCTOR_SERVICE_PASSWORD
+              value: doctor123
+            - name: NOTIFICATION_SERVICE_BASE_URL
+              value: http://notification-service:8084
+            - name: NOTIFICATION_ENABLED
+              value: "false"
+            - name: APP_SECURITY_ALLOWED_ORIGINS
+              value: http://localhost:*,http://127.0.0.1:*
