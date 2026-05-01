@@ -352,6 +352,9 @@ public class PaymentServiceImpl implements PaymentService {
             return PaymentMapper.toResponse(transaction);
         }
 
+        log.info("[PAYMENT-PROCESS] Payment checkout completed | SessionId: {} | PaymentId: {} | AppointmentId: {} | PatientId: {} | DoctorId: {}", 
+            session.getId(), transaction.getId(), transaction.getAppointmentId(), transaction.getPatientId(), transaction.getDoctorId());
+
         transaction.setStatus(PaymentStatus.PAID);
         transaction.setStripePaymentIntentId(session.getPaymentIntent());
         transaction.setPaidAt(LocalDateTime.now());
@@ -359,8 +362,14 @@ public class PaymentServiceImpl implements PaymentService {
         prepareTelemedicineAccess(transaction);
         PaymentTransaction saved = repository.save(transaction);
         syncAppointmentPaymentStatus(saved, "PAID", saved.getPaidAt(), saved.getTelemedicineSessionUrl());
+        
+        log.info("[PAYMENT-NOTIFICATIONS] Publishing notifications for paid payment | PaymentId: {} | PatientId: {} | DoctorId: {}", 
+            saved.getId(), saved.getPatientId(), saved.getDoctorId());
+        
         publishNotification("PAYMENT_CONFIRMED", saved, "Payment confirmed and consultation ready", saved.getPatientId());
         publishNotification("PAYMENT_CONFIRMED_DOCTOR", saved, "A consultation payment has been confirmed", saved.getDoctorId());
+        
+        log.info("[PAYMENT-PROCESS] Payment checkout processing completed | PaymentId: {}", saved.getId());
         return PaymentMapper.toResponse(saved);
     }
 
@@ -575,19 +584,54 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private void publishNotification(String eventType, PaymentTransaction transaction, String message, Long targetUserId) {
+        String eventKey = eventType == null ? "" : eventType.trim().toUpperCase(Locale.ROOT);
+        String targetRole = switch (eventKey) {
+            case "PAYMENT_CONFIRMED_DOCTOR", "CONSULTATION_COMPLETED_DOCTOR" -> "DOCTOR";
+            case "PAYMENT_CONFIRMED", "CONSULTATION_COMPLETED" -> "PATIENT";
+            default -> determineTargetRole(targetUserId, transaction);
+        };
+
         try {
+            // Log before sending
+            if ("PAYMENT_CONFIRMED_DOCTOR".equals(eventType)) {
+                log.info("[PAYMENT-NOTIFY-DOCTOR] Publishing doctor payment notification | " +
+                    "PaymentId: {} | DoctorId: {} | AppointmentId: {} | EventType: {}", 
+                    transaction.getId(), targetUserId, transaction.getAppointmentId(), eventType);
+            } else if ("PAYMENT_CONFIRMED".equals(eventType)) {
+                log.info("[PAYMENT-NOTIFY-PATIENT] Publishing patient payment notification | " +
+                    "PaymentId: {} | PatientId: {} | AppointmentId: {} | EventType: {}", 
+                    transaction.getId(), targetUserId, transaction.getAppointmentId(), eventType);
+            }
+
             boolean useDefaultTemplate = shouldUseDefaultTemplate(eventType);
-            notificationClient.sendEvent(new NotificationEventRequest(
+            NotificationEventRequest request = new NotificationEventRequest(
                     eventType,
-                    determineTargetRole(targetUserId, transaction),
+                    targetRole,
                     targetUserId,
                     transaction.getId(),
                     transaction.getAppointmentId(),
                     useDefaultTemplate ? null : "Smart Healthcare payment update",
                     useDefaultTemplate ? null : message,
-                    transaction.getAppointmentDate().atTime(transaction.getStartTime())));
+                    transaction.getAppointmentDate().atTime(transaction.getStartTime()));
+
+            notificationClient.sendEvent(request);
+
+            // Log after successful sending
+            if ("PAYMENT_CONFIRMED_DOCTOR".equals(eventType)) {
+                log.info("[PAYMENT-NOTIFY-DOCTOR] Successfully published doctor payment notification | PaymentId: {}", 
+                    transaction.getId());
+            } else if ("PAYMENT_CONFIRMED".equals(eventType)) {
+                log.info("[PAYMENT-NOTIFY-PATIENT] Successfully published patient payment notification | PaymentId: {}", 
+                    transaction.getId());
+            }
         } catch (Exception ex) {
-            log.warn("Notification dispatch failed for payment {}: {}", transaction.getId(), ex.getMessage());
+            if ("PAYMENT_CONFIRMED_DOCTOR".equals(eventType)) {
+                log.error("[PAYMENT-NOTIFY-DOCTOR] FAILED to publish doctor payment notification | " +
+                    "PaymentId: {} | DoctorId: {} | Exception: {} | Message: {}", 
+                    transaction.getId(), targetUserId, ex.getClass().getSimpleName(), ex.getMessage(), ex);
+            } else {
+                log.warn("Notification dispatch failed for payment {}: {}", transaction.getId(), ex.getMessage(), ex);
+            }
         }
     }
 
