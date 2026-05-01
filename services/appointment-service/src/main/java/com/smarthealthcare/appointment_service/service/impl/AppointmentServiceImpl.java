@@ -275,10 +275,16 @@ public class AppointmentServiceImpl implements AppointmentService {
             Long doctorId,
             AcceptAppointmentRequest request) {
 
+        log.info("[ACCEPT-APPOINTMENT] Starting appointment acceptance | AppointmentId: {} | DoctorId: {}", appointmentId, doctorId);
+        
         expireStalePendingAppointments();
         Appointment appointment = findDoctorAppointment(appointmentId, doctorId);
 
+        log.info("[ACCEPT-APPOINTMENT] Found appointment | Status: {} | PatientId: {} | DoctorId: {}", 
+                appointment.getStatus(), appointment.getPatientId(), appointment.getDoctorId());
+
         if (appointment.getStatus() != AppointmentStatus.PENDING) {
+            log.warn("[ACCEPT-APPOINTMENT] REJECTED - Appointment status is not PENDING, current status: {}", appointment.getStatus());
             throw new BusinessValidationException("Only pending appointments can be accepted");
         }
 
@@ -291,6 +297,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                 : BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
 
         if (extraFee.compareTo(BigDecimal.ZERO) < 0) {
+            log.warn("[ACCEPT-APPOINTMENT] REJECTED - Extra fee is negative: {}", extraFee);
             throw new BusinessValidationException("Extra fee cannot be negative");
         }
 
@@ -298,12 +305,14 @@ public class AppointmentServiceImpl implements AppointmentService {
                 .setScale(2, RoundingMode.HALF_UP);
 
         if (extraFee.compareTo(extraFeeCap) > 0) {
+            log.warn("[ACCEPT-APPOINTMENT] REJECTED - Extra fee {} exceeds cap {}", extraFee, extraFeeCap);
             throw new BusinessValidationException("Extra fee exceeds the maximum allowed limit");
         }
 
         String extraFeeReason = request != null ? request.getExtraFeeReason() : null;
         if (extraFee.compareTo(BigDecimal.ZERO) > 0
                 && (extraFeeReason == null || extraFeeReason.trim().isEmpty())) {
+            log.warn("[ACCEPT-APPOINTMENT] REJECTED - Extra fee provided but no reason given");
             throw new BusinessValidationException("Reason is required when extra fee is added");
         }
 
@@ -317,8 +326,15 @@ public class AppointmentServiceImpl implements AppointmentService {
         appointment.setExtraFeeReason(extraFeeReason == null ? null : extraFeeReason.trim());
         appointment.setPaymentStatusHint(UNPAID_STATUS);
 
+        log.info("[ACCEPT-APPOINTMENT] Updating appointment to CONFIRMED | FinalFee: {} | ExtraFee: {}", 
+                appointment.getFinalFee(), appointment.getDoctorExtraFee());
+
         Appointment updatedAppointment = appointmentRepository.save(appointment);
+        
+        log.info("[ACCEPT-APPOINTMENT] Appointment saved successfully, now publishing notifications");
         publishAppointmentConfirmedNotifications(updatedAppointment);
+        
+        log.info("[ACCEPT-APPOINTMENT] Appointment acceptance complete | AppointmentId: {} | Status: CONFIRMED", appointmentId);
 
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
@@ -815,9 +831,13 @@ public class AppointmentServiceImpl implements AppointmentService {
     }
 
     private void publishAppointmentConfirmedNotifications(Appointment appointment) {
+        log.info("[APPOINTMENT] Publishing confirmation notifications for AppointmentId: {} | PatientId: {} | DoctorId: {}", 
+                appointment.getId(), appointment.getPatientId(), appointment.getDoctorId());
+        
         LocalDateTime scheduledFor =
                 appointment.getAppointmentDate().atTime(appointment.getStartTime());
 
+        log.debug("[APPOINTMENT] Publishing APPOINTMENT_CONFIRMED event for patient");
         publishNotification(
                 "APPOINTMENT_CONFIRMED",
                 "PATIENT",
@@ -827,6 +847,7 @@ public class AppointmentServiceImpl implements AppointmentService {
                 null,
                 scheduledFor);
 
+        log.debug("[APPOINTMENT] Publishing APPOINTMENT_CONFIRMED_DOCTOR event for doctor");
         publishNotification(
                 "APPOINTMENT_CONFIRMED_DOCTOR",
                 "DOCTOR",
@@ -835,6 +856,8 @@ public class AppointmentServiceImpl implements AppointmentService {
                 null,
                 null,
                 scheduledFor);
+        
+        log.info("[APPOINTMENT] Appointment confirmation notifications publishing complete | AppointmentId: {}", appointment.getId());
     }
 
     private void publishNotification(
@@ -846,8 +869,11 @@ public class AppointmentServiceImpl implements AppointmentService {
             String message,
             LocalDateTime scheduledFor) {
 
+        log.info("[APPOINTMENT-NOTIFY] Preparing to publish notification | EventType: {} | TargetRole: {} | TargetUserId: {} | AppointmentId: {}", 
+                eventType, targetRole, targetUserId, appointmentId);
+
         try {
-            notificationClient.sendEvent(new NotificationEventRequest(
+            NotificationEventRequest request = new NotificationEventRequest(
                     eventType,
                     targetRole,
                     targetUserId,
@@ -855,9 +881,17 @@ public class AppointmentServiceImpl implements AppointmentService {
                     appointmentId,
                     title,
                     message,
-                    scheduledFor));
+                    scheduledFor);
+            
+            log.info("[APPOINTMENT-NOTIFY] Sending notification event to notification-service | EventType: {} | Target: {}/{}", 
+                    eventType, targetRole, targetUserId);
+            
+            notificationClient.sendEvent(request);
+            
+            log.info("[APPOINTMENT-NOTIFY] Successfully dispatched notification to notification-service | AppointmentId: {}", appointmentId);
         } catch (Exception ex) {
-            log.warn("Notification dispatch failed for appointment {}: {}", appointmentId, ex.getMessage());
+            log.error("[APPOINTMENT-NOTIFY] FAILED to dispatch notification | AppointmentId: {} | EventType: {} | Exception: {} | Message: {}", 
+                    appointmentId, eventType, ex.getClass().getSimpleName(), ex.getMessage(), ex);
         }
     }
 
