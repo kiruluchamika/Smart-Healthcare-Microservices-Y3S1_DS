@@ -207,7 +207,7 @@ services:
       DOCTOR_SERVICE_USERNAME: doctor
       DOCTOR_SERVICE_PASSWORD: doctor123
       NOTIFICATION_SERVICE_BASE_URL: http://notification-service:8084
-      NOTIFICATION_ENABLED: "false"
+      NOTIFICATION_ENABLED: "true"
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
     depends_on:
       mysql-appointment:
