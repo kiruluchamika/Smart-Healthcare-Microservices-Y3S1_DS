@@ -81,7 +81,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public NotificationResponse processEvent(NotificationEventRequest request) {
         log.info(
-                "Processing notification eventType={}, targetRole={}, targetUserId={}, appointmentId={}, paymentId={}",
+                "[PROCESS] === START === eventType={}, targetRole={}, targetUserId={}, appointmentId={}, paymentId={}",
                 normalize(request.eventType()),
                 normalizeRole(request.targetRole()),
                 request.targetUserId(),
@@ -92,18 +92,22 @@ public class NotificationServiceImpl implements NotificationService {
         try {
             recipient = resolveRecipient(request.targetRole(), request.targetUserId());
         } catch (Exception ex) {
-            log.warn(
-                    "Recipient resolution failed eventType={}, targetRole={}, targetUserId={}, reason={}",
+            log.error(
+                    "[PROCESS] Recipient resolution FAILED | eventType={}, targetRole={}, targetUserId={} | Exception: {} | Reason: {}",
                     normalize(request.eventType()),
                     normalizeRole(request.targetRole()),
                     request.targetUserId(),
-                    ex.getMessage());
+                    ex.getClass().getSimpleName(),
+                    ex.getMessage(),
+                    ex);
 
             Notification failed = buildBaseNotification(request, normalizeRole(request.targetRole()), "User");
             failed.setChannel(NotificationChannel.EMAIL);
             failed.setStatus(NotificationStatus.FAILED);
             failed.setFailureReason(limit("Recipient resolution failed: " + ex.getMessage(), 180));
-            return NotificationResponse.fromEntity(notificationRepository.save(failed));
+            Notification saved = notificationRepository.save(failed);
+            log.error("[PROCESS] Saved notification with FAILED status | NotificationId: {} | FailureReason: {}", saved.getId(), saved.getFailureReason());
+            return NotificationResponse.fromEntity(saved);
         }
 
         Notification notification = buildBaseNotification(request, recipient.role(), recipient.displayName());
@@ -112,36 +116,51 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setRecipientPhone(normalizePhone(recipient.phone()));
         notification.setRecipientName(recipient.displayName());
 
+        log.info("[PROCESS] Resolved recipient successfully | Name: {} | Channel: {} | Email: {} | Phone: {}", 
+                recipient.displayName(), notification.getChannel(), maskEmail(recipient.email()), maskPhone(recipient.phone()));
+
         Notification saved = notificationRepository.save(notification);
+        log.info("[PROCESS] Saved notification to database | NotificationId: {} | Status: PENDING", saved.getId());
 
         try {
+            log.info("[PROCESS] Starting delivery attempt for NotificationId: {}", saved.getId());
             DeliveryResult deliveryResult = deliver(recipient, saved);
             saved.setStatus(NotificationStatus.SENT);
             saved.setFailureReason(deliveryResult.failures().isEmpty()
                     ? null
                     : limit(String.join(" | ", deliveryResult.failures()), 180));
             saved.setSentAt(LocalDateTime.now());
+            Notification finalSaved = notificationRepository.save(saved);
+            
             log.info(
-                    "Notification delivery status={}, eventType={}, targetRole={}, targetUserId={}, emailSent={}, smsSent={}, failures={}",
-                    saved.getStatus(),
-                    saved.getEventType(),
-                    saved.getTargetRole(),
-                    saved.getTargetUserId(),
+                    "[PROCESS] === SUCCESS === NotificationId: {}, eventType={}, targetRole={}, targetUserId={}, status={}, channel={}, emailSent={}, smsSent={}, failures={}",
+                    finalSaved.getId(),
+                    finalSaved.getEventType(),
+                    finalSaved.getTargetRole(),
+                    finalSaved.getTargetUserId(),
+                    finalSaved.getStatus(),
+                    finalSaved.getChannel(),
                     deliveryResult.emailSent(),
                     deliveryResult.smsSent(),
                     deliveryResult.failures().size());
+            
+            return NotificationResponse.fromEntity(finalSaved);
         } catch (Exception ex) {
             saved.setStatus(NotificationStatus.FAILED);
             saved.setFailureReason(limit(ex.getMessage(), 180));
-            log.warn(
-                    "Notification delivery failed eventType={}, targetRole={}, targetUserId={}, reason={}",
-                    saved.getEventType(),
-                    saved.getTargetRole(),
-                    saved.getTargetUserId(),
-                    saved.getFailureReason());
+            Notification finalFailed = notificationRepository.save(saved);
+            
+            log.error(
+                    "[PROCESS] === FAILED === NotificationId: {}, eventType={}, targetRole={}, targetUserId={}, failureReason={}",
+                    finalFailed.getId(),
+                    finalFailed.getEventType(),
+                    finalFailed.getTargetRole(),
+                    finalFailed.getTargetUserId(),
+                    finalFailed.getFailureReason(),
+                    ex);
+            
+            return NotificationResponse.fromEntity(finalFailed);
         }
-
-        return NotificationResponse.fromEntity(notificationRepository.save(saved));
     }
 
     private Notification buildBaseNotification(NotificationEventRequest request, String targetRole, String recipientName) {
@@ -188,89 +207,118 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     private DeliveryResult deliver(RecipientContext recipient, Notification notification) {
+        log.info("[DELIVERY] Starting delivery process | Channel: {} | Recipient: {} | Email: {} | Phone: {}", 
+                notification.getChannel(), recipient.displayName(), maskEmail(recipient.email()), maskPhone(recipient.phone()));
+        
         boolean emailSent = false;
         boolean smsSent = false;
         List<String> failures = new ArrayList<>();
 
         if (StringUtils.hasText(recipient.email())) {
             try {
+                log.info("[DELIVERY] Attempting EMAIL delivery to {}", maskEmail(recipient.email()));
                 sendEmail(recipient.email(), notification.getTitle(), notification.getMessage());
                 emailSent = true;
+                log.info("[DELIVERY] EMAIL delivery SUCCESS");
             } catch (Exception ex) {
                 failures.add("EMAIL: " + limit(ex.getMessage(), 80));
-                log.warn(
-                        "Email send failed eventType={}, targetRole={}, targetUserId={}, to={}: {}",
-                        notification.getEventType(),
-                        notification.getTargetRole(),
-                        notification.getTargetUserId(),
-                        maskEmail(recipient.email()),
-                        ex.getMessage());
+                log.error("[DELIVERY] EMAIL delivery FAILED | Exception: {} | Details: {}", 
+                        ex.getClass().getSimpleName(), ex.getMessage(), ex);
             }
+        } else {
+            log.warn("[DELIVERY] EMAIL channel requested but no email address available");
         }
 
         if (StringUtils.hasText(recipient.phone())) {
             try {
+                log.info("[DELIVERY] Attempting SMS delivery to {}", maskPhone(recipient.phone()));
                 sendSms(recipient.phone(), notification);
                 smsSent = true;
+                log.info("[DELIVERY] SMS delivery SUCCESS");
             } catch (Exception ex) {
                 failures.add("SMS: " + limit(ex.getMessage(), 80));
-                log.warn(
-                        "SMS send failed eventType={}, targetRole={}, targetUserId={}, to={}: {}",
-                        notification.getEventType(),
-                        notification.getTargetRole(),
-                        notification.getTargetUserId(),
-                        maskPhone(recipient.phone()),
-                        ex.getMessage());
+                log.error("[DELIVERY] SMS delivery FAILED | Exception: {} | Details: {}", 
+                        ex.getClass().getSimpleName(), ex.getMessage(), ex);
             }
+        } else {
+            log.warn("[DELIVERY] SMS channel requested but no phone number available");
         }
 
         if (!emailSent && !smsSent) {
             if (!StringUtils.hasText(recipient.email()) && !StringUtils.hasText(recipient.phone())) {
+                log.error("[DELIVERY] FINAL FAILURE - No email or phone number available for notification delivery");
                 throw new IllegalStateException("No email or phone number available for notification delivery");
             }
             String reason = failures.isEmpty()
                     ? "Delivery failed for all available channels"
                     : String.join(" | ", failures);
+            log.error("[DELIVERY] FINAL FAILURE - {}", reason);
             throw new IllegalStateException(reason);
         }
 
+        log.info("[DELIVERY] Delivery attempt complete | EmailSent: {} | SMSSent: {} | Failures: {}", 
+                emailSent, smsSent, failures.size());
         return new DeliveryResult(emailSent, smsSent, failures);
     }
 
     private void sendEmail(String recipientEmail, String subject, String message) {
+        log.info("[EMAIL] Attempting to send email to {} (recipient: {})", maskEmail(recipientEmail), recipientEmail);
+        
         SimpleMailMessage mailMessage = new SimpleMailMessage();
         mailMessage.setFrom(notificationProperties.fromEmail());
         mailMessage.setTo(recipientEmail);
         mailMessage.setReplyTo(notificationProperties.replyToEmail());
         mailMessage.setSubject(notificationProperties.subjectPrefix() + " - " + subject);
         mailMessage.setText(message + "\n\nWarm regards,\nSmart Healthcare Team");
-        mailSender.send(mailMessage);
+        
+        try {
+            mailSender.send(mailMessage);
+            log.info("[EMAIL] Successfully sent email to {} | Subject: '{}'", maskEmail(recipientEmail), subject);
+        } catch (Exception ex) {
+            log.error("[EMAIL] FAILED to send email to {} | Exception: {} | Message: {}", 
+                    maskEmail(recipientEmail), ex.getClass().getSimpleName(), ex.getMessage(), ex);
+            throw ex;
+        }
     }
 
     private void sendSms(String recipientPhone, Notification notification) {
+        log.info("[SMS] Attempting to send SMS to {} (recipient: {})", maskPhone(recipientPhone), recipientPhone);
+        
         String normalizedPhone = normalizePhone(recipientPhone);
         if (!StringUtils.hasText(normalizedPhone)) {
+            log.error("[SMS] FAILED - Recipient phone is missing or invalid for SMS delivery: {}", recipientPhone);
             throw new IllegalArgumentException("Recipient phone is missing or invalid for SMS delivery");
         }
 
         String normalizedSender = normalizePhone(twilioProperties.phoneNumber());
         if (!StringUtils.hasText(normalizedSender)) {
+            log.error("[SMS] FAILED - Twilio sender phone-number is missing or invalid. Configure a Twilio-owned E.164 number.");
             throw new IllegalStateException("Twilio sender phone-number is missing or invalid. Use a Twilio-owned E.164 number.");
         }
 
         if (Objects.equals(normalizedSender, normalizedPhone)) {
-            log.warn("Twilio sender and recipient are the same number {}. Trial restrictions may block delivery.", maskPhone(normalizedPhone));
+            log.warn("[SMS] WARNING - Twilio sender and recipient are the same number {}. Trial restrictions may block delivery.", maskPhone(normalizedPhone));
         }
 
         String smsBody = buildSmsBody(notification);
+        log.debug("[SMS] SMS body: {}", smsBody);
+        
         try {
-            Message.creator(new PhoneNumber(normalizedPhone), new PhoneNumber(normalizedSender), smsBody)
+            Message result = Message.creator(new PhoneNumber(normalizedPhone), new PhoneNumber(normalizedSender), smsBody)
                     .create();
+            log.info("[SMS] Successfully sent SMS to {} | MessageSID: {} | Status: {}", 
+                    maskPhone(normalizedPhone), result.getSid(), result.getStatus());
         } catch (ApiException ex) {
             String detail = ex.getCode() != null
                     ? "Twilio error code " + ex.getCode() + ": " + ex.getMessage()
                     : ex.getMessage();
+            log.error("[SMS] FAILED to send SMS to {} | TwilioError: {} | HTTPStatus: {} | Message: {}", 
+                    maskPhone(normalizedPhone), ex.getCode(), ex.getStatusCode(), ex.getMessage(), ex);
             throw new IllegalStateException(detail, ex);
+        } catch (Exception ex) {
+            log.error("[SMS] FAILED to send SMS to {} | Exception: {} | Message: {}", 
+                    maskPhone(normalizedPhone), ex.getClass().getSimpleName(), ex.getMessage(), ex);
+            throw ex;
         }
     }
 
@@ -280,36 +328,53 @@ public class NotificationServiceImpl implements NotificationService {
 
     private RecipientContext resolveRecipient(String targetRole, Long targetUserId) {
         String normalizedRole = normalizeRole(targetRole);
+        log.info("[RECIPIENT] Starting resolution for role={}, userId={}", normalizedRole, targetUserId);
+        
         if (Objects.equals(normalizedRole, "DOCTOR")) {
-            DoctorClient.DoctorContactResponse doctor = doctorClient.getDoctorById(targetUserId);
-            String normalizedDoctorPhone = normalizePhone(doctor.phone());
-            log.info(
-                    "Resolved doctor recipient targetUserId={}, phone={}, email={}",
-                    targetUserId,
-                    maskPhone(normalizedDoctorPhone),
-                    maskEmail(doctor.email()));
-            return new RecipientContext(
-                    safeName(doctor.firstName(), doctor.lastName()),
-                    doctor.email(),
-                    normalizedDoctorPhone,
-                    "DOCTOR");
+            log.info("[RECIPIENT-DOCTOR] Attempting to resolve doctor with ID: {}", targetUserId);
+            try {
+                DoctorClient.DoctorContactResponse doctor = doctorClient.getDoctorById(targetUserId);
+                String normalizedDoctorPhone = normalizePhone(doctor.phone());
+                log.info("[RECIPIENT-DOCTOR] Successfully resolved | Name: {} {} | Phone: {} | Email: {}", 
+                        doctor.firstName(), doctor.lastName(), maskPhone(normalizedDoctorPhone), maskEmail(doctor.email()));
+                return new RecipientContext(
+                        safeName(doctor.firstName(), doctor.lastName()),
+                        doctor.email(),
+                        normalizedDoctorPhone,
+                        "DOCTOR");
+            } catch (Exception ex) {
+                log.error("[RECIPIENT-DOCTOR] FAILED to resolve doctor {} | Exception: {} | Message: {}", 
+                        targetUserId, ex.getClass().getSimpleName(), ex.getMessage(), ex);
+                throw ex;
+            }
         }
 
         if (Objects.equals(normalizedRole, "PATIENT")) {
+            log.info("[RECIPIENT-PATIENT] Attempting to resolve patient with ID: {}", targetUserId);
             PatientClient.PatientContactResponse patient = null;
             AuthClient.AuthUserResponse user = null;
 
             try {
+                log.debug("[RECIPIENT-PATIENT] Attempting lookup by authUserId: {}", targetUserId);
                 patient = patientClient.getPatientContactByAuthUserId(targetUserId);
+                if (patient != null) {
+                    log.info("[RECIPIENT-PATIENT] Successfully resolved by authUserId");
+                }
             } catch (Exception ex) {
-                log.warn("Patient lookup by authUserId {} failed: {}", targetUserId, ex.getMessage());
+                log.warn("[RECIPIENT-PATIENT] Lookup by authUserId {} failed: {} - {}", 
+                        targetUserId, ex.getClass().getSimpleName(), ex.getMessage());
             }
 
             if (patient == null) {
                 try {
+                    log.debug("[RECIPIENT-PATIENT] Attempting lookup by profileId: {}", targetUserId);
                     patient = patientClient.getPatientContactByProfileId(targetUserId);
+                    if (patient != null) {
+                        log.info("[RECIPIENT-PATIENT] Successfully resolved by profileId");
+                    }
                 } catch (Exception ex) {
-                    log.warn("Patient lookup by profileId {} failed: {}", targetUserId, ex.getMessage());
+                    log.warn("[RECIPIENT-PATIENT] Lookup by profileId {} failed: {} - {}", 
+                            targetUserId, ex.getClass().getSimpleName(), ex.getMessage());
                 }
             }
 
@@ -318,9 +383,14 @@ public class NotificationServiceImpl implements NotificationService {
                     : targetUserId;
 
             try {
+                log.debug("[RECIPIENT-PATIENT] Attempting to fetch auth user details for authUserId: {}", authUserId);
                 user = authClient.getUserById(authUserId);
+                if (user != null) {
+                    log.info("[RECIPIENT-PATIENT] Successfully fetched auth user: {} {}", user.firstName(), user.lastName());
+                }
             } catch (Exception ex) {
-                log.warn("Auth user lookup {} failed for patient recipient: {}", authUserId, ex.getMessage());
+                log.warn("[RECIPIENT-PATIENT] Auth user lookup {} failed: {} - {}", 
+                        authUserId, ex.getClass().getSimpleName(), ex.getMessage());
             }
 
             String preferredEmail = firstNonBlank(
@@ -334,13 +404,10 @@ public class NotificationServiceImpl implements NotificationService {
             String source = patient != null && StringUtils.hasText(patient.contactPhone())
                     ? "PATIENT_PROFILE_EMERGENCY"
                     : "AUTH_PHONE_FALLBACK";
-            log.info(
-                    "Resolved patient recipient targetUserId={}, authUserId={}, source={}, phone={}, email={}",
-                    targetUserId,
-                    authUserId,
-                    source,
-                    maskPhone(normalizedPreferredPhone),
-                    maskEmail(preferredEmail));
+            
+            log.info("[RECIPIENT-PATIENT] Resolved | Name: {} | AuthUserId: {} | ContactSource: {} | Phone: {} | Email: {}", 
+                    safeName(user == null ? null : user.firstName(), user == null ? null : user.lastName()),
+                    authUserId, source, maskPhone(normalizedPreferredPhone), maskEmail(preferredEmail));
 
             return new RecipientContext(
                     safeName(
@@ -351,22 +418,32 @@ public class NotificationServiceImpl implements NotificationService {
                     "PATIENT");
         }
 
+        log.warn("[RECIPIENT] Unknown role: {}", normalizedRole);
         return new RecipientContext("System", null, null, normalizedRole);
     }
 
     private NotificationChannel resolveChannel(RecipientContext recipient) {
         boolean hasEmail = StringUtils.hasText(recipient.email());
         boolean hasPhone = StringUtils.hasText(recipient.phone());
+        
+        log.debug("[CHANNEL] Resolving channel | HasEmail: {} | HasPhone: {}", hasEmail, hasPhone);
+        
+        NotificationChannel channel;
         if (hasEmail && hasPhone) {
-            return NotificationChannel.BOTH;
+            channel = NotificationChannel.BOTH;
+            log.info("[CHANNEL] Resolved to BOTH (Email + SMS) - both contact methods available");
+        } else if (hasEmail) {
+            channel = NotificationChannel.EMAIL;
+            log.info("[CHANNEL] Resolved to EMAIL only - no phone number available");
+        } else if (hasPhone) {
+            channel = NotificationChannel.SMS;
+            log.info("[CHANNEL] Resolved to SMS only - no email address available");
+        } else {
+            channel = NotificationChannel.EMAIL;
+            log.warn("[CHANNEL] Resolved to EMAIL default - no contact methods available");
         }
-        if (hasEmail) {
-            return NotificationChannel.EMAIL;
-        }
-        if (hasPhone) {
-            return NotificationChannel.SMS;
-        }
-        return NotificationChannel.EMAIL;
+        
+        return channel;
     }
 
     private String buildDefaultTitle(String eventType) {
