@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
   const notificationTarget = env.VITE_DEV_NOTIFICATION_PROXY_TARGET || 'http://localhost:8084';
   const paymentTarget = env.VITE_DEV_PAYMENT_PROXY_TARGET || 'http://localhost:8086';
   const telemedicineTarget = env.VITE_DEV_TELEMEDICINE_PROXY_TARGET || 'http://localhost:8087';
+  const aiSymptomTarget = env.VITE_DEV_AI_SYMPTOM_PROXY_TARGET || 'http://localhost:8093';
   const gatewayTarget = env.VITE_DEV_GATEWAY_PROXY_TARGET || 'http://localhost:8088';
 
   return {
@@ -52,7 +53,10 @@ export default defineConfig(({ mode }) => {
           (path) => path.replace(/^\/api\/payments/, '/api/v1/payments'),
         ),
         '/api/telemedicine': createProxyOptions(telemedicineTarget),
-        '/api/ai-symptoms': createProxyOptions(gatewayTarget),
+        '/api/ai-symptoms': createProxyOptions(
+          aiSymptomTarget,
+          (path) => path.replace(/^\/api\/ai-symptoms/, '/api/v1/ai-symptoms'),
+        ),
         '/api/ai': createProxyOptions(gatewayTarget),
       },
     },

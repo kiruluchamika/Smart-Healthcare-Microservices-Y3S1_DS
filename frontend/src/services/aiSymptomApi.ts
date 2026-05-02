@@ -92,7 +92,14 @@ export function getSymptomHistory(patientId: number, page = 0, size = 10) {
   return request<PagedSymptomHistoryResponse>(`${AI_SYMPTOM_API_BASE}/history/${patientId}?page=${page}&size=${size}`, {
     method: 'GET',
     headers: getAuthHeaders(),
-  });
+  }).then((response) => ({
+    ...response,
+    items: Array.isArray(response?.items) ? response.items : [],
+    page: typeof response?.page === 'number' ? response.page : page,
+    size: typeof response?.size === 'number' ? response.size : size,
+    totalElements: typeof response?.totalElements === 'number' ? response.totalElements : 0,
+    totalPages: typeof response?.totalPages === 'number' ? response.totalPages : 0,
+  }));
 }
 
 export function getSymptomAnalysisById(id: number) {

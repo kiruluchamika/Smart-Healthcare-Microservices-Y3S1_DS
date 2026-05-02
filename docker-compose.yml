@@ -366,6 +366,7 @@ services:
     depends_on:
       - doctor-service
       - appointment-service
+      - ai-symptom-service
     ports:
       - "8088:8088"
 
@@ -379,6 +380,7 @@ services:
       - patient-service
       - doctor-service
       - appointment-service
+      - ai-symptom-service
       - api-gateway
     ports:
       - "5173:80"
