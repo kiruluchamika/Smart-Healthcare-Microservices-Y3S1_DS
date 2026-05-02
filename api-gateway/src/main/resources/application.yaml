@@ -99,3 +99,7 @@ management:
   endpoint:
     health:
       show-details: always
+
+ai-suggestion:
+  service:
+    base-url: ${AI_DOCTOR_SUGGESTION_SERVICE_URL:http://localhost:8092}
