@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   Sparkles,
   CheckCheck,
+  AlertCircle,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useNotificationIdentity } from '../hooks/useNotificationIdentity';
@@ -40,7 +41,7 @@ function getFilterStats(notifications: NotificationResponse[]) {
 export default function NotificationsCenter() {
   const navigate = useNavigate();
   const identity = useNotificationIdentity();
-  const { notifications, unreadCount, loading, refresh, markAsRead } = useNotifications(
+  const { notifications, unreadCount, loading, error, refresh, markAsRead } = useNotifications(
     identity.role,
     identity.targetUserId,
     { pollIntervalMs: 30000, enabled: identity.status === 'ready' },
@@ -110,6 +111,36 @@ export default function NotificationsCenter() {
               type="button"
               onClick={() => navigate('/dashboard')}
               className="rounded-full bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
+            >
+              Go to dashboard
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (identity.status === 'error') {
+    return (
+      <div className="min-h-screen bg-[#e7f3f5] px-4 pb-20 pt-28 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl rounded-[1.75rem] border border-white/70 bg-white/70 p-6 text-center shadow-xl backdrop-blur-xl">
+          <AlertCircle className="mx-auto mb-3 h-10 w-10 text-rose-600" />
+          <h1 className="text-2xl font-black text-slate-900">Notifications unavailable</h1>
+          <p className="mt-2 text-sm text-slate-600">{identity.errorMessage || 'Unable to load doctor profile. Please try again.'}</p>
+          <div className="mt-6 flex gap-3 justify-center">
+            {identity.retry && (
+              <button
+                type="button"
+                onClick={() => identity.retry?.()}
+                className="rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
+              >
+                Retry
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard')}
+              className="rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               Go to dashboard
             </button>
@@ -251,6 +282,19 @@ export default function NotificationsCenter() {
                 <div className="flex items-center justify-center rounded-[1.5rem] border border-dashed border-slate-200 bg-white/80 py-16 text-slate-500">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Loading your notifications...
+                </div>
+              ) : error ? (
+                <div className="rounded-[1.5rem] border border-rose-200 bg-rose-50/80 px-6 py-16 text-center">
+                  <AlertCircle className="mx-auto h-10 w-10 text-rose-600" />
+                  <h3 className="mt-4 text-lg font-black text-slate-900">Failed to load notifications</h3>
+                  <p className="mt-2 text-sm text-slate-600">{error}</p>
+                  <button
+                    type="button"
+                    onClick={() => void refresh()}
+                    className="mt-4 rounded-full bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
+                  >
+                    Retry
+                  </button>
                 </div>
               ) : filteredNotifications.length === 0 ? (
                 <div className="rounded-[1.5rem] border border-dashed border-slate-200 bg-white/80 px-6 py-16 text-center">
