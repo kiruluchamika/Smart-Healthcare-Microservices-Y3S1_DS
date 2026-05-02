@@ -1,6 +1,7 @@
 package com.smarthealthcare.patient_service.service;
 
 import com.smarthealthcare.patient_service.dto.CreateOrUpdateProfileRequest;
+import com.smarthealthcare.patient_service.dto.PatientContactResponse;
 import com.smarthealthcare.patient_service.dto.PatientProfileResponse;
 import com.smarthealthcare.patient_service.dto.AppointmentAccessResponse;
 import com.smarthealthcare.patient_service.dto.AuthUserResponse;
@@ -234,6 +235,32 @@ public class PatientProfileService {
                 profile.getLastName(),
                 profile.getEmail());
     }
+
+        @Transactional(readOnly = true)
+        public PatientContactResponse getContactByAuthUserId(Long authUserId) {
+        PatientProfile profile = patientProfileRepository.findByAuthUserId(authUserId)
+            .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+
+        return PatientContactResponse.fromProfile(
+            PatientProfileResponse.fromEntity(
+                profile,
+                profile.getFirstName(),
+                profile.getLastName(),
+                profile.getEmail()));
+        }
+
+        @Transactional(readOnly = true)
+        public PatientContactResponse getContactByProfileId(Long patientProfileId) {
+        PatientProfile profile = patientProfileRepository.findById(patientProfileId)
+            .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+
+        return PatientContactResponse.fromProfile(
+            PatientProfileResponse.fromEntity(
+                profile,
+                profile.getFirstName(),
+                profile.getLastName(),
+                profile.getEmail()));
+        }
 
     private void syncIdentity(PatientProfile profile, AuthenticatedPatient principal) {
         if (isBlank(profile.getFirstName())) {
