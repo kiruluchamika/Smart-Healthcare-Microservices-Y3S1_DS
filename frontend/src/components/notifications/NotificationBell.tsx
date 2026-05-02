@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Bell, ChevronRight, Loader2, CheckCheck } from 'lucide-react';
+import { Bell, ChevronRight, Loader2, CheckCheck, AlertCircle } from 'lucide-react';
 import { useNotificationIdentity } from '../../hooks/useNotificationIdentity';
 import { useNotifications } from '../../hooks/useNotifications';
 import { formatRelativeTime, getNotificationMeta, getNotificationTone, shortenText } from '../../utils/notifications';
@@ -11,7 +11,7 @@ export default function NotificationBell() {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const identity = useNotificationIdentity();
-  const { notifications, unreadCount, loading, refresh, markAsRead } = useNotifications(
+  const { notifications, unreadCount, loading, error, refresh, markAsRead } = useNotifications(
     identity.role,
     identity.targetUserId,
     { limit: 6, pollIntervalMs: 30000, enabled: identity.status === 'ready' },
@@ -68,17 +68,31 @@ export default function NotificationBell() {
     return null;
   }
 
+  const isIdentityError = identity.status === 'error';
+  const isIdentityLoading = identity.status === 'loading';
+
   return (
     <div ref={wrapperRef} className="relative z-40">
       <button
         type="button"
         onClick={() => void handleOpen()}
-        className="relative flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-cyan-700"
+        className={`relative flex h-11 w-11 items-center justify-center rounded-full border shadow-sm transition ${
+          isIdentityError
+            ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100'
+            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:text-cyan-700'
+        }`}
         aria-label={headerLabel}
         aria-expanded={isOpen}
+        title={isIdentityError ? identity.errorMessage : undefined}
       >
-        <Bell className="h-4.5 w-4.5" />
-        {unreadCount > 0 && (
+        {isIdentityLoading ? (
+          <Loader2 className="h-4.5 w-4.5 animate-spin" />
+        ) : isIdentityError ? (
+          <AlertCircle className="h-4.5 w-4.5" />
+        ) : (
+          <Bell className="h-4.5 w-4.5" />
+        )}
+        {unreadCount > 0 && !isIdentityError && (
           <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white shadow-lg">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
@@ -107,10 +121,45 @@ export default function NotificationBell() {
           </div>
 
           <div className="max-h-[28rem] overflow-y-auto bg-gradient-to-b from-white to-slate-50/80 p-2">
-            {loading ? (
+            {isIdentityError ? (
+              <div className="px-4 py-8 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <p className="text-sm font-semibold text-slate-700">Notifications unavailable</p>
+                <p className="mt-1 text-xs text-slate-500">{identity.errorMessage || 'Unable to load doctor profile'}</p>
+                {identity.retry && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      identity.retry?.();
+                      setIsOpen(false);
+                    }}
+                    className="mt-3 inline-block rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-200"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            ) : loading ? (
               <div className="flex items-center justify-center py-12 text-slate-500">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Loading notifications...
+              </div>
+            ) : error ? (
+              <div className="px-4 py-8 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <p className="text-sm font-semibold text-slate-700">Failed to load notifications</p>
+                <p className="mt-1 text-xs text-slate-500">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => void refresh()}
+                  className="mt-3 inline-block rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                >
+                  Retry
+                </button>
               </div>
             ) : notifications.length === 0 ? (
               <div className="px-4 py-12 text-center">
