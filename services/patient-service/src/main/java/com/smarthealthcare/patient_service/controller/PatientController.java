@@ -2,6 +2,7 @@ package com.smarthealthcare.patient_service.controller;
 
 import com.smarthealthcare.patient_service.dto.ApiResponse;
 import com.smarthealthcare.patient_service.dto.CreateOrUpdateProfileRequest;
+import com.smarthealthcare.patient_service.dto.PatientContactResponse;
 import com.smarthealthcare.patient_service.dto.PatientProfileResponse;
 import com.smarthealthcare.patient_service.security.AuthenticatedPatient;
 import com.smarthealthcare.patient_service.service.PatientProfileService;
@@ -80,5 +81,21 @@ public class PatientController {
 
         PatientProfileResponse response = patientProfileService.deleteProfilePicture(principal);
         return ResponseEntity.ok(ApiResponse.success("Profile picture removed successfully", response));
+    }
+
+    @GetMapping("/internal/contact")
+    public ResponseEntity<PatientContactResponse> getContactByAuthUserId(
+            @RequestParam("authUserId") Long authUserId) {
+
+        PatientContactResponse response = patientProfileService.getContactByAuthUserId(authUserId);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/internal/contact-by-profile")
+    public ResponseEntity<PatientContactResponse> getContactByProfileId(
+            @RequestParam("patientProfileId") Long patientProfileId) {
+
+        PatientContactResponse response = patientProfileService.getContactByProfileId(patientProfileId);
+        return ResponseEntity.ok(response);
     }
 }
