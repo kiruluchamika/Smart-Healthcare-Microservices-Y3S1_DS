@@ -1,12 +1,13 @@
 import { BellRing, CalendarDays, CircleDollarSign, HeartPulse, ShieldAlert, Sparkles } from 'lucide-react';
 import type { NotificationResponse } from '../types/notification';
+import { parseUTCDate } from './dateUtils';
 
 export function formatRelativeTime(value?: string | null) {
   if (!value) {
     return 'Just now';
   }
 
-  const date = new Date(value);
+  const date = parseUTCDate(value);
   if (Number.isNaN(date.getTime())) {
     return 'Just now';
   }
