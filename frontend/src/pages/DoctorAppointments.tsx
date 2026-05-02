@@ -51,6 +51,16 @@ function formatMoney(amount?: number | null, currency = 'USD') {
   return formatDisplayAmount(amount, currency);
 }
 
+function getAppointmentEndDate(appointment: Pick<AppointmentResponse, 'appointmentDate' | 'endTime'>) {
+  const appointmentEnd = new Date(`${appointment.appointmentDate}T${appointment.endTime}`);
+  return Number.isNaN(appointmentEnd.getTime()) ? null : appointmentEnd;
+}
+
+function hasAppointmentSlotPassed(appointment: Pick<AppointmentResponse, 'appointmentDate' | 'endTime'>) {
+  const appointmentEnd = getAppointmentEndDate(appointment);
+  return appointmentEnd ? new Date() >= appointmentEnd : false;
+}
+
 function getStatusBadgeClasses(status: AppointmentResponse['status']) {
   if (status === 'CONFIRMED') {
     return 'bg-emerald-100 text-emerald-700';
@@ -125,7 +135,7 @@ function getPatientDisplayName(profile: PatientProfile | null | undefined, patie
 export default function DoctorAppointments() {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [telemedicineMap, setTelemedicineMap] = useState<Record<number, TelemedicineSessionResponse>>({});
-  const [patientMap, setPatientMap] = useState<Record<number, PatientProfile>>({});
+  const [patientMap, setPatientMap] = useState<Record<number, PatientProfile | null>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
@@ -290,7 +300,7 @@ export default function DoctorAppointments() {
   );
 
   useEffect(() => {
-    const missingPatientIds = patientIds.filter((patientId) => !patientMap[patientId]);
+    const missingPatientIds = patientIds.filter((patientId) => patientMap[patientId] === undefined);
 
     if (!missingPatientIds.length) {
       return;
@@ -305,7 +315,7 @@ export default function DoctorAppointments() {
             const response = await patientApi.getPatientProfileForDoctor(patientId);
             return [patientId, response.data] as const;
           } catch {
-            return null;
+            return [patientId, null] as const;
           }
         }),
       );
@@ -318,10 +328,6 @@ export default function DoctorAppointments() {
         const nextMap = { ...currentMap };
 
         patientEntries.forEach((entry) => {
-          if (!entry) {
-            return;
-          }
-
           const [patientId, patient] = entry;
           nextMap[patientId] = patient;
         });
@@ -520,6 +526,7 @@ export default function DoctorAppointments() {
                                 appointment.appointmentType !== 'VIDEO' && canComplete;
                               const existingPrescription = prescriptionByAppointmentId[appointment.id];
                               const hasPrescription = Boolean(existingPrescription?.id);
+                              const canWritePrescription = hasAppointmentSlotPassed(appointment);
 
                               return (
                                 <tr key={appointment.id} className="align-top text-sm text-slate-700">
@@ -605,8 +612,14 @@ export default function DoctorAppointments() {
                                         ) : (
                                           <button
                                             type="button"
+                                            disabled={!canWritePrescription}
+                                            title={
+                                              canWritePrescription
+                                                ? undefined
+                                                : 'Available after the appointment time has passed'
+                                            }
                                             onClick={() => setPrescriptionModalAppointment(appointment)}
-                                            className="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700"
+                                            className="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-600"
                                           >
                                             Write Prescription
                                           </button>
@@ -655,6 +668,7 @@ export default function DoctorAppointments() {
                         appointment.appointmentType !== 'VIDEO' && canComplete;
                       const existingPrescription = prescriptionByAppointmentId[appointment.id];
                       const hasPrescription = Boolean(existingPrescription?.id);
+                      const canWritePrescription = hasAppointmentSlotPassed(appointment);
 
                       return (
                         <motion.div
@@ -871,8 +885,14 @@ export default function DoctorAppointments() {
                                 ) : (
                                   <button
                                     type="button"
+                                    disabled={!canWritePrescription}
+                                    title={
+                                      canWritePrescription
+                                        ? undefined
+                                        : 'Available after the appointment time has passed'
+                                    }
                                     onClick={() => setPrescriptionModalAppointment(appointment)}
-                                    className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700"
+                                    className="rounded-lg px-4 py-2 text-sm font-semibold text-white bg-indigo-600 transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-indigo-600"
                                   >
                                     Write Prescription
                                   </button>

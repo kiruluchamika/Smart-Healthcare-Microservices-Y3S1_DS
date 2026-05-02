@@ -35,6 +35,19 @@ export default function Header() {
     location.pathname === '/register' ||
     location.pathname === '/admin/login';
   const isLandingPage = location.pathname === '/';
+  const isPublicStaticPage = [
+    '/about',
+    '/guidelines',
+    '/contact',
+    '/faq',
+    '/privacy-policy',
+    '/terms-and-conditions',
+    '/cookie-policy',
+    '/security-policy',
+    '/patient-rights-consent',
+    '/accessibility',
+    '/emergency-disclaimer',
+  ].includes(location.pathname);
   const isDoctorWorkspaceRoute =
     location.pathname === '/dashboard' ||
     location.pathname === '/doctor/appointments' ||
@@ -240,7 +253,7 @@ export default function Header() {
 
   const baseDisplayItems = isAuthPage
     ? []
-    : isLandingPage && (!isAuthenticated || role === 'DOCTOR')
+    : (isLandingPage || isPublicStaticPage) && (!isAuthenticated || role === 'DOCTOR')
       ? doctorLandingStaticNavItems
       : isAuthenticated && role === 'PATIENT'
         ? guestNavItems
