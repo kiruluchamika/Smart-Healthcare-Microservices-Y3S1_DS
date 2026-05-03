@@ -153,6 +153,29 @@ services:
       timeout: 5s
       retries: 10
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  ollama-model-init:
+    image: ollama/ollama:latest
+    container_name: ollama-model-init
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull nomic-embed-text"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+
   auth-service:
     build:
       context: ./services/auth-service
@@ -256,7 +279,7 @@ services:
       DOCTOR_SERVICE_BASE_URL: http://doctor-service:8083
       DOCTOR_SERVICE_USERNAME: doctor
       DOCTOR_SERVICE_PASSWORD: doctor123
-      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_BASE_URL: http://ollama:11434
       OLLAMA_EMBEDDING_MODEL: nomic-embed-text
       OLLAMA_STARTUP_ENABLED: "false"
       OLLAMA_STARTUP_AUTO_START_CLI: "false"
@@ -265,6 +288,8 @@ services:
     depends_on:
       mysql-ai-suggestion:
         condition: service_healthy
+      ollama-model-init:
+        condition: service_completed_successfully
     ports:
       - "8092:8092"
 
@@ -397,6 +422,7 @@ volumes:
   mysql-payment-data:
   mysql-notification-data:
   mysql-telemedicine-data:
+  ollama-data:
   doctor-uploads:
   patient-uploads:
 
