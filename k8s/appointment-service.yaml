@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appointment-service
+  namespace: smart-healthcare
+  labels:
+    app: appointment-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: appointment-service
+  template:
+    metadata:
+      labels:
+        app: appointment-service
+    spec:
+      containers:
+        - name: appointment-service
+          image: smart-healthcare-microservices-y3s1_ds-appointment-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+          env:
+            - name: SPRING_DOCKER_COMPOSE_ENABLED
+              value: "false"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-appointment:3306/appointment_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: MYSQL_ROOT_PASSWORD
+            - name: SERVER_PORT
+              value: "8082"
+            - name: APP_SERVICES_AUTH_BASE_URL
+              value: http://auth-service:8080/auth
+            - name: APP_SERVICES_DOCTOR_BASE_URL
+              value: http://doctor-service:8083/api/v1/doctors
+            - name: DOCTOR_SERVICE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: DOCTOR_SERVICE_USERNAME
+            - name: DOCTOR_SERVICE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: DOCTOR_SERVICE_PASSWORD
+            - name: NOTIFICATION_SERVICE_BASE_URL
+              value: http://notification-service:8084
+            - name: NOTIFICATION_ENABLED
+              value: "true"
+            - name: APP_SECURITY_ALLOWED_ORIGINS
+              value: http://localhost:*,http://127.0.0.1:*
+          readinessProbe:
+            tcpSocket:
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appointment-service
+  namespace: smart-healthcare
+spec:
+  type: ClusterIP
+  selector:
+    app: appointment-service
+  ports:
+    - name: http
+      port: 8082
+      targetPort: 8082
+

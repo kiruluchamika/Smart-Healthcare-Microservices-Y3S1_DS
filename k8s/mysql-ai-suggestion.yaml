@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-ai-suggestion-pv
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /data/smart-healthcare/mysql-ai-suggestion
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-ai-suggestion-pvc
+  namespace: smart-healthcare
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: mysql-ai-suggestion-pv
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-ai-suggestion
+  namespace: smart-healthcare
+  labels:
+    app: mysql-ai-suggestion
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-ai-suggestion
+  template:
+    metadata:
+      labels:
+        app: mysql-ai-suggestion
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: MYSQL_AI_SUGGESTION_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: ai_doctor_suggestion_db
+          volumeMounts:
+            - name: mysql-ai-suggestion-data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+            initialDelaySeconds: 60
+            periodSeconds: 20
+      volumes:
+        - name: mysql-ai-suggestion-data
+          persistentVolumeClaim:
+            claimName: mysql-ai-suggestion-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-ai-suggestion
+  namespace: smart-healthcare
+spec:
+  type: ClusterIP
+  selector:
+    app: mysql-ai-suggestion
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306

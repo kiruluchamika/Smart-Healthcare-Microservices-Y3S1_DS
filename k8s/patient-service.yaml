@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: patient-uploads-pv
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /data/smart-healthcare/patient-uploads
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: patient-uploads-pvc
+  namespace: smart-healthcare
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  volumeName: patient-uploads-pv
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-service
+  namespace: smart-healthcare
+  labels:
+    app: patient-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: patient-service
+  template:
+    metadata:
+      labels:
+        app: patient-service
+    spec:
+      containers:
+        - name: patient-service
+          image: smart-healthcare-microservices-y3s1_ds-patient-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8085
+          env:
+            - name: SPRING_DOCKER_COMPOSE_ENABLED
+              value: "false"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-patient:3306/patient_service_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: MYSQL_ROOT_PASSWORD
+            - name: SERVER_PORT
+              value: "8085"
+            - name: APPOINTMENT_SERVICE_BASE_URL
+              value: http://appointment-service:8082
+            - name: AUTH_SERVICE_BASE_URL
+              value: http://auth-service:8080/auth
+            - name: DOCTOR_SERVICE_BASE_URL
+              value: http://doctor-service:8083
+            - name: DOCTOR_SERVICE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: DOCTOR_SERVICE_USERNAME
+            - name: DOCTOR_SERVICE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: DOCTOR_SERVICE_PASSWORD
+            - name: APP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: APP_JWT_SECRET
+            - name: APP_SECURITY_ALLOWED_ORIGINS
+              value: http://localhost:*,http://127.0.0.1:*
+          volumeMounts:
+            - name: patient-uploads
+              mountPath: /app/uploads
+          readinessProbe:
+            tcpSocket:
+              port: 8085
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: patient-uploads
+          persistentVolumeClaim:
+            claimName: patient-uploads-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patient-service
+  namespace: smart-healthcare
+spec:
+  type: ClusterIP
+  selector:
+    app: patient-service
+  ports:
+    - name: http
+      port: 8085
+      targetPort: 8085

@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-telemedicine-pv
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /data/smart-healthcare/mysql-telemedicine
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-telemedicine-pvc
+  namespace: smart-healthcare
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: mysql-telemedicine-pv
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-telemedicine
+  namespace: smart-healthcare
+  labels:
+    app: mysql-telemedicine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-telemedicine
+  template:
+    metadata:
+      labels:
+        app: mysql-telemedicine
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: telemedicine_service_db
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: MYSQL_TELEMEDICINE_USERNAME
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: MYSQL_TELEMEDICINE_PASSWORD
+          volumeMounts:
+            - name: mysql-telemedicine-data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+            initialDelaySeconds: 60
+            periodSeconds: 20
+      volumes:
+        - name: mysql-telemedicine-data
+          persistentVolumeClaim:
+            claimName: mysql-telemedicine-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-telemedicine
+  namespace: smart-healthcare
+spec:
+  type: ClusterIP
+  selector:
+    app: mysql-telemedicine
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306

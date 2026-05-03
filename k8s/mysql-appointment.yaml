@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-appointment-pv
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /data/smart-healthcare/mysql-appointment
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-appointment-pvc
+  namespace: smart-healthcare
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: mysql-appointment-pv
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-appointment
+  namespace: smart-healthcare
+  labels:
+    app: mysql-appointment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-appointment
+  template:
+    metadata:
+      labels:
+        app: mysql-appointment
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: appointment_service_db
+          volumeMounts:
+            - name: mysql-appointment-data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+            initialDelaySeconds: 60
+            periodSeconds: 20
+      volumes:
+        - name: mysql-appointment-data
+          persistentVolumeClaim:
+            claimName: mysql-appointment-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-appointment
+  namespace: smart-healthcare
+spec:
+  type: ClusterIP
+  selector:
+    app: mysql-appointment
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306

@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-doctor-suggestion-service
+  namespace: smart-healthcare
+  labels:
+    app: ai-doctor-suggestion-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-doctor-suggestion-service
+  template:
+    metadata:
+      labels:
+        app: ai-doctor-suggestion-service
+    spec:
+      containers:
+        - name: ai-doctor-suggestion-service
+          image: smart-healthcare-microservices-y3s1_ds-ai-doctor-suggestion-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8092
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: docker
+            - name: SPRING_DOCKER_COMPOSE_ENABLED
+              value: "false"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql-ai-suggestion:3306/ai_doctor_suggestion_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: MYSQL_AI_SUGGESTION_ROOT_PASSWORD
+            - name: SERVER_PORT
+              value: "8092"
+            - name: DOCTOR_SERVICE_BASE_URL
+              value: http://doctor-service:8083
+            - name: DOCTOR_SERVICE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: DOCTOR_SERVICE_USERNAME
+            - name: DOCTOR_SERVICE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: DOCTOR_SERVICE_PASSWORD
+            - name: OLLAMA_BASE_URL
+              value: http://ollama:11434
+            - name: OLLAMA_EMBEDDING_MODEL
+              value: nomic-embed-text
+            - name: OLLAMA_STARTUP_ENABLED
+              value: "false"
+            - name: OLLAMA_STARTUP_AUTO_START_CLI
+              value: "false"
+            - name: OLLAMA_STARTUP_AUTO_PULL_MODEL
+              value: "false"
+            - name: OLLAMA_STARTUP_FAIL_FAST
+              value: "false"
+          readinessProbe:
+            tcpSocket:
+              port: 8092
+            initialDelaySeconds: 45
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-doctor-suggestion-service
+  namespace: smart-healthcare
+spec:
+  type: ClusterIP
+  selector:
+    app: ai-doctor-suggestion-service
+  ports:
+    - name: http
+      port: 8092
+      targetPort: 8092
+

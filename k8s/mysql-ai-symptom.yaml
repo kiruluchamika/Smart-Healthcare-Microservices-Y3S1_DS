@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-ai-symptom-pv
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /data/smart-healthcare/mysql-ai-symptom
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-ai-symptom-pvc
+  namespace: smart-healthcare
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: mysql-ai-symptom-pv
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-ai-symptom
+  namespace: smart-healthcare
+  labels:
+    app: mysql-ai-symptom
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-ai-symptom
+  template:
+    metadata:
+      labels:
+        app: mysql-ai-symptom
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3306
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: smart-healthcare-secrets
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_DATABASE
+              value: ai_symptom_service_db
+          volumeMounts:
+            - name: mysql-ai-symptom-data
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p123456"]
+            initialDelaySeconds: 60
+            periodSeconds: 20
+      volumes:
+        - name: mysql-ai-symptom-data
+          persistentVolumeClaim:
+            claimName: mysql-ai-symptom-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-ai-symptom
+  namespace: smart-healthcare
+spec:
+  type: ClusterIP
+  selector:
+    app: mysql-ai-symptom
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: 3306
