@@ -123,6 +123,13 @@ public class AppointmentServiceImpl implements AppointmentService {
             throw new BusinessValidationException(resolveSlotSelectionMessage(availabilityView));
         }
 
+        ensureSlotIsNotBlocked(
+                request.getDoctorId(),
+                request.getAppointmentDate(),
+                selectedSlot.startTime(),
+                selectedSlot.endTime(),
+                null);
+
         Appointment appointment = new Appointment();
         appointment.setPatientId(request.getPatientId());
         appointment.setDoctorId(request.getDoctorId());
@@ -228,6 +235,13 @@ public class AppointmentServiceImpl implements AppointmentService {
         if (selectedSlot == null) {
             throw new BusinessValidationException(resolveSlotSelectionMessage(availabilityView));
         }
+
+        ensureSlotIsNotBlocked(
+                appointment.getDoctorId(),
+                request.getAppointmentDate(),
+                selectedSlot.startTime(),
+                selectedSlot.endTime(),
+                appointment.getId());
 
         appointment.setAppointmentDate(request.getAppointmentDate());
         appointment.setStartTime(selectedSlot.startTime());
@@ -462,7 +476,7 @@ public class AppointmentServiceImpl implements AppointmentService {
     public void expireStalePendingAppointments() {
         LocalDateTime expiryCutoff = LocalDateTime.now().minusHours(PENDING_EXPIRY_HOURS);
 
-        List<Appointment> staleAppointments = appointmentRepository.findByStatusAndCreatedAtBefore(
+        List<Appointment> staleAppointments = appointmentRepository.findByStatusAndUpdatedAtBefore(
                 AppointmentStatus.PENDING,
                 expiryCutoff);
 
@@ -476,6 +490,39 @@ public class AppointmentServiceImpl implements AppointmentService {
         });
 
         appointmentRepository.saveAll(staleAppointments);
+    }
+
+    private void ensureSlotIsNotBlocked(
+            Long doctorId,
+            LocalDate appointmentDate,
+            LocalTime startTime,
+            LocalTime endTime,
+            Long excludedAppointmentId) {
+
+        boolean blocked;
+        if (excludedAppointmentId == null) {
+            blocked = appointmentRepository
+                    .existsByDoctorIdAndAppointmentDateAndStartTimeLessThanAndEndTimeGreaterThanAndStatusIn(
+                        doctorId,
+                        appointmentDate,
+                        endTime,
+                        startTime,
+                        ACTIVE_STATUSES);
+        } else {
+            blocked = appointmentRepository
+                    .existsByDoctorIdAndAppointmentDateAndStartTimeLessThanAndEndTimeGreaterThanAndStatusInAndIdNot(
+                        doctorId,
+                        appointmentDate,
+                        endTime,
+                        startTime,
+                        ACTIVE_STATUSES,
+                        excludedAppointmentId);
+        }
+
+        if (blocked) {
+            throw new BusinessValidationException(
+                    "This slot is no longer available. Please choose another time.");
+        }
     }
 
     private Appointment findAppointment(Long appointmentId) {

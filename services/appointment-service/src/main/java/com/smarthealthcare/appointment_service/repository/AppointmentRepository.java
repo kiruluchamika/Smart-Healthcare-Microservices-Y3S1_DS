@@ -44,5 +44,5 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
             Collection<AppointmentStatus> statuses,
             Long id);
 
-    List<Appointment> findByStatusAndCreatedAtBefore(AppointmentStatus status, java.time.LocalDateTime createdAt);
+    List<Appointment> findByStatusAndUpdatedAtBefore(AppointmentStatus status, java.time.LocalDateTime updatedAt);
 }
