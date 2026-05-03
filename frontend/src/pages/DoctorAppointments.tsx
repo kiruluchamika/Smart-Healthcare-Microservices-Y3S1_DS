@@ -526,7 +526,7 @@ export default function DoctorAppointments() {
                                 appointment.appointmentType !== 'VIDEO' && canComplete;
                               const existingPrescription = prescriptionByAppointmentId[appointment.id];
                               const hasPrescription = Boolean(existingPrescription?.id);
-                              const canWritePrescription = hasAppointmentSlotPassed(appointment);
+                              const canWritePrescription = hasAppointmentSlotPassed(appointment) || appointment.status === 'COMPLETED';
 
                               return (
                                 <tr key={appointment.id} className="align-top text-sm text-slate-700">
@@ -668,7 +668,7 @@ export default function DoctorAppointments() {
                         appointment.appointmentType !== 'VIDEO' && canComplete;
                       const existingPrescription = prescriptionByAppointmentId[appointment.id];
                       const hasPrescription = Boolean(existingPrescription?.id);
-                      const canWritePrescription = hasAppointmentSlotPassed(appointment);
+                      const canWritePrescription = hasAppointmentSlotPassed(appointment) || appointment.status === 'COMPLETED';
 
                       return (
                         <motion.div

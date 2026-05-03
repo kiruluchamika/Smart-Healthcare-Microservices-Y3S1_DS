@@ -23,27 +23,36 @@ const getHeaders = async () => {
   };
 };
 
+function unwrapPrescriptionResponse<T>(payload: T | { data?: T }) {
+  if (payload && typeof payload === 'object' && 'data' in payload) {
+    return (payload as { data?: T }).data as T;
+  }
+
+  return payload as T;
+}
+
 export const createPrescription = async (data: any) => {
   const response = await axios.post(API_URL, data, { headers: await getHeaders() });
-  return response.data;
+  return unwrapPrescriptionResponse(response.data);
 };
 
 export const signPrescription = async (id: number) => {
   const response = await axios.post(`${API_URL}/${id}/sign`, {}, { headers: await getHeaders() });
-  return response.data;
+  return unwrapPrescriptionResponse(response.data);
 };
 
 export const getPrescription = async (id: number) => {
   const response = await axios.get(`${API_URL}/${id}`, { headers: await getHeaders() });
-  return response.data;
+  return unwrapPrescriptionResponse(response.data);
 };
 
 export const getPrescriptionByAppointment = async (appointmentId: number) => {
   const response = await axios.get(`${API_URL}/by-appointment/${appointmentId}`, { headers: await getHeaders() });
-  return response.data;
+  return unwrapPrescriptionResponse(response.data);
 };
 
 export const getPrescriptionsByPatient = async (patientId: number) => {
   const response = await axios.get(`${API_URL}/by-patient/${patientId}`, { headers: await getHeaders() });
-  return response.data;
+  const prescriptions = unwrapPrescriptionResponse<any[]>(response.data);
+  return Array.isArray(prescriptions) ? prescriptions : [];
 };

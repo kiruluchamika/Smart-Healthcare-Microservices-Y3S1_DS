@@ -52,9 +52,9 @@ spring:
         - id: prescription-service-routes
           uri: ${DOCTOR_SERVICE_URL:http://localhost:8083}
           predicates:
-            - Path=/api/prescriptions/**
+            - Path=/api/prescriptions,/api/prescriptions/**
           filters:
-            - RewritePath=/api/prescriptions/(?<segment>.*), /api/v1/prescriptions/${segment}
+            - RewritePath=/api/prescriptions/?(?<segment>.*), /api/v1/prescriptions/${segment}
             - PreserveHostHeader
 
         - id: payment-service

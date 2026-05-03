@@ -207,6 +207,7 @@ services:
       SERVER_PORT: 8083
       APP_UPLOAD_DIR: /app/uploads
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
+      APP_SERVICES_APPOINTMENT_BASE_URL: http://appointment-service:8082/appointments
     depends_on:
       mysql-doctor:
         condition: service_healthy
