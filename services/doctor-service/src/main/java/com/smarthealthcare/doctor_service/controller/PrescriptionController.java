@@ -15,12 +15,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/v1/prescriptions")
+@RequestMapping({"/api/v1/prescriptions", "/api/prescriptions"})
 @RequiredArgsConstructor
 public class PrescriptionController {
     private final PrescriptionService prescriptionService;
 
-    @PostMapping
+    @PostMapping({"", "/"})
     public ResponseEntity<PrescriptionResponse> createDraft(
             @RequestBody PrescriptionCreateRequest request, 
             Authentication authentication,
@@ -55,7 +55,7 @@ public class PrescriptionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(saved));
     }
 
-    @PostMapping("/{id}/sign")
+    @PostMapping({"/{id}/sign", "/{id}/sign/"})
     public ResponseEntity<PrescriptionResponse> signPrescription(
             @PathVariable Long id, 
             Authentication authentication,
@@ -66,7 +66,7 @@ public class PrescriptionController {
         return ResponseEntity.ok(toResponse(signed));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping({"/{id}", "/{id}/"})
     public ResponseEntity<PrescriptionResponse> getPrescription(
             @PathVariable Long id, 
             Authentication authentication,
@@ -78,7 +78,7 @@ public class PrescriptionController {
         return ResponseEntity.ok(toResponse(prescription));
     }
 
-    @GetMapping("/by-appointment/{appointmentId}")
+    @GetMapping({"/by-appointment/{appointmentId}", "/by-appointment/{appointmentId}/"})
     public ResponseEntity<PrescriptionResponse> getPrescriptionByAppointment(
             @PathVariable Long appointmentId,
             Authentication authentication,
@@ -90,7 +90,7 @@ public class PrescriptionController {
         return ResponseEntity.ok(toResponse(prescription));
     }
 
-    @GetMapping("/by-patient/{patientId}")
+    @GetMapping({"/by-patient/{patientId}", "/by-patient/{patientId}/"})
     public ResponseEntity<List<PrescriptionResponse>> getPrescriptionsByPatient(
             @PathVariable Long patientId, 
             Authentication authentication,

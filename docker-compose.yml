@@ -207,6 +207,7 @@ services:
       SERVER_PORT: 8083
       APP_UPLOAD_DIR: /app/uploads
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
+      APP_SERVICES_APPOINTMENT_BASE_URL: http://appointment-service:8082/appointments
     depends_on:
       mysql-doctor:
         condition: service_healthy
@@ -253,6 +254,8 @@ services:
       APPOINTMENT_SERVICE_BASE_URL: http://appointment-service:8082
       AUTH_SERVICE_BASE_URL: http://auth-service:8080/auth
       DOCTOR_SERVICE_BASE_URL: http://doctor-service:8083
+      DOCTOR_SERVICE_USERNAME: doctor
+      DOCTOR_SERVICE_PASSWORD: doctor123
       APP_JWT_SECRET: smart-healthcare-shared-jwt-secret-change-this-in-production-must-be-at-least-32-bytes
       APP_SECURITY_ALLOWED_ORIGINS: http://localhost:*,http://127.0.0.1:*
     depends_on:
@@ -391,6 +394,7 @@ services:
     depends_on:
       - doctor-service
       - appointment-service
+      - telemedicine-service
       - ai-symptom-service
     ports:
       - "8088:8088"
@@ -405,6 +409,7 @@ services:
       - patient-service
       - doctor-service
       - appointment-service
+      - telemedicine-service
       - ai-symptom-service
       - api-gateway
     ports:

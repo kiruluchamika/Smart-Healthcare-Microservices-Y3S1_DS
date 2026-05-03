@@ -52,7 +52,10 @@ export default defineConfig(({ mode }) => {
           paymentTarget,
           (path) => path.replace(/^\/api\/payments/, '/api/v1/payments'),
         ),
-        '/api/telemedicine': createProxyOptions(telemedicineTarget),
+        '/api/telemedicine': createProxyOptions(
+          telemedicineTarget,
+          (path) => path.replace(/^\/api\/telemedicine/, '/api/v1/telemedicine'),
+        ),
         '/api/ai-symptoms': createProxyOptions(
           aiSymptomTarget,
           (path) => path.replace(/^\/api\/ai-symptoms/, '/api/v1/ai-symptoms'),

@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Validated
-@RequestMapping({"/api/telemedicine", "/api/v1/telemedicine"})
+@RequestMapping({"/api/telemedicine", "/api/v1/telemedicine", "/telemedicine"})
 public class TelemedicineSessionController {
 
     private final TelemedicineSessionService telemedicineSessionService;

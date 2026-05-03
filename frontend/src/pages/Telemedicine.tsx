@@ -174,8 +174,8 @@ export default function Telemedicine() {
     );
   }, [appointment, consultationRole, session]);
 
-  const sessionStatus = session?.status?.toUpperCase() ?? 'CREATED';
-  const canStart = Boolean(isDoctor && accessState?.roomWindowOpen && sessionStatus === 'CREATED');
+  const sessionStatus = session?.status?.toUpperCase() ?? 'NOT_READY';
+  const canStart = Boolean(session && isDoctor && accessState?.roomWindowOpen && sessionStatus === 'CREATED');
   const canJoin = Boolean(session?.meetingUrl && sessionStatus === 'STARTED');
   const canComplete = Boolean(isDoctor && sessionStatus === 'STARTED');
   const roomOpensAt = appointment ? getConsultationRoomOpenAt(appointment) : null;

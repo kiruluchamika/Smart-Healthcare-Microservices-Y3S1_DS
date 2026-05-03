@@ -132,14 +132,14 @@ export default function PrescriptionList({ patientId }: { patientId: number }) {
                 <div className="space-y-3 mb-6">
                     <div className="flex items-center gap-3 text-sm text-slate-600">
                         <Calendar className="w-4 h-4 text-blue-500" />
-                        <span><strong className="text-slate-800">Issued:</strong> {new Date(rx.issuedAt).toLocaleDateString()}</span>
+                        <span><strong className="text-slate-800">Issued:</strong> {rx.issuedAt ? new Date(rx.issuedAt).toLocaleDateString() : 'N/A'}</span>
                     </div>
                     <div className="flex items-start gap-3 text-sm text-slate-600">
                         <Pill className="w-4 h-4 text-indigo-500 mt-1 shrink-0" />
                         <div>
                             <strong className="text-slate-800 block mb-1">Medications ({rx.items?.length || 0}):</strong>
                             <p className="line-clamp-2 text-slate-500 leading-tight">
-                                {rx.items?.map((item: any) => item.medicineName).join(', ')}
+                                {(rx.items || []).map((item: any) => item.medicineName).join(', ')}
                             </p>
                         </div>
                     </div>
