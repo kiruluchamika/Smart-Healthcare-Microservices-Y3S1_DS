@@ -1,8 +1,9 @@
 import axios from 'axios';
-import { getAuthUser, getAuthUserRole } from './authSession';
+import { getAuthToken, getAuthUser, getAuthUserRole } from './authSession';
 import { resolveDoctorProfileId } from './doctorIdentity';
 
 const API_URL = '/api/prescriptions';
+const PATIENT_PRESCRIPTIONS_URL = '/api/patients/me/prescriptions';
 
 function getBasicAuthHeader() {
   const username = import.meta.env.VITE_DOCTOR_USER || 'doctor';
@@ -52,6 +53,20 @@ export const getPrescriptionByAppointment = async (appointmentId: number) => {
 };
 
 export const getPrescriptionsByPatient = async (patientId: number) => {
+  const user = getAuthUser();
+  const role = getAuthUserRole();
+  const token = getAuthToken();
+
+  if (role === 'PATIENT' && user?.id === patientId && token) {
+    const response = await axios.get(PATIENT_PRESCRIPTIONS_URL, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const prescriptions = unwrapPrescriptionResponse<any[]>(response.data);
+    return Array.isArray(prescriptions) ? prescriptions : [];
+  }
+
   const response = await axios.get(`${API_URL}/by-patient/${patientId}`, { headers: await getHeaders() });
   const prescriptions = unwrapPrescriptionResponse<any[]>(response.data);
   return Array.isArray(prescriptions) ? prescriptions : [];

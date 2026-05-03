@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
 import java.util.List;
 import com.smarthealthcare.patient_service.client.DoctorServiceClient;
 
@@ -24,8 +25,10 @@ public class PrescriptionViewController {
     public ResponseEntity<ApiResponse<List<Object>>> getPrescriptions(
             @AuthenticationPrincipal AuthenticatedPatient principal) {
         Long patientId = principal.getAuthUserId();
-        // In a real system, pass JWT for auth; here, omitted for brevity
         List<Object> prescriptions = (List<Object>) (List<?>) doctorServiceClient.getPrescriptionsForPatient(patientId, null);
+        if (prescriptions == null) {
+            prescriptions = Collections.emptyList();
+        }
         return ResponseEntity.ok(ApiResponse.success("Prescriptions retrieved successfully", prescriptions));
     }
 }
