@@ -68,9 +68,9 @@ spring:
         - id: telemedicine-service
           uri: ${TELEMEDICINE_SERVICE_URL:http://localhost:8087}
           predicates:
-            - Path=/api/telemedicine/**
+            - Path=/api/telemedicine,/api/telemedicine/**
           filters:
-            - RewritePath=/api/telemedicine/(?<segment>.*), /api/v1/telemedicine/${segment}
+            - RewritePath=/api/telemedicine/?(?<segment>.*), /api/v1/telemedicine/${segment}
             - PreserveHostHeader
 
         - id: ai-doctor-suggestion-service
